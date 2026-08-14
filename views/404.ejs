@@ -1,0 +1,12 @@
+<%- include("partials/header.ejs") %>
+
+<div class="hero">
+    <h2>404 - Post Not Found</h2>
+    <p><%= typeof message !== 'undefined' ? message : "The post you are looking for doesn't exist or may have been deleted." %></p>
+</div>
+
+<div class="back-link" style="text-align: center;">
+    <a href="/" class="btn btn-primary">← Return to Home</a>
+</div>
+
+<%- include("partials/footer.ejs") %>

@@ -1,85 +1,189 @@
-const express = require("express");// imports express for app initialization 
+require("dotenv").config();
+const express = require("express");
 const path = require("path");
-const fs = require("fs");// imports the file system module so we can read/write files
+const fs = require("fs").promises;
+const fsSync = require("fs");
 
-const app = express();// creates the web app
-const port = 5000;//port on which server runs
+const app = express();
+const port = process.env.PORT || 5000;
 
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
-app.use(express.static(path.join(__dirname, "public")));//this is a middleware which is used to get involve static files in code.
-// Parse URL-encoded bodies (as sent by HTML forms)
-app.use(express.urlencoded({ extended: true }));//middleware. It is used to extract incoming data to the site.
-// setting the extended:true allows us to send more complex datastructures over the web.
+app.use(express.static(path.join(__dirname, "public")));
+app.use(express.urlencoded({ extended: true }));
 
-// --- DATA PERSISTENCE ---
-// On Vercel: uses Upstash Redis (a cloud database) so posts survive across serverless invocations.
-// Locally: uses a JSON file so posts survive server restarts.
+// --- DATABASE LAYER (Supabase PostgreSQL / Local Fallback) ---
+let supabase = null;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
-let redis = null;
-const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.mini_KV_REST_API_URL;
-const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.mini_KV_REST_API_TOKEN;
-if (redisUrl && redisToken) {
-    const { Redis } = require("@upstash/redis");
-    redis = new Redis({
-        url: redisUrl,
-        token: redisToken,
-    });
+if (supabaseUrl && supabaseKey) {
+    const { createClient } = require("@supabase/supabase-js");
+    supabase = createClient(supabaseUrl, supabaseKey);
+    console.log("Connected to Supabase (PostgreSQL).");
+} else {
+    console.log("Supabase credentials not found. Using local JSON file fallback.");
 }
 
 const DATA_FILE = path.join(__dirname, "data.json");
 
-// Reads all posts. Uses Redis on Vercel, file locally.
-const readPosts = async () => {
-    if (redis) {
+// Helper: Format post object date and structure for template consistency
+const formatPost = (post) => {
+    if (!post) return null;
+    let formattedDate = post.date;
+    if (post.created_at) {
         try {
-            const posts = await redis.get("posts");
-            return posts || [];
-        } catch (err) {
-            console.error("Error reading from Redis:", err);
-            return [];
+            formattedDate = new Date(post.created_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            });
+        } catch (e) {
+            formattedDate = post.date || new Date().toLocaleDateString();
         }
     }
-    // Local fallback: read from JSON file
+    return {
+        ...post,
+        date: formattedDate || new Date().toLocaleDateString(),
+    };
+};
+
+// Helper: Generate fallback ID for local offline development
+const generateId = () => {
+    return Math.random().toString(36).substring(2, 11);
+};
+
+// Local JSON File helpers (Asynchronous)
+const readLocalPosts = async () => {
     try {
-        if (fs.existsSync(DATA_FILE)) {
-            const data = fs.readFileSync(DATA_FILE, "utf-8");
+        if (fsSync.existsSync(DATA_FILE)) {
+            const data = await fs.readFile(DATA_FILE, "utf-8");
             return JSON.parse(data);
         }
     } catch (err) {
-        console.error("Error reading posts file:", err);
+        console.error("Error reading local posts file:", err);
     }
     return [];
 };
 
-// Writes all posts. Uses Redis on Vercel, file locally.
-const writePosts = async (posts) => {
-    if (redis) {
-        try {
-            await redis.set("posts", posts);
-        } catch (err) {
-            console.error("Error writing to Redis:", err);
-        }
-        return;
-    }
-    // Local fallback: write to JSON file
+const writeLocalPosts = async (posts) => {
     try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2), "utf-8");
+        await fs.writeFile(DATA_FILE, JSON.stringify(posts, null, 2), "utf-8");
     } catch (err) {
-        console.error("Error writing posts file:", err);
+        console.error("Error writing local posts file:", err);
     }
 };
 
-const generateId = () => {//this fuction generates unique ids for the users.
-    return Math.random().toString(36).substr(2, 9);// first math.random generates a number. Then tostring(36) converts
-    // the number into a unique string that looks like "0.l5z2bq7x".Then subrtr extracts the first values of the number.
+// Data Access Layer
+const getAllPosts = async () => {
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .select("*")
+                .order("created_at", { ascending: false });
+            if (error) throw error;
+            return (data || []).map(formatPost);
+        } catch (err) {
+            console.error("Supabase getAllPosts error:", err.message);
+            return [];
+        }
+    }
+    const localPosts = await readLocalPosts();
+    return localPosts.map(formatPost);
 };
 
-// Simple sanitizer that strips HTML tags without needing external ESM-only libraries.
-// This replaces sanitize-html which depends on htmlparser2 (ESM-only, breaks on Vercel).
+const getPostById = async (id) => {
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .select("*")
+                .eq("id", id)
+                .maybeSingle();
+            if (error) throw error;
+            return data ? formatPost(data) : null;
+        } catch (err) {
+            console.error("Supabase getPostById error:", err.message);
+            return null;
+        }
+    }
+    const localPosts = await readLocalPosts();
+    const post = localPosts.find((p) => String(p.id) === String(id));
+    return post ? formatPost(post) : null;
+};
+
+const createPost = async ({ title, content, excerpt, author }) => {
+    if (supabase) {
+        const { data, error } = await supabase
+            .from("posts")
+            .insert([{ title, content, excerpt, author }])
+            .select()
+            .single();
+        if (error) throw error;
+        return formatPost(data);
+    }
+    const localPosts = await readLocalPosts();
+    const newPost = {
+        id: generateId(),
+        title,
+        content,
+        excerpt,
+        author,
+        created_at: new Date().toISOString(),
+        date: new Date().toLocaleDateString(),
+    };
+    localPosts.unshift(newPost);
+    await writeLocalPosts(localPosts);
+    return formatPost(newPost);
+};
+
+const updatePost = async (id, { title, content, excerpt, author }) => {
+    if (supabase) {
+        const { data, error } = await supabase
+            .from("posts")
+            .update({ title, content, excerpt, author })
+            .eq("id", id)
+            .select()
+            .single();
+        if (error) throw error;
+        return formatPost(data);
+    }
+    const localPosts = await readLocalPosts();
+    const index = localPosts.findIndex((p) => String(p.id) === String(id));
+    if (index !== -1) {
+        localPosts[index] = {
+            ...localPosts[index],
+            title,
+            content,
+            excerpt,
+            author,
+        };
+        await writeLocalPosts(localPosts);
+        return formatPost(localPosts[index]);
+    }
+    return null;
+};
+
+const deletePost = async (id) => {
+    if (supabase) {
+        const { error } = await supabase
+            .from("posts")
+            .delete()
+            .eq("id", id);
+        if (error) throw error;
+        return true;
+    }
+    let localPosts = await readLocalPosts();
+    localPosts = localPosts.filter((p) => String(p.id) !== String(id));
+    await writeLocalPosts(localPosts);
+    return true;
+};
+
+// Text sanitization and excerpt generator
 const simpleSanitize = (str) => {
     if (!str) return "";
-    return str
+    return String(str)
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
@@ -88,103 +192,132 @@ const simpleSanitize = (str) => {
 
 const stripTags = (html) => {
     if (!html) return "";
-    return html.replace(/<[^>]*>/g, "");
+    return String(html).replace(/<[^>]*>/g, "");
 };
 
-const generateExcerpt = (content) => {// this function takes a block of content and turns it into a short plain text preview.
+const generateExcerpt = (content) => {
     const cleanText = stripTags(content);
-    return cleanText.substring(0, 120) + (cleanText.length > 120 ? "..." : "");//grabs the first 120 characters
+    return cleanText.substring(0, 120) + (cleanText.length > 120 ? "..." : "");
 };
 
 // --- ROUTES ---
 
-
-
-app.get("/", async (req, res) => {//this is the get rout to display all posts at the home page of the website.
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-    const posts = await readPosts();// reads all posts from the database
-    res.render("index.ejs", { posts: posts });//sends the data recived by the user to the ejs file.
-});
-
-app.get("/new", (req, res) => {// this shows form to create new post.
-    res.render("new.ejs");
-});
-
-app.post("/posts", async (req, res) => {// Create a new post
-    const { title, content, author } = req.body;// this collects the title,content and author out of the body of the html.
-    
-    const cleanContent = simpleSanitize(content);// this cleans the content comming from the body.
-
-    const newPost = {
-        id: generateId(),//creates a newpost blog post interface with id,title,content,text,author and date.
-        title: simpleSanitize(title),
-        content: cleanContent,
-        excerpt: generateExcerpt(content),
-        author: simpleSanitize(author),
-        date: new Date().toLocaleDateString()
-    };
-    const posts = await readPosts();// reads existing posts from the database
-    posts.push(newPost);//pushes the current post into the array.
-    await writePosts(posts);// saves the updated array to the database so it persists.
-    res.redirect("/");//after the post has been made the user will be redirected to the homepage.
-});
-
-app.get("/posts/:id", async (req, res) => {// View a specific post
-    const posts = await readPosts();// reads all posts from the database
-    const post = posts.find(p => p.id === req.params.id);// uses the builtin javascript array function.find to search through the post array.
-    if (post) {
-        res.render("post.ejs", { post: post });
-    } else {
-        res.status(404).send("Post not found");
+// GET /: Display all posts
+app.get("/", async (req, res, next) => {
+    try {
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+        const posts = await getAllPosts();
+        res.render("index.ejs", { posts });
+    } catch (err) {
+        next(err);
     }
 });
 
-app.get("/edit/:id", async (req, res) => {// GET /edit/:id: Show form to edit a post
-    const posts = await readPosts();// reads all posts from the database
-    const post = posts.find(p => p.id === req.params.id);// compares the id of the current post to the user typed in id.
-    if (post) {
-        res.render("edit.ejs", { post: post });
-    } else {
-        res.status(404).send("Post not found");
+// GET /new: Show form to create new post
+app.get("/new", (req, res) => {
+    res.render("new.ejs");
+});
+
+// POST /posts: Create a new post
+app.post("/posts", async (req, res, next) => {
+    try {
+        const { title, content, author } = req.body;
+        if (!title?.trim() || !content?.trim() || !author?.trim()) {
+            return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
+        }
+
+        await createPost({
+            title: simpleSanitize(title.trim()),
+            content: simpleSanitize(content.trim()),
+            excerpt: generateExcerpt(content.trim()),
+            author: simpleSanitize(author.trim()),
+        });
+
+        res.redirect("/");
+    } catch (err) {
+        next(err);
+    }
+});
+
+// GET /posts/:id: View a single post
+app.get("/posts/:id", async (req, res, next) => {
+    try {
+        const post = await getPostById(req.params.id);
+        if (post) {
+            res.render("post.ejs", { post });
+        } else {
+            res.status(404).render("404.ejs", { message: "The requested post could not be found." });
+        }
+    } catch (err) {
+        next(err);
+    }
+});
+
+// GET /edit/:id: Show form to edit a post
+app.get("/edit/:id", async (req, res, next) => {
+    try {
+        const post = await getPostById(req.params.id);
+        if (post) {
+            res.render("edit.ejs", { post });
+        } else {
+            res.status(404).render("404.ejs", { message: "The post you wish to edit does not exist." });
+        }
+    } catch (err) {
+        next(err);
     }
 });
 
 // POST /update/:id: Update an existing post
-app.post("/update/:id", async (req, res) => {
-    const { title, content, author } = req.body;
-    const posts = await readPosts();// reads all posts from the database
-    const postIndex = posts.findIndex(p => p.id === req.params.id);
-    
-    if (postIndex !== -1) {
-        const cleanContent = simpleSanitize(content);
-        posts[postIndex] = {
-            ...posts[postIndex],
-            title: simpleSanitize(title),
-            content: cleanContent,
-            excerpt: generateExcerpt(content),
-            author: simpleSanitize(author),
-            // Keep original date, or update it
-        };
-        await writePosts(posts);// saves the updated array to the database
-        res.redirect(`/posts/${req.params.id}`);
-    } else {
-        res.status(404).send("Post not found");
+app.post("/update/:id", async (req, res, next) => {
+    try {
+        const { title, content, author } = req.body;
+        if (!title?.trim() || !content?.trim() || !author?.trim()) {
+            return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
+        }
+
+        const updated = await updatePost(req.params.id, {
+            title: simpleSanitize(title.trim()),
+            content: simpleSanitize(content.trim()),
+            excerpt: generateExcerpt(content.trim()),
+            author: simpleSanitize(author.trim()),
+        });
+
+        if (updated) {
+            res.redirect(`/posts/${req.params.id}`);
+        } else {
+            res.status(404).render("404.ejs", { message: "The post to update could not be found." });
+        }
+    } catch (err) {
+        next(err);
     }
 });
 
 // POST /delete/:id: Delete a post
-app.post("/delete/:id", async (req, res) => {
-    let posts = await readPosts();// reads all posts from the database
-    posts = posts.filter(p => p.id !== req.params.id);
-    await writePosts(posts);// saves the updated array to the database
-    res.redirect("/");
+app.post("/delete/:id", async (req, res, next) => {
+    try {
+        await deletePost(req.params.id);
+        res.redirect("/");
+    } catch (err) {
+        next(err);
+    }
 });
 
-// Only listen locally — on Vercel, the VERCEL env var is automatically set
+// Fallback 404 handler for unknown routes
+app.use((req, res) => {
+    res.status(404).render("404.ejs", { message: "Page not found." });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error("Unhandled error:", err);
+    res.status(500).render("404.ejs", { message: "An unexpected error occurred. Please try again later." });
+});
+
+// Only listen locally — on Vercel, the app is exported for serverless
 if (!process.env.VERCEL) {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
     });
 }
 
-module.exports = app;// Export the app for Vercel serverless
+module.exports = app;
