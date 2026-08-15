@@ -80,6 +80,48 @@
     const inserterOptions = document.getElementById('inserter-options');
     const form = document.getElementById('medium-story-form');
 
+    // Helper: Find closest matching ancestor within editor
+    function getClosestBlock(tag) {
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return null;
+        let node = selection.anchorNode;
+        if (!node) return null;
+        if (node.nodeType === 3) node = node.parentElement;
+        return node.closest(tag);
+    }
+
+    // Toggle Blockquote on/off
+    function toggleBlockquote() {
+        const blockquote = getClosestBlock('blockquote');
+        const selection = window.getSelection();
+
+        if (blockquote) {
+            // Cancel / remove quote formatting and convert to normal paragraph
+            const p = document.createElement('p');
+            p.innerHTML = blockquote.innerHTML.trim() || '<br>';
+            blockquote.parentNode.replaceChild(p, blockquote);
+
+            // Restore selection in new paragraph
+            const range = document.createRange();
+            range.selectNodeContents(p);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            document.execCommand('formatBlock', false, '<blockquote>');
+        }
+    }
+
+    // Toggle Heading on/off
+    function toggleHeading(tag) {
+        const heading = getClosestBlock(tag);
+        if (heading) {
+            document.execCommand('formatBlock', false, '<p>');
+        } else {
+            document.execCommand('formatBlock', false, `<${tag}>`);
+        }
+    }
+
     // 1. Floating Bubble Selection Handler
     function updateBubbleToolbar() {
         const selection = window.getSelection();
@@ -101,15 +143,21 @@
             return;
         }
 
-        const rect = range.getBoundingClientRect();
-        const editorRect = editor.getBoundingClientRect();
+        // Update active states of buttons
+        document.querySelectorAll('.bubble-btn').forEach((btn) => {
+            const action = btn.getAttribute('data-action');
+            if (action === 'bold' || action === 'italic') {
+                btn.classList.toggle('active', document.queryCommandState(action));
+            } else if (action === 'blockquote' || action === 'h2' || action === 'h3') {
+                btn.classList.toggle('active', !!getClosestBlock(action));
+            }
+        });
 
-        // Position bubble centered above selection
+        const rect = range.getBoundingClientRect();
         const bubbleWidth = bubbleToolbar.offsetWidth || 280;
         let top = rect.top + window.scrollY - 54;
         let left = rect.left + window.scrollX + (rect.width / 2) - (bubbleWidth / 2);
 
-        // Keep inside window bounds
         if (left < 10) left = 10;
         if (left + bubbleWidth > window.innerWidth - 10) {
             left = window.innerWidth - bubbleWidth - 10;
@@ -127,18 +175,15 @@
     // Bubble Toolbar Button Actions
     document.querySelectorAll('.bubble-btn').forEach((btn) => {
         btn.addEventListener('mousedown', (e) => {
-            e.preventDefault(); // prevent losing text selection
+            e.preventDefault();
             const action = btn.getAttribute('data-action');
 
             if (action === 'bold' || action === 'italic' || action === 'insertUnorderedList') {
                 document.execCommand(action, false, null);
-            } else if (action === 'h2' || action === 'h3' || action === 'blockquote') {
-                const currentBlock = document.queryCommandValue('formatBlock');
-                if (currentBlock === action) {
-                    document.execCommand('formatBlock', false, '<p>');
-                } else {
-                    document.execCommand('formatBlock', false, `<${action}>`);
-                }
+            } else if (action === 'blockquote') {
+                toggleBlockquote();
+            } else if (action === 'h2' || action === 'h3') {
+                toggleHeading(action);
             } else if (action === 'createLink') {
                 const url = prompt('Enter link URL (e.g. https://example.com):');
                 if (url) {
@@ -147,6 +192,30 @@
             }
             updateBubbleToolbar();
         });
+    });
+
+    // Smart Keyboard Shortcuts for Blockquotes (Enter twice or Backspace to exit quote)
+    editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const blockquote = getClosestBlock('blockquote');
+            if (blockquote) {
+                const selection = window.getSelection();
+                if (selection.rangeCount) {
+                    const text = blockquote.innerText.trim();
+                    // If empty quote or at the end of line with double enter
+                    if (text === '' || text === '"' || text === '""') {
+                        e.preventDefault();
+                        toggleBlockquote();
+                    }
+                }
+            }
+        } else if (e.key === 'Backspace') {
+            const blockquote = getClosestBlock('blockquote');
+            if (blockquote && (blockquote.innerText.trim() === '' || blockquote.innerText.trim() === '"')) {
+                e.preventDefault();
+                toggleBlockquote();
+            }
+        }
     });
 
     // 2. Inline Inserter (+) Logic for Empty Lines

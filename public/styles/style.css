@@ -855,6 +855,12 @@ body.dark-mode .reading-time {
     transform: scale(1.1);
 }
 
+.bubble-btn.active {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 8px var(--accent-color);
+}
+
 .bubble-btn svg {
     display: block;
     pointer-events: none;
