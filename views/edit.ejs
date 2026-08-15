@@ -83,6 +83,9 @@
         </div>
     </div>
 
+    <!-- Hidden Media File Picker -->
+    <input type="file" id="media-image-picker" accept="image/*" style="display: none;">
+
     <!-- Medium Writing Canvas Form -->
     <form action="/update/<%= post.id %>" method="POST" id="medium-story-form" class="medium-story-form">
         <input type="hidden" name="content" id="hidden-content">
@@ -325,14 +328,34 @@
         inserterOptions.classList.toggle('open');
     });
 
-    // Inserter Actions (Photo & Divider)
-    const insertPhotoAction = () => {
-        const url = prompt('Enter image URL (e.g. Unsplash link):', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800');
-        if (url) {
-            const caption = prompt('Image caption (optional):') || '';
-            const figureHtml = `<figure class="medium-figure"><img src="${url}" alt="${caption}"><figcaption>${caption}</figcaption></figure><p><br></p>`;
-            document.execCommand('insertHTML', false, figureHtml);
+    // Inserter Actions (Photo Media Picker & Divider)
+    const mediaImagePicker = document.getElementById('media-image-picker');
+
+    mediaImagePicker.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file.');
+            return;
         }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const base64Data = event.target.result;
+            const figureHtml = `<figure class="medium-figure"><img src="${base64Data}" alt="Story Photo"><figcaption contenteditable="true" data-placeholder="Type a caption (optional)..."></figcaption></figure><p><br></p>`;
+            editor.focus();
+            document.execCommand('insertHTML', false, figureHtml);
+            mediaImagePicker.value = '';
+            inserter.classList.remove('show');
+            inserterOptions.classList.remove('open');
+            inserterTrigger.classList.remove('active');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    const openMediaPicker = () => {
+        mediaImagePicker.click();
     };
 
     const insertDividerAction = () => {
@@ -341,7 +364,7 @@
 
     document.getElementById('toolbox-insert-photo')?.addEventListener('click', (e) => {
         e.preventDefault();
-        insertPhotoAction();
+        openMediaPicker();
     });
     document.getElementById('toolbox-insert-divider')?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -349,9 +372,7 @@
     });
 
     document.getElementById('btn-insert-image')?.addEventListener('click', () => {
-        insertPhotoAction();
-        inserterOptions.classList.remove('open');
-        inserterTrigger.classList.remove('active');
+        openMediaPicker();
     });
 
     document.getElementById('btn-insert-divider')?.addEventListener('click', () => {
