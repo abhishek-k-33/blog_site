@@ -27,15 +27,7 @@ if (supabaseUrl && supabaseKey) {
 
 const DATA_FILE = path.join(__dirname, "data.json");
 
-const { marked } = require("marked");
-
-// Configure marked for storytelling Markdown (preserving breaks & GitHub-flavored markdown)
-marked.setOptions({
-    gfm: true,
-    breaks: true,
-});
-
-// Helper: Format post object date, reading time, and markdown HTML
+// Helper: Format post object date, word count, and reading time
 const formatPost = (post) => {
     if (!post) return null;
     let formattedDate = post.date;
@@ -52,14 +44,12 @@ const formatPost = (post) => {
     }
     const words = post.content ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
     const readingTime = Math.max(1, Math.ceil(words / 180));
-    const htmlContent = post.content ? marked.parse(post.content) : "";
 
     return {
         ...post,
         date: formattedDate || new Date().toLocaleDateString(),
         readingTime,
         words,
-        htmlContent,
     };
 };
 
@@ -207,16 +197,7 @@ const simpleSanitize = (str) => {
 
 const generateExcerpt = (content) => {
     if (!content) return "";
-    const cleanText = content
-        .replace(/#+\s+/g, "")
-        .replace(/(\*\*|__)(.*?)\1/g, "$2")
-        .replace(/(\*|_)(.*?)\1/g, "$2")
-        .replace(/`{1,3}.*?`{1,3}/g, "")
-        .replace(/!\[.*?\]\(.*?\)/g, "")
-        .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-        .replace(/>\s+/g, "")
-        .replace(/\n+/g, " ")
-        .trim();
+    const cleanText = content.replace(/\s+/g, " ").trim();
     return cleanText.length > 130 ? cleanText.substring(0, 127) + "..." : cleanText;
 };
 

@@ -7,13 +7,17 @@
         <div class="post-meta">
             <span class="author">By <%= post.author %></span> • <span class="date"><%= post.date %></span>
             <% if (post.readingTime) { %>
-                • <span class="reading-time">☕ <%= post.readingTime %> min read</span>
+                • <span class="reading-time"><%= post.readingTime %> min read</span>
             <% } %>
         </div>
     </header>
     
-    <div class="post-content story-body">
-        <%- post.htmlContent || post.content %>
+    <div class="post-content">
+        <% post.content.split('\n').forEach(paragraph => { %>
+            <% if (paragraph.trim()) { %>
+                <p><%= paragraph %></p>
+            <% } %>
+        <% }) %>
     </div>
     
     <div class="post-actions">
