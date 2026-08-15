@@ -5,21 +5,15 @@
     <header class="post-header">
         <h2><%= post.title %></h2>
         <div class="post-meta">
-            <span class="author">By <%= post.author %></span> | <span class="date"><%= post.date %></span>
+            <span class="author">By <%= post.author %></span> • <span class="date"><%= post.date %></span>
+            <% if (post.readingTime) { %>
+                • <span class="reading-time">☕ <%= post.readingTime %> min read</span>
+            <% } %>
         </div>
     </header>
     
-    <div class="post-content">
-        <!-- When a user types a long blog post into an HTML textarea, their "Enter" key presses are saved as invisible newline characters(\n). -->
-        <!-- This code splits the text into paragraphs and renders them properly. -->
-        <% 
-        // Simple way to preserve line breaks
-        const paragraphs = post.content.split('\n');
-        paragraphs.forEach(p => { 
-            if(p.trim().length > 0) { %>
-                <p><%= p %></p>
-            <% } 
-        }); %>
+    <div class="post-content story-body">
+        <%- post.htmlContent || post.content %>
     </div>
     
     <div class="post-actions">

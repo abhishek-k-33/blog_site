@@ -27,7 +27,15 @@ if (supabaseUrl && supabaseKey) {
 
 const DATA_FILE = path.join(__dirname, "data.json");
 
-// Helper: Format post object date and structure for template consistency
+const { marked } = require("marked");
+
+// Configure marked for storytelling Markdown (preserving breaks & GitHub-flavored markdown)
+marked.setOptions({
+    gfm: true,
+    breaks: true,
+});
+
+// Helper: Format post object date, reading time, and markdown HTML
 const formatPost = (post) => {
     if (!post) return null;
     let formattedDate = post.date;
@@ -42,9 +50,16 @@ const formatPost = (post) => {
             formattedDate = post.date || new Date().toLocaleDateString();
         }
     }
+    const words = post.content ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
+    const readingTime = Math.max(1, Math.ceil(words / 180));
+    const htmlContent = post.content ? marked.parse(post.content) : "";
+
     return {
         ...post,
         date: formattedDate || new Date().toLocaleDateString(),
+        readingTime,
+        words,
+        htmlContent,
     };
 };
 
@@ -190,14 +205,19 @@ const simpleSanitize = (str) => {
         .replace(/'/g, "&#039;");
 };
 
-const stripTags = (html) => {
-    if (!html) return "";
-    return String(html).replace(/<[^>]*>/g, "");
-};
-
 const generateExcerpt = (content) => {
-    const cleanText = stripTags(content);
-    return cleanText.substring(0, 120) + (cleanText.length > 120 ? "..." : "");
+    if (!content) return "";
+    const cleanText = content
+        .replace(/#+\s+/g, "")
+        .replace(/(\*\*|__)(.*?)\1/g, "$2")
+        .replace(/(\*|_)(.*?)\1/g, "$2")
+        .replace(/`{1,3}.*?`{1,3}/g, "")
+        .replace(/!\[.*?\]\(.*?\)/g, "")
+        .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+        .replace(/>\s+/g, "")
+        .replace(/\n+/g, " ")
+        .trim();
+    return cleanText.length > 130 ? cleanText.substring(0, 127) + "..." : cleanText;
 };
 
 // --- ROUTES ---
@@ -228,7 +248,7 @@ app.post("/posts", async (req, res, next) => {
 
         await createPost({
             title: simpleSanitize(title.trim()),
-            content: simpleSanitize(content.trim()),
+            content: content.trim(),
             excerpt: generateExcerpt(content.trim()),
             author: simpleSanitize(author.trim()),
         });
@@ -277,7 +297,7 @@ app.post("/update/:id", async (req, res, next) => {
 
         const updated = await updatePost(req.params.id, {
             title: simpleSanitize(title.trim()),
-            content: simpleSanitize(content.trim()),
+            content: content.trim(),
             excerpt: generateExcerpt(content.trim()),
             author: simpleSanitize(author.trim()),
         });

@@ -78,5 +78,43 @@
         window.addEventListener('resize', onScrollRequest);
         updateDynamicIsland();
     </script>
+    <!-- Syntax Highlighter Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+        // Run code highlighting
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof hljs !== 'undefined') {
+                hljs.highlightAll();
+            }
+
+            // Attach Copy buttons to all code blocks
+            document.querySelectorAll('.post-content pre').forEach((pre) => {
+                const code = pre.querySelector('code');
+                if (!code) return;
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-code-btn';
+                copyBtn.type = 'button';
+                copyBtn.innerText = 'Copy';
+
+                copyBtn.addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(code.innerText);
+                        copyBtn.innerText = 'Copied! ✓';
+                        copyBtn.classList.add('copied');
+                        setTimeout(() => {
+                            copyBtn.innerText = 'Copy';
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+                    } catch (err) {
+                        copyBtn.innerText = 'Error';
+                    }
+                });
+
+                pre.style.position = 'relative';
+                pre.appendChild(copyBtn);
+            });
+        });
+    </script>
 </body>
 </html>

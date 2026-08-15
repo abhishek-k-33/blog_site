@@ -1,26 +1,128 @@
 <%- include("partials/header.ejs") %>
 
-<div class="form-container">
-    <h2>Edit Post</h2>
-    <form action="/update/<%= post.id %>" method="POST" class="post-form">
+<div class="form-container story-editor-container">
+    <div class="editor-header">
+        <h2>Edit Story</h2>
+        <p class="editor-subtitle">Refine your story, memories, and thoughts.</p>
+    </div>
+
+    <form action="/update/<%= post.id %>" method="POST" class="post-form" id="story-form">
         <div class="form-group">
-            <label for="title">Title</label>
-            <input type="text" id="title" name="title" value="<%= post.title %>" required>
+            <label for="title">Story Title</label>
+            <input type="text" id="title" name="title" value="<%= post.title %>" required autocomplete="off">
         </div>
+
         <div class="form-group">
             <label for="author">Author</label>
-            <input type="text" id="author" name="author" value="<%= post.author %>" required>
+            <input type="text" id="author" name="author" value="<%= post.author %>" required autocomplete="off">
         </div>
+
         <div class="form-group">
-            <label for="content">Content</label>
-            <textarea id="content" name="content" rows="10" required><%= post.content %></textarea>
+            <div class="editor-tabs-bar">
+                <label for="content">Story Content (Markdown supported)</label>
+                <div class="editor-tab-switches">
+                    <button type="button" class="tab-btn active" id="tab-write-btn">✏️ Write</button>
+                    <button type="button" class="tab-btn" id="tab-preview-btn">👁️ Preview</button>
+                </div>
+            </div>
+
+            <!-- Storyteller's Quick Toolbar -->
+            <div class="markdown-toolbar" id="markdown-toolbar">
+                <button type="button" class="toolbar-btn" data-prefix="**" data-suffix="**" title="Bold"><strong>B</strong></button>
+                <button type="button" class="toolbar-btn" data-prefix="*" data-suffix="*" title="Italic"><em>I</em></button>
+                <button type="button" class="toolbar-btn" data-prefix="### " data-suffix="" title="Heading">H3</button>
+                <button type="button" class="toolbar-btn" data-prefix="> " data-suffix="" title="Quote / Thought">💭 Quote</button>
+                <button type="button" class="toolbar-btn" data-prefix="![Photo Caption](" data-suffix="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800)" title="Embed Photo">📸 Photo</button>
+                <button type="button" class="toolbar-btn" data-prefix="- " data-suffix="" title="Bullet List">📝 List</button>
+                <button type="button" class="toolbar-btn" data-prefix="```\n" data-suffix="\n```" title="Code snippet">&lt;/&gt;</button>
+                <div class="mood-picker">
+                    <button type="button" class="toolbar-btn mood-btn" data-text="☕ Chill " title="Chill">☕</button>
+                    <button type="button" class="toolbar-btn mood-btn" data-text="✨ Excited " title="Excited">✨</button>
+                    <button type="button" class="toolbar-btn mood-btn" data-text="🌙 Night " title="Night vibe">🌙</button>
+                    <button type="button" class="toolbar-btn mood-btn" data-text="🎒 Adventure " title="Adventure">🎒</button>
+                </div>
+            </div>
+
+            <textarea id="content" name="content" rows="12" required><%= post.content %></textarea>
+
+            <!-- Live Story Preview Pane -->
+            <div id="story-preview" class="story-preview-pane" style="display: none;">
+                <div class="preview-placeholder">Nothing to preview yet. Start typing your story!</div>
+            </div>
         </div>
+
         <div class="form-actions">
             <a href="/posts/<%= post.id %>" class="btn btn-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary">Update Post</button>
+            <button type="submit" class="btn btn-primary">Update Story ✓</button>
         </div>
     </form>
 </div>
+
+<script>
+    // Story Editor Tab Switcher & Live Preview
+    const tabWrite = document.getElementById('tab-write-btn');
+    const tabPreview = document.getElementById('tab-preview-btn');
+    const textarea = document.getElementById('content');
+    const previewPane = document.getElementById('story-preview');
+    const toolbar = document.getElementById('markdown-toolbar');
+
+    tabWrite.addEventListener('click', () => {
+        tabWrite.classList.add('active');
+        tabPreview.classList.remove('active');
+        textarea.style.display = 'block';
+        toolbar.style.display = 'flex';
+        previewPane.style.display = 'none';
+    });
+
+    tabPreview.addEventListener('click', () => {
+        tabPreview.classList.add('active');
+        tabWrite.classList.remove('active');
+        textarea.style.display = 'none';
+        toolbar.style.display = 'none';
+        previewPane.style.display = 'block';
+
+        const rawText = textarea.value.trim();
+        if (rawText && typeof marked !== 'undefined') {
+            previewPane.innerHTML = marked.parse(rawText);
+            if (typeof hljs !== 'undefined') {
+                previewPane.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+        } else {
+            previewPane.innerHTML = '<p class="preview-empty">Your story preview will appear here...</p>';
+        }
+    });
+
+    // Toolbar formatting helper
+    document.querySelectorAll('.toolbar-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const prefix = btn.getAttribute('data-prefix');
+            const suffix = btn.getAttribute('data-suffix');
+            const insertText = btn.getAttribute('data-text');
+
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+
+            if (insertText) {
+                textarea.value = text.substring(0, start) + insertText + text.substring(end);
+                textarea.focus();
+                textarea.selectionStart = textarea.selectionEnd = start + insertText.length;
+                return;
+            }
+
+            if (prefix !== null) {
+                const selected = text.substring(start, end) || 'your text';
+                const replacement = prefix + selected + (suffix || '');
+                textarea.value = text.substring(0, start) + replacement + text.substring(end);
+                textarea.focus();
+                textarea.selectionStart = start + prefix.length;
+                textarea.selectionEnd = start + prefix.length + selected.length;
+            }
+        });
+    });
+</script>
 
 
 <%- include("partials/footer.ejs") %>

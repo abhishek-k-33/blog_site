@@ -12,10 +12,13 @@
             <article class="post-card">
                 <h3 class="post-title"><a href="/posts/<%= post.id %>"><%= post.title %></a></h3>
                 <div class="post-meta">
-                    <span class="author">By <%= post.author %></span> | <span class="date"><%= post.date %></span>
+                    <span class="author">By <%= post.author %></span> • <span class="date"><%= post.date %></span>
+                    <% if (post.readingTime) { %>
+                        • <span class="reading-time">☕ <%= post.readingTime %> min read</span>
+                    <% } %>
                 </div>
                 <p class="post-excerpt"><%= post.excerpt %></p>
-                <a href="/posts/<%= post.id %>" class="read-more">Read More →</a>
+                <a href="/posts/<%= post.id %>" class="read-more">Read Story →</a>
             </article>
         <% }) %>
     <% } else { %>
