@@ -12,12 +12,16 @@
         </div>
     </header>
     
-    <div class="post-content">
-        <% post.content.split('\n').forEach(paragraph => { %>
-            <% if (paragraph.trim()) { %>
-                <p><%= paragraph %></p>
-            <% } %>
-        <% }) %>
+    <div class="post-content medium-story-content">
+        <% if (post.content && (post.content.includes('<p>') || post.content.includes('<div>') || post.content.includes('<h2>') || post.content.includes('<blockquote>') || post.content.includes('<ul>'))) { %>
+            <%- post.content %>
+        <% } else { %>
+            <% (post.content || '').split('\n').forEach(paragraph => { %>
+                <% if (paragraph.trim()) { %>
+                    <p><%= paragraph %></p>
+                <% } %>
+            <% }) %>
+        <% } %>
     </div>
     
     <div class="post-actions">

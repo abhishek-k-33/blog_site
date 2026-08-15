@@ -1,32 +1,228 @@
 <%- include("partials/header.ejs") %>
 
-<div class="form-container">
-    <div class="editor-header">
-        <h2>Edit Story</h2>
-        <p class="editor-subtitle">Refine your story, memories, and thoughts.</p>
+<div class="medium-editor-layout">
+    <!-- Floating Bubble Selection Toolbar -->
+    <div id="bubble-toolbar" class="bubble-toolbar" aria-label="Text formatting toolbar">
+        <button type="button" class="bubble-btn" data-action="bold" title="Bold">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
+        </button>
+        <button type="button" class="bubble-btn" data-action="italic" title="Italic">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>
+        </button>
+        <div class="bubble-divider"></div>
+        <button type="button" class="bubble-btn" data-action="h2" title="Large Header">
+            <span class="btn-text-glyph">H</span>
+        </button>
+        <button type="button" class="bubble-btn" data-action="h3" title="Subheader">
+            <span class="btn-text-glyph small-glyph">h</span>
+        </button>
+        <button type="button" class="bubble-btn" data-action="blockquote" title="Quote">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h4c0 3.5-1 5.5-5 6v2z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h4c0 3.5-1 5.5-5 6v2z"></path></svg>
+        </button>
+        <button type="button" class="bubble-btn" data-action="insertUnorderedList" title="Bullet List">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line><circle cx="4" cy="6" r="1.5" fill="currentColor"></circle><circle cx="4" cy="12" r="1.5" fill="currentColor"></circle><circle cx="4" cy="18" r="1.5" fill="currentColor"></circle></svg>
+        </button>
+        <button type="button" class="bubble-btn" data-action="createLink" title="Link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+        </button>
     </div>
 
-    <form action="/update/<%= post.id %>" method="POST" class="post-form">
-        <div class="form-group">
-            <label for="title">Story Title</label>
-            <input type="text" id="title" name="title" value="<%= post.title %>" required autocomplete="off">
+    <!-- Inline Inserter (+) Button for Empty Lines -->
+    <div id="inline-inserter" class="inline-inserter">
+        <button type="button" class="inserter-trigger-btn" id="inserter-trigger" title="Add an element">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <div class="inserter-options" id="inserter-options">
+            <button type="button" class="inserter-opt-btn" id="btn-insert-image" title="Insert Image">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <span>Photo</span>
+            </button>
+            <button type="button" class="inserter-opt-btn" id="btn-insert-divider" title="Divider line">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line></svg>
+                <span>Divider</span>
+            </button>
+            <button type="button" class="inserter-opt-btn" id="btn-insert-quote" title="Quote block">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h4c0 3.5-1 5.5-5 6v2z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h4c0 3.5-1 5.5-5 6v2z"></path></svg>
+                <span>Quote</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Medium Writing Canvas Form -->
+    <form action="/update/<%= post.id %>" method="POST" id="medium-story-form" class="medium-story-form">
+        <input type="hidden" name="content" id="hidden-content">
+
+        <div class="medium-canvas-wrapper">
+            <!-- Title Input -->
+            <input type="text" id="title" name="title" value="<%= post.title %>" required placeholder="Title" autocomplete="off" class="medium-title-input">
+
+            <!-- Author Input -->
+            <input type="text" id="author" name="author" value="<%= post.author %>" required placeholder="Author name..." autocomplete="off" class="medium-author-input">
+
+            <!-- Live Editable Story Canvas (Pre-filled with content) -->
+            <div id="editor-body" class="medium-editor-body" contenteditable="true" data-placeholder="Tell your story..."><%- post.content %></div>
         </div>
 
-        <div class="form-group">
-            <label for="author">Author</label>
-            <input type="text" id="author" name="author" value="<%= post.author %>" required autocomplete="off">
-        </div>
-
-        <div class="form-group">
-            <label for="content">Story Content</label>
-            <textarea id="content" name="content" rows="12" required><%= post.content %></textarea>
-        </div>
-
-        <div class="form-actions">
-            <a href="/posts/<%= post.id %>" class="btn btn-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary">Update Story</button>
+        <!-- Sticky Action Bar -->
+        <div class="medium-composer-actions">
+            <a href="/posts/<%= post.id %>" class="btn-medium-cancel">Cancel</a>
+            <button type="submit" class="btn btn-medium-publish">Update Story</button>
         </div>
     </form>
 </div>
+
+<script>
+    const editor = document.getElementById('editor-body');
+    const hiddenContent = document.getElementById('hidden-content');
+    const bubbleToolbar = document.getElementById('bubble-toolbar');
+    const inserter = document.getElementById('inline-inserter');
+    const inserterTrigger = document.getElementById('inserter-trigger');
+    const inserterOptions = document.getElementById('inserter-options');
+    const form = document.getElementById('medium-story-form');
+
+    // 1. Floating Bubble Selection Handler
+    function updateBubbleToolbar() {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+            bubbleToolbar.classList.remove('show');
+            return;
+        }
+
+        const range = selection.getRangeAt(0);
+        if (!editor.contains(range.commonAncestorContainer)) {
+            bubbleToolbar.classList.remove('show');
+            return;
+        }
+
+        const selectedText = selection.toString().trim();
+        if (!selectedText) {
+            bubbleToolbar.classList.remove('show');
+            return;
+        }
+
+        const rect = range.getBoundingClientRect();
+        const bubbleWidth = bubbleToolbar.offsetWidth || 280;
+        let top = rect.top + window.scrollY - 54;
+        let left = rect.left + window.scrollX + (rect.width / 2) - (bubbleWidth / 2);
+
+        if (left < 10) left = 10;
+        if (left + bubbleWidth > window.innerWidth - 10) {
+            left = window.innerWidth - bubbleWidth - 10;
+        }
+
+        bubbleToolbar.style.top = `${top}px`;
+        bubbleToolbar.style.left = `${left}px`;
+        bubbleToolbar.classList.add('show');
+    }
+
+    document.addEventListener('selectionchange', () => {
+        setTimeout(updateBubbleToolbar, 10);
+    });
+
+    // Bubble Toolbar Button Actions
+    document.querySelectorAll('.bubble-btn').forEach((btn) => {
+        btn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const action = btn.getAttribute('data-action');
+
+            if (action === 'bold' || action === 'italic' || action === 'insertUnorderedList') {
+                document.execCommand(action, false, null);
+            } else if (action === 'h2' || action === 'h3' || action === 'blockquote') {
+                const currentBlock = document.queryCommandValue('formatBlock');
+                if (currentBlock === action) {
+                    document.execCommand('formatBlock', false, '<p>');
+                } else {
+                    document.execCommand('formatBlock', false, `<${action}>`);
+                }
+            } else if (action === 'createLink') {
+                const url = prompt('Enter link URL (e.g. https://example.com):');
+                if (url) {
+                    document.execCommand('createLink', false, url);
+                }
+            }
+            updateBubbleToolbar();
+        });
+    });
+
+    // 2. Inline Inserter (+) Logic for Empty Lines
+    function updateInserterPosition() {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            inserter.classList.remove('show');
+            return;
+        }
+
+        const node = selection.anchorNode;
+        if (!node || !editor.contains(node)) {
+            inserter.classList.remove('show');
+            return;
+        }
+
+        const element = node.nodeType === 1 ? node : node.parentElement;
+        const text = element ? element.innerText.trim() : '';
+
+        if (text === '' && (element === editor || element.parentElement === editor)) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const editorRect = editor.getBoundingClientRect();
+
+            inserter.style.top = `${rect.top + window.scrollY}px`;
+            inserter.style.left = `${editorRect.left + window.scrollX - 44}px`;
+            inserter.classList.add('show');
+        } else {
+            inserter.classList.remove('show');
+            inserterOptions.classList.remove('open');
+            inserterTrigger.classList.remove('active');
+        }
+    }
+
+    editor.addEventListener('keyup', updateInserterPosition);
+    editor.addEventListener('click', updateInserterPosition);
+
+    inserterTrigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        inserterTrigger.classList.toggle('active');
+        inserterOptions.classList.toggle('open');
+    });
+
+    // Inserter Actions
+    document.getElementById('btn-insert-image').addEventListener('click', () => {
+        const url = prompt('Enter image URL (e.g. Unsplash link):', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800');
+        if (url) {
+            const caption = prompt('Image caption (optional):') || '';
+            const figureHtml = `<figure class="medium-figure"><img src="${url}" alt="${caption}"><figcaption>${caption}</figcaption></figure><p><br></p>`;
+            document.execCommand('insertHTML', false, figureHtml);
+        }
+        inserterOptions.classList.remove('open');
+        inserterTrigger.classList.remove('active');
+    });
+
+    document.getElementById('btn-insert-divider').addEventListener('click', () => {
+        document.execCommand('insertHTML', false, '<hr><p><br></p>');
+        inserterOptions.classList.remove('open');
+        inserterTrigger.classList.remove('active');
+    });
+
+    document.getElementById('btn-insert-quote').addEventListener('click', () => {
+        document.execCommand('insertHTML', false, '<blockquote>"A memory or reflection to remember..."</blockquote><p><br></p>');
+        inserterOptions.classList.remove('open');
+        inserterTrigger.classList.remove('active');
+    });
+
+    // 3. Form Submit Validation & Synchronization
+    form.addEventListener('submit', (e) => {
+        const rawContent = editor.innerHTML.trim();
+        const plainText = editor.innerText.trim();
+
+        if (!plainText) {
+            e.preventDefault();
+            alert('Please write some content for your story before publishing.');
+            editor.focus();
+            return;
+        }
+
+        hiddenContent.value = rawContent;
+    });
+</script>
 
 <%- include("partials/footer.ejs") %>

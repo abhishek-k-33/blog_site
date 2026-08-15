@@ -197,7 +197,10 @@ const simpleSanitize = (str) => {
 
 const generateExcerpt = (content) => {
     if (!content) return "";
-    const cleanText = content.replace(/\s+/g, " ").trim();
+    const cleanText = content
+        .replace(/<[^>]*>?/gm, " ")
+        .replace(/\s+/g, " ")
+        .trim();
     return cleanText.length > 130 ? cleanText.substring(0, 127) + "..." : cleanText;
 };
 
