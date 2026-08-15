@@ -102,6 +102,8 @@ a:hover {
     display: flex;
     align-items: center;
     box-sizing: border-box;
+    overflow: hidden;
+    isolation: isolate;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -112,11 +114,12 @@ a:hover {
         padding 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* GPU-accelerated reading progress bar */
+/* GPU-accelerated reading progress bar (strictly clipped to pill boundary) */
 .pill-progress-bar {
     position: absolute;
     bottom: 0;
     left: 0;
+    right: 0;
     width: 100%;
     height: 3px;
     background: linear-gradient(90deg, var(--accent-color), #f39c12, var(--accent-color));
@@ -124,9 +127,11 @@ a:hover {
     transform: scaleX(0);
     transform-origin: left center;
     transition: transform 0.15s linear;
-    border-radius: 9999px;
+    border-bottom-left-radius: 9999px;
+    border-bottom-right-radius: 9999px;
     opacity: 0.95;
     pointer-events: none;
+    z-index: 1;
 }
 
 .pill-content {
@@ -189,7 +194,7 @@ a:hover {
     }
 }
 
-/* Crisp Dynamic Island Info Center (Zero Blur) */
+/* Crisp Dynamic Island Info Center (Zero Blur & Overflow Contained) */
 .pill-dynamic-info {
     display: flex;
     align-items: center;
@@ -208,12 +213,21 @@ a:hover {
         max-width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.dynamic-title {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+}
+
 .dynamic-dot {
     width: 6px;
     height: 6px;
     background: var(--accent-color);
     border-radius: 50%;
     box-shadow: 0 0 6px var(--accent-color);
+    flex-shrink: 0;
 }
 
 .dynamic-percent {
@@ -223,6 +237,7 @@ a:hover {
     border-radius: 9999px;
     font-size: 0.75rem;
     color: var(--text-color);
+    flex-shrink: 0;
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
