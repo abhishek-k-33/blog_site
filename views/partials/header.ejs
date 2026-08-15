@@ -22,19 +22,39 @@
             document.body.className = savedTheme;
         }
     </script>
-    <header class="site-header">
-        <div class="container header-content">
-            <h1 class="logo"><a href="/">miniblogs</a></h1>
-            <nav class="main-nav">
-                <a href="/">Home</a>
-                <a href="/new" class="btn btn-primary">New Post</a>
-                <div class="theme-switch-wrapper">
-                    <label class="theme-switch" for="theme-toggle">
-                        <input type="checkbox" id="theme-toggle" checked />
-                        <span class="slider round"></span>
-                    </label>
+    <header class="site-header pill-header" id="dynamic-island-header">
+        <div class="pill-navbar" id="pill-navbar" role="navigation" aria-label="Main Navigation">
+            <!-- Dynamic Scroll / Reading Progress Line -->
+            <div class="pill-progress-bar" id="pill-progress-bar"></div>
+
+            <div class="pill-content">
+                <!-- Left: Interactive Logo Badge -->
+                <div class="pill-left">
+                    <a href="/" class="pill-logo" title="miniblogs home">
+                        <span class="logo-pulse"></span>
+                        <span class="logo-text">miniblogs</span>
+                    </a>
                 </div>
-            </nav>
+
+                <!-- Center: Dynamic Island Scroll & Reading Tracker (Visible when scrolled) -->
+                <div class="pill-dynamic-info" id="pill-dynamic-info">
+                    <span class="dynamic-dot"></span>
+                    <span class="dynamic-title" id="dynamic-title">Reading</span>
+                    <span class="dynamic-percent" id="dynamic-percent">0%</span>
+                </div>
+
+                <!-- Right: Navigation Controls -->
+                <nav class="pill-nav" id="pill-nav">
+                    <a href="/" class="pill-nav-link">Home</a>
+                    <a href="/new" class="btn btn-pill-primary">+ New Post</a>
+                    <div class="theme-switch-wrapper">
+                        <label class="theme-switch" for="theme-toggle" title="Toggle Theme">
+                            <input type="checkbox" id="theme-toggle" checked />
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </nav>
+            </div>
         </div>
     </header>
     <main class="container">

@@ -9,18 +9,60 @@
         const themeToggle = document.getElementById('theme-toggle');
         const body = document.body;
         
-        // Ensure checkbox state matches body class on load
-        themeToggle.checked = body.classList.contains('dark-mode');
-        
-        themeToggle.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                body.className = 'dark-mode';
-                localStorage.setItem('theme', 'dark-mode');
-            } else {
-                body.className = 'light-mode';
-                localStorage.setItem('theme', 'light-mode');
+        if (themeToggle) {
+            // Ensure checkbox state matches body class on load
+            themeToggle.checked = body.classList.contains('dark-mode');
+            
+            themeToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    body.className = 'dark-mode';
+                    localStorage.setItem('theme', 'dark-mode');
+                } else {
+                    body.className = 'light-mode';
+                    localStorage.setItem('theme', 'light-mode');
+                }
+            });
+        }
+
+        // =========================================
+        // Dynamic Island Morphing & Progress Tracker
+        // =========================================
+        const dynamicHeader = document.getElementById('dynamic-island-header');
+        const progressBar = document.getElementById('pill-progress-bar');
+        const dynamicPercent = document.getElementById('dynamic-percent');
+        const dynamicTitle = document.getElementById('dynamic-title');
+
+        // Check if there is a blog post title on the page
+        const postHeading = document.querySelector('.post-header h2');
+        if (postHeading && dynamicTitle) {
+            const cleanTitle = postHeading.innerText.trim();
+            dynamicTitle.innerText = cleanTitle.length > 18 ? cleanTitle.slice(0, 16) + '…' : cleanTitle;
+        }
+
+        function updateDynamicIsland() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrollPercent = scrollHeight > 0 ? Math.min(100, Math.max(0, Math.round((scrollTop / scrollHeight) * 100))) : 0;
+
+            if (progressBar) {
+                progressBar.style.width = scrollPercent + '%';
             }
-        });
+            if (dynamicPercent) {
+                dynamicPercent.innerText = scrollPercent + '%';
+            }
+
+            if (dynamicHeader) {
+                if (scrollTop > 70) {
+                    dynamicHeader.classList.add('is-morphed');
+                } else {
+                    dynamicHeader.classList.remove('is-morphed');
+                }
+            }
+        }
+
+        window.addEventListener('scroll', updateDynamicIsland, { passive: true });
+        window.addEventListener('resize', updateDynamicIsland);
+        updateDynamicIsland();
     </script>
 </body>
 </html>

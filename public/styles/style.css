@@ -11,6 +11,10 @@
     --border-color: #c5bba3;
     --card-shadow: 4px 4px 0px rgba(74, 64, 54, 0.2);
     --btn-hover: #b58364;
+    --pill-bg: rgba(244, 238, 224, 0.88);
+    --pill-border: rgba(197, 187, 163, 0.9);
+    --pill-shadow: 0 10px 30px -4px rgba(74, 64, 54, 0.15), 0 4px 6px -2px rgba(74, 64, 54, 0.05);
+    --pill-glow: rgba(209, 154, 121, 0.35);
 }
 
 body.dark-mode {
@@ -22,6 +26,10 @@ body.dark-mode {
     --border-color: #4a4063;
     --card-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
     --btn-hover: #75668e;
+    --pill-bg: rgba(26, 22, 37, 0.88);
+    --pill-border: rgba(74, 64, 99, 0.9);
+    --pill-shadow: 0 12px 35px -4px rgba(0, 0, 0, 0.6), 0 4px 10px -2px rgba(0, 0, 0, 0.4);
+    --pill-glow: rgba(140, 122, 169, 0.45);
 }
 
 * {
@@ -60,32 +68,249 @@ a:hover {
     width: 100%;
 }
 
-/* Header */
-.site-header {
-    background-color: var(--secondary-bg);
-    border-bottom: 2px solid var(--border-color);
-    padding: 20px 0;
-    margin-bottom: 40px;
-    transition: background-color 0.4s ease, border-color 0.4s ease;
+/* =========================================
+   DYNAMIC ISLAND PILL NAVBAR
+   ========================================= */
+
+.site-header.pill-header {
+    position: sticky;
+    top: 18px;
+    z-index: 1000;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0 16px;
+    margin-bottom: 35px;
+    background: transparent;
+    border: none;
+    pointer-events: none;
 }
 
-.header-content {
+.pill-navbar {
+    pointer-events: auto;
+    position: relative;
+    background: var(--pill-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 2px solid var(--pill-border);
+    border-radius: 9999px;
+    box-shadow: var(--pill-shadow);
+    padding: 8px 18px;
+    width: auto;
+    min-width: 320px;
+    max-width: 800px;
     display: flex;
+    align-items: center;
+    transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+}
+
+/* Progress track along bottom border of pill */
+.pill-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-color), #f39c12);
+    width: 0%;
+    transition: width 0.12s ease-out;
+    border-radius: 9999px;
+    opacity: 0.9;
+}
+
+.pill-content {
+    display: flex;
+    align-items: center;
     justify-content: space-between;
+    width: 100%;
+    gap: 20px;
+    position: relative;
+    z-index: 2;
+}
+
+.pill-left {
+    display: flex;
     align-items: center;
 }
 
-.logo a {
-    font-size: 1.5rem;
+.pill-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--text-color);
     text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    transition: all 0.25s ease;
 }
 
-.main-nav {
+.pill-logo:hover {
+    text-decoration: none;
+    background: rgba(140, 122, 169, 0.15);
+    transform: scale(1.02);
+}
+
+.logo-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent-color);
+    box-shadow: 0 0 8px var(--accent-color);
+    animation: pulseDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.35);
+        opacity: 1;
+        box-shadow: 0 0 12px var(--accent-color);
+    }
+}
+
+/* Dynamic Center Section (Hidden by default, emerges on scroll) */
+.pill-dynamic-info {
     display: flex;
-    gap: 15px;
     align-items: center;
+    gap: 8px;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.dynamic-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent-color);
+    border-radius: 50%;
+}
+
+.dynamic-percent {
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    padding: 2px 7px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: var(--text-color);
+}
+
+/* Navigation right */
+.pill-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pill-nav-link {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-color);
+    padding: 6px 14px;
+    border-radius: 9999px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.pill-nav-link:hover {
+    text-decoration: none;
+    color: var(--accent-color);
+    background: rgba(140, 122, 169, 0.15);
+}
+
+.btn-pill-primary {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border: 2px solid var(--accent-color);
+    border-radius: 9999px;
+    padding: 6px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    box-shadow: 2px 2px 0px var(--text-color);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-pill-primary:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0px var(--text-color);
+    text-decoration: none;
+}
+
+/* =========================================
+   MORPHED DYNAMIC ISLAND STATE (ON SCROLL)
+   ========================================= */
+
+.site-header.is-morphed .pill-navbar {
+    padding: 6px 14px;
+    border-color: var(--accent-color);
+    box-shadow: 0 12px 30px -4px var(--pill-glow), var(--pill-shadow);
+}
+
+.site-header.is-morphed .pill-dynamic-info {
+    opacity: 1;
+    max-width: 250px;
+    padding: 0 10px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+    .site-header.pill-header {
+        top: 10px;
+        padding: 0 8px;
+    }
+
+    .pill-navbar {
+        min-width: unset;
+        width: 100%;
+        padding: 6px 12px;
+    }
+
+    .pill-content {
+        gap: 8px;
+    }
+
+    .pill-logo .logo-text {
+        font-size: 0.95rem;
+    }
+
+    .pill-nav-link {
+        display: none;
+    }
+
+    .btn-pill-primary {
+        padding: 4px 10px;
+        font-size: 0.8rem;
+    }
+
+    .theme-switch {
+        width: 48px;
+        height: 28px;
+    }
+
+    .slider:before {
+        height: 20px;
+        width: 20px;
+        font-size: 11px;
+        left: 4px;
+        bottom: 4px;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
 }
 
 /* Buttons & Switches */
