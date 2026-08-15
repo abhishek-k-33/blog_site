@@ -86,6 +86,22 @@
     <!-- Hidden Media File Picker -->
     <input type="file" id="media-image-picker" accept="image/*" style="display: none;">
 
+    <!-- Theme-Styled Link Modal / Pill Dialog -->
+    <div id="link-modal" class="link-modal-overlay" aria-hidden="true">
+        <div class="link-pill-dialog">
+            <div class="link-input-wrapper">
+                <svg class="link-dialog-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                <input type="url" id="link-url-input" placeholder="Paste or type link (https://...)" autocomplete="off">
+            </div>
+            <div class="link-dialog-actions">
+                <button type="button" id="link-submit-btn" class="btn-link-submit">Insert</button>
+                <button type="button" id="link-cancel-btn" class="btn-link-cancel" title="Cancel">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Medium Writing Canvas Form -->
     <form action="/update/<%= post.id %>" method="POST" id="medium-story-form" class="medium-story-form">
         <input type="hidden" name="content" id="hidden-content">
@@ -244,6 +260,88 @@
         setTimeout(updateBubbleToolbar, 10);
     });
 
+    // Theme-Styled Link Modal Logic
+    const linkModal = document.getElementById('link-modal');
+    const linkUrlInput = document.getElementById('link-url-input');
+    const linkSubmitBtn = document.getElementById('link-submit-btn');
+    const linkCancelBtn = document.getElementById('link-cancel-btn');
+    let savedSelectionRange = null;
+
+    function openLinkModal() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            savedSelectionRange = selection.getRangeAt(0).cloneRange();
+        } else {
+            savedSelectionRange = null;
+        }
+
+        const existingLink = getClosestBlock('a');
+        linkUrlInput.value = existingLink ? existingLink.getAttribute('href') : '';
+        linkModal.classList.add('show');
+        linkModal.setAttribute('aria-hidden', 'false');
+        setTimeout(() => linkUrlInput.focus(), 50);
+    }
+
+    function closeLinkModal() {
+        linkModal.classList.remove('show');
+        linkModal.setAttribute('aria-hidden', 'true');
+        linkUrlInput.value = '';
+        if (savedSelectionRange) {
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(savedSelectionRange);
+        }
+        editor.focus();
+    }
+
+    function applyLink() {
+        let url = linkUrlInput.value.trim();
+        if (!url) {
+            // If empty, remove link
+            if (savedSelectionRange) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(savedSelectionRange);
+            }
+            document.execCommand('unlink', false, null);
+            closeLinkModal();
+            updateBubbleToolbar();
+            return;
+        }
+
+        if (!/^https?:\/\//i.test(url) && !url.startsWith('#') && !url.startsWith('/')) {
+            url = 'https://' + url;
+        }
+
+        if (savedSelectionRange) {
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(savedSelectionRange);
+        }
+
+        document.execCommand('createLink', false, url);
+        closeLinkModal();
+        updateBubbleToolbar();
+    }
+
+    linkSubmitBtn.addEventListener('click', applyLink);
+    linkCancelBtn.addEventListener('click', closeLinkModal);
+    linkUrlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyLink();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeLinkModal();
+        }
+    });
+
+    linkModal.addEventListener('click', (e) => {
+        if (e.target === linkModal) {
+            closeLinkModal();
+        }
+    });
+
     // Formatting Actions (Shared between Header Pill Toolbox and Floating Bubble)
     document.querySelectorAll('.format-trigger').forEach((btn) => {
         btn.addEventListener('mousedown', (e) => {
@@ -257,10 +355,7 @@
             } else if (action === 'h2' || action === 'h3') {
                 toggleHeading(action);
             } else if (action === 'createLink') {
-                const url = prompt('Enter link URL (e.g. https://example.com):');
-                if (url) {
-                    document.execCommand('createLink', false, url);
-                }
+                openLinkModal();
             }
             setTimeout(updateBubbleToolbar, 10);
         });
