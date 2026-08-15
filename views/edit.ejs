@@ -17,29 +17,36 @@
             <input type="text" id="author" name="author" value="<%= post.author %>" required autocomplete="off">
         </div>
 
-        <div class="form-group">
+        <div class="form-group editor-group">
             <div class="editor-tabs-bar">
                 <label for="content">Story Content (Markdown supported)</label>
                 <div class="editor-tab-switches">
-                    <button type="button" class="tab-btn active" id="tab-write-btn">✏️ Write</button>
-                    <button type="button" class="tab-btn" id="tab-preview-btn">👁️ Preview</button>
+                    <button type="button" class="tab-btn active" id="tab-write-btn">Write</button>
+                    <button type="button" class="tab-btn" id="tab-preview-btn">Preview</button>
                 </div>
             </div>
 
-            <!-- Storyteller's Quick Toolbar -->
+            <!-- Dedicated Storyteller's Formatting Toolbar -->
             <div class="markdown-toolbar" id="markdown-toolbar">
-                <button type="button" class="toolbar-btn" data-prefix="**" data-suffix="**" title="Bold"><strong>B</strong></button>
-                <button type="button" class="toolbar-btn" data-prefix="*" data-suffix="*" title="Italic"><em>I</em></button>
-                <button type="button" class="toolbar-btn" data-prefix="### " data-suffix="" title="Heading">H3</button>
-                <button type="button" class="toolbar-btn" data-prefix="> " data-suffix="" title="Quote / Thought">💭 Quote</button>
-                <button type="button" class="toolbar-btn" data-prefix="![Photo Caption](" data-suffix="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800)" title="Embed Photo">📸 Photo</button>
-                <button type="button" class="toolbar-btn" data-prefix="- " data-suffix="" title="Bullet List">📝 List</button>
-                <button type="button" class="toolbar-btn" data-prefix="```\n" data-suffix="\n```" title="Code snippet">&lt;/&gt;</button>
-                <div class="mood-picker">
-                    <button type="button" class="toolbar-btn mood-btn" data-text="☕ Chill " title="Chill">☕</button>
-                    <button type="button" class="toolbar-btn mood-btn" data-text="✨ Excited " title="Excited">✨</button>
-                    <button type="button" class="toolbar-btn mood-btn" data-text="🌙 Night " title="Night vibe">🌙</button>
-                    <button type="button" class="toolbar-btn mood-btn" data-text="🎒 Adventure " title="Adventure">🎒</button>
+                <div class="toolbar-group">
+                    <button type="button" class="toolbar-btn" data-prefix="**" data-suffix="**" title="Bold">Bold</button>
+                    <button type="button" class="toolbar-btn" data-prefix="*" data-suffix="*" title="Italic">Italic</button>
+                    <button type="button" class="toolbar-btn" data-prefix="### " data-suffix="" title="Heading">Heading</button>
+                    <button type="button" class="toolbar-btn" data-prefix="> " data-suffix="" title="Quote">Quote</button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button type="button" class="toolbar-btn" data-prefix="- " data-suffix="" title="Bullet List">List</button>
+                    <button type="button" class="toolbar-btn" data-prefix="![Photo Caption](" data-suffix="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800)" title="Embed Photo">Photo</button>
+                    <button type="button" class="toolbar-btn" data-prefix="[" data-suffix="](https://)" title="Insert Link">Link</button>
+                    <button type="button" class="toolbar-btn" data-prefix="```\n" data-suffix="\n```" title="Code snippet">Code</button>
+                </div>
+
+                <div class="toolbar-group mood-group">
+                    <button type="button" class="toolbar-btn mood-btn" data-text="[Chill] " title="Chill tag">Chill</button>
+                    <button type="button" class="toolbar-btn mood-btn" data-text="[Excited] " title="Excited tag">Excited</button>
+                    <button type="button" class="toolbar-btn mood-btn" data-text="[Night] " title="Night tag">Night</button>
+                    <button type="button" class="toolbar-btn mood-btn" data-text="[Trip] " title="Trip tag">Trip</button>
                 </div>
             </div>
 
@@ -47,13 +54,13 @@
 
             <!-- Live Story Preview Pane -->
             <div id="story-preview" class="story-preview-pane" style="display: none;">
-                <div class="preview-placeholder">Nothing to preview yet. Start typing your story!</div>
+                <div class="preview-placeholder">Your story preview will appear here.</div>
             </div>
         </div>
 
         <div class="form-actions">
             <a href="/posts/<%= post.id %>" class="btn btn-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary">Update Story ✓</button>
+            <button type="submit" class="btn btn-primary">Update Story</button>
         </div>
     </form>
 </div>
