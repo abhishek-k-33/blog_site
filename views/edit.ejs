@@ -122,6 +122,8 @@
         }
     }
 
+    const editorLayout = document.querySelector('.medium-editor-layout');
+
     // 1. Floating Bubble Selection Handler
     function updateBubbleToolbar() {
         const selection = window.getSelection();
@@ -131,7 +133,11 @@
         }
 
         const range = selection.getRangeAt(0);
-        if (!editor.contains(range.commonAncestorContainer)) {
+        const container = range.commonAncestorContainer;
+        const containerElement = container.nodeType === 3 ? container.parentElement : container;
+
+        // Ensure selection is inside our editor
+        if (!editor.contains(containerElement)) {
             bubbleToolbar.classList.remove('show');
             return;
         }
@@ -153,13 +159,17 @@
         });
 
         const rect = range.getBoundingClientRect();
-        const bubbleWidth = bubbleToolbar.offsetWidth || 280;
-        let top = rect.top + window.scrollY - 54;
-        let left = rect.left + window.scrollX + (rect.width / 2) - (bubbleWidth / 2);
+        const layoutRect = editorLayout.getBoundingClientRect();
+        const bubbleWidth = bubbleToolbar.offsetWidth || 300;
 
+        // Precise positioning relative to .medium-editor-layout
+        let top = rect.top - layoutRect.top - 54;
+        let left = (rect.left - layoutRect.left) + (rect.width / 2) - (bubbleWidth / 2);
+
+        // Keep inside layout bounds
         if (left < 10) left = 10;
-        if (left + bubbleWidth > window.innerWidth - 10) {
-            left = window.innerWidth - bubbleWidth - 10;
+        if (left + bubbleWidth > layoutRect.width - 10) {
+            left = layoutRect.width - bubbleWidth - 10;
         }
 
         bubbleToolbar.style.top = `${top}px`;
@@ -167,8 +177,17 @@
         bubbleToolbar.classList.add('show');
     }
 
+    // Trigger on selection change, mouse release, and key release
     document.addEventListener('selectionchange', () => {
-        setTimeout(updateBubbleToolbar, 10);
+        setTimeout(updateBubbleToolbar, 15);
+    });
+    editor.addEventListener('mouseup', () => {
+        setTimeout(updateBubbleToolbar, 15);
+    });
+    editor.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.shiftKey) {
+            setTimeout(updateBubbleToolbar, 15);
+        }
     });
 
     // Bubble Toolbar Button Actions
@@ -189,7 +208,7 @@
                     document.execCommand('createLink', false, url);
                 }
             }
-            updateBubbleToolbar();
+            setTimeout(updateBubbleToolbar, 15);
         });
     });
 
@@ -198,13 +217,10 @@
         if (e.key === 'Enter') {
             const blockquote = getClosestBlock('blockquote');
             if (blockquote) {
-                const selection = window.getSelection();
-                if (selection.rangeCount) {
-                    const text = blockquote.innerText.trim();
-                    if (text === '' || text === '"' || text === '""') {
-                        e.preventDefault();
-                        toggleBlockquote();
-                    }
+                const text = blockquote.innerText.trim();
+                if (text === '' || text === '"' || text === '""') {
+                    e.preventDefault();
+                    toggleBlockquote();
                 }
             }
         } else if (e.key === 'Backspace') {
@@ -236,10 +252,11 @@
         if (text === '' && (element === editor || element.parentElement === editor)) {
             const range = selection.getRangeAt(0);
             const rect = range.getBoundingClientRect();
+            const layoutRect = editorLayout.getBoundingClientRect();
             const editorRect = editor.getBoundingClientRect();
 
-            inserter.style.top = `${rect.top + window.scrollY}px`;
-            inserter.style.left = `${editorRect.left + window.scrollX - 44}px`;
+            inserter.style.top = `${rect.top - layoutRect.top}px`;
+            inserter.style.left = `${editorRect.left - layoutRect.left - 46}px`;
             inserter.classList.add('show');
         } else {
             inserter.classList.remove('show');
