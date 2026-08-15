@@ -721,7 +721,10 @@ body.dark-mode .reading-time {
 }
 
 .toolbar-btn {
-    padding: 5px 11px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    min-width: 32px;
     font-family: 'Space Mono', monospace;
     font-size: 0.78rem;
     font-weight: 700;
@@ -735,7 +738,12 @@ body.dark-mode .reading-time {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    line-height: 1.2;
+    line-height: 1;
+}
+
+.toolbar-btn svg {
+    display: block;
+    pointer-events: none;
 }
 
 .toolbar-btn:hover {

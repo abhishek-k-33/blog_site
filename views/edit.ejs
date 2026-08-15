@@ -26,27 +26,39 @@
                 </div>
             </div>
 
-            <!-- Dedicated Storyteller's Formatting Toolbar -->
+            <!-- Dedicated Storyteller's Formatting Toolbar (Icon-Only) -->
             <div class="markdown-toolbar" id="markdown-toolbar">
                 <div class="toolbar-group">
-                    <button type="button" class="toolbar-btn" data-prefix="**" data-suffix="**" title="Bold">Bold</button>
-                    <button type="button" class="toolbar-btn" data-prefix="*" data-suffix="*" title="Italic">Italic</button>
-                    <button type="button" class="toolbar-btn" data-prefix="### " data-suffix="" title="Heading">Heading</button>
-                    <button type="button" class="toolbar-btn" data-prefix="> " data-suffix="" title="Quote">Quote</button>
+                    <button type="button" class="toolbar-btn" data-prefix="**" data-suffix="**" title="Bold">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-prefix="*" data-suffix="*" title="Italic">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-prefix="### " data-suffix="" title="Heading (H3)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"></path><path d="M18 4v16"></path><path d="M6 12h12"></path></svg>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-prefix="> " data-suffix="" title="Quote / Reflection">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h4c0 3.5-1 5.5-5 6v2z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h4c0 3.5-1 5.5-5 6v2z"></path></svg>
+                    </button>
                 </div>
 
                 <div class="toolbar-group">
-                    <button type="button" class="toolbar-btn" data-prefix="- " data-suffix="" title="Bullet List">List</button>
-                    <button type="button" class="toolbar-btn" data-prefix="![Photo Caption](" data-suffix="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800)" title="Embed Photo">Photo</button>
-                    <button type="button" class="toolbar-btn" data-prefix="[" data-suffix="](https://)" title="Insert Link">Link</button>
-                    <button type="button" class="toolbar-btn" data-prefix="```\n" data-suffix="\n```" title="Code snippet">Code</button>
-                </div>
-
-                <div class="toolbar-group mood-group">
-                    <button type="button" class="toolbar-btn mood-btn" data-text="[Chill] " title="Chill tag">Chill</button>
-                    <button type="button" class="toolbar-btn mood-btn" data-text="[Excited] " title="Excited tag">Excited</button>
-                    <button type="button" class="toolbar-btn mood-btn" data-text="[Night] " title="Night tag">Night</button>
-                    <button type="button" class="toolbar-btn mood-btn" data-text="[Trip] " title="Trip tag">Trip</button>
+                    <button type="button" class="toolbar-btn" data-prefix="- " data-suffix="" title="Bullet List">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line><circle cx="4" cy="6" r="1.5" fill="currentColor"></circle><circle cx="4" cy="12" r="1.5" fill="currentColor"></circle><circle cx="4" cy="18" r="1.5" fill="currentColor"></circle></svg>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-prefix="![Memory Photo](" data-suffix="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800)" title="Insert Photo">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-prefix="[" data-suffix="](https://)" title="Insert Link">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-prefix="```\n" data-suffix="\n```" title="Code Block">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-prefix="\n---\n" data-suffix="" title="Divider Line">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line></svg>
+                    </button>
                 </div>
             </div>
 
