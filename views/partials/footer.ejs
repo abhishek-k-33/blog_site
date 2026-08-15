@@ -25,7 +25,7 @@
         }
 
         // =========================================
-        // Dynamic Island Morphing & Progress Tracker (60fps Optimized)
+        // Dynamic Island Morphing & Progress Tracker (Zero Lag + Hysteresis)
         // =========================================
         const dynamicHeader = document.getElementById('dynamic-island-header');
         const progressBar = document.getElementById('pill-progress-bar');
@@ -40,6 +40,8 @@
         }
 
         let isTicking = false;
+        let isMorphed = false;
+
         function updateDynamicIsland() {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
@@ -49,18 +51,17 @@
                 progressBar.style.transform = `scaleX(${scrollPercent / 100})`;
             }
             if (dynamicPercent) {
-                dynamicPercent.innerText = scrollPercent + '%';
+                dynamicPercent.textContent = scrollPercent + '%';
             }
 
             if (dynamicHeader) {
-                if (scrollTop > 60) {
-                    if (!dynamicHeader.classList.contains('is-morphed')) {
-                        dynamicHeader.classList.add('is-morphed');
-                    }
-                } else {
-                    if (dynamicHeader.classList.contains('is-morphed')) {
-                        dynamicHeader.classList.remove('is-morphed');
-                    }
+                // Hysteresis threshold to prevent rapid toggle glitching near scroll boundary
+                if (!isMorphed && scrollTop > 80) {
+                    isMorphed = true;
+                    dynamicHeader.classList.add('is-morphed');
+                } else if (isMorphed && scrollTop < 35) {
+                    isMorphed = false;
+                    dynamicHeader.classList.remove('is-morphed');
                 }
             }
             isTicking = false;
