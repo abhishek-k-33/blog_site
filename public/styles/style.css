@@ -849,9 +849,10 @@ body.dark-mode .reading-time {
 }
 
 .toolbox-btn.active {
-    background: var(--accent-color);
-    color: var(--bg-color);
-    box-shadow: 0 0 8px var(--accent-color);
+    background: var(--accent-color) !important;
+    color: var(--bg-color) !important;
+    transform: scale(1.12);
+    box-shadow: 0 0 10px var(--accent-color);
 }
 
 .toolbox-btn svg {
@@ -919,13 +920,14 @@ body.dark-mode .reading-time {
 .bubble-btn:hover {
     background: var(--accent-color);
     color: var(--bg-color);
-    transform: scale(1.1);
+    transform: scale(1.12);
 }
 
 .bubble-btn.active {
-    background: var(--accent-color);
-    color: var(--bg-color);
-    box-shadow: 0 0 8px var(--accent-color);
+    background: var(--accent-color) !important;
+    color: var(--bg-color) !important;
+    transform: scale(1.12);
+    box-shadow: 0 0 10px var(--accent-color);
 }
 
 .bubble-btn svg {

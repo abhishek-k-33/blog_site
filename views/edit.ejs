@@ -159,8 +159,33 @@
 
     const editorLayout = document.querySelector('.medium-editor-layout');
 
+    // Update active highlight states on all buttons (both Header Toolbox & Floating Bubble)
+    function updateActiveStates() {
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+
+        document.querySelectorAll('.format-trigger').forEach((btn) => {
+            const action = btn.getAttribute('data-action');
+            let isActive = false;
+            try {
+                if (action === 'bold' || action === 'italic' || action === 'insertUnorderedList') {
+                    isActive = document.queryCommandState(action);
+                } else if (action === 'blockquote' || action === 'h2' || action === 'h3') {
+                    isActive = !!getClosestBlock(action);
+                } else if (action === 'createLink') {
+                    isActive = !!getClosestBlock('a');
+                }
+            } catch (err) {
+                isActive = false;
+            }
+            btn.classList.toggle('active', isActive);
+        });
+    }
+
     // 1. Floating Bubble Selection Handler
     function updateBubbleToolbar() {
+        updateActiveStates();
+
         const selection = window.getSelection();
         if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
             bubbleToolbar.classList.remove('show');
@@ -183,16 +208,6 @@
             return;
         }
 
-        // Update active states of buttons across both toolbars
-        document.querySelectorAll('.format-trigger').forEach((btn) => {
-            const action = btn.getAttribute('data-action');
-            if (action === 'bold' || action === 'italic') {
-                btn.classList.toggle('active', document.queryCommandState(action));
-            } else if (action === 'blockquote' || action === 'h2' || action === 'h3') {
-                btn.classList.toggle('active', !!getClosestBlock(action));
-            }
-        });
-
         const rect = range.getBoundingClientRect();
         const layoutRect = editorLayout.getBoundingClientRect();
         const bubbleWidth = bubbleToolbar.offsetWidth || 300;
@@ -212,17 +227,18 @@
         bubbleToolbar.classList.add('show');
     }
 
-    // Trigger on selection change, mouse release, and key release
+    // Trigger on selection change, click, and all keyboard navigation
     document.addEventListener('selectionchange', () => {
-        setTimeout(updateBubbleToolbar, 15);
+        setTimeout(updateBubbleToolbar, 10);
     });
     editor.addEventListener('mouseup', () => {
-        setTimeout(updateBubbleToolbar, 15);
+        setTimeout(updateBubbleToolbar, 10);
     });
-    editor.addEventListener('keyup', (e) => {
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.shiftKey) {
-            setTimeout(updateBubbleToolbar, 15);
-        }
+    editor.addEventListener('click', () => {
+        setTimeout(updateActiveStates, 10);
+    });
+    editor.addEventListener('keyup', () => {
+        setTimeout(updateBubbleToolbar, 10);
     });
 
     // Formatting Actions (Shared between Header Pill Toolbox and Floating Bubble)
@@ -243,7 +259,7 @@
                     document.execCommand('createLink', false, url);
                 }
             }
-            setTimeout(updateBubbleToolbar, 15);
+            setTimeout(updateBubbleToolbar, 10);
         });
     });
 
