@@ -25,7 +25,7 @@
         }
 
         // =========================================
-        // Dynamic Island Morphing & Progress Tracker
+        // Dynamic Island Morphing & Progress Tracker (60fps Optimized)
         // =========================================
         const dynamicHeader = document.getElementById('dynamic-island-header');
         const progressBar = document.getElementById('pill-progress-bar');
@@ -39,29 +39,42 @@
             dynamicTitle.innerText = cleanTitle.length > 18 ? cleanTitle.slice(0, 16) + '…' : cleanTitle;
         }
 
+        let isTicking = false;
         function updateDynamicIsland() {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
             const scrollPercent = scrollHeight > 0 ? Math.min(100, Math.max(0, Math.round((scrollTop / scrollHeight) * 100))) : 0;
 
             if (progressBar) {
-                progressBar.style.width = scrollPercent + '%';
+                progressBar.style.transform = `scaleX(${scrollPercent / 100})`;
             }
             if (dynamicPercent) {
                 dynamicPercent.innerText = scrollPercent + '%';
             }
 
             if (dynamicHeader) {
-                if (scrollTop > 70) {
-                    dynamicHeader.classList.add('is-morphed');
+                if (scrollTop > 60) {
+                    if (!dynamicHeader.classList.contains('is-morphed')) {
+                        dynamicHeader.classList.add('is-morphed');
+                    }
                 } else {
-                    dynamicHeader.classList.remove('is-morphed');
+                    if (dynamicHeader.classList.contains('is-morphed')) {
+                        dynamicHeader.classList.remove('is-morphed');
+                    }
                 }
+            }
+            isTicking = false;
+        }
+
+        function onScrollRequest() {
+            if (!isTicking) {
+                window.requestAnimationFrame(updateDynamicIsland);
+                isTicking = true;
             }
         }
 
-        window.addEventListener('scroll', updateDynamicIsland, { passive: true });
-        window.addEventListener('resize', updateDynamicIsland);
+        window.addEventListener('scroll', onScrollRequest, { passive: true });
+        window.addEventListener('resize', onScrollRequest);
         updateDynamicIsland();
     </script>
 </body>
