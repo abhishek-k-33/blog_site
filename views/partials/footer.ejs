@@ -4,25 +4,222 @@
             <p>&copy; 2026 miniblogs. All rights reserved.</p>
         </div>
     </footer>
+
+    <!-- Saved Bookmarks Drawer / Modal -->
+    <div class="bookmark-drawer-backdrop" id="bookmark-drawer-backdrop"></div>
+    <div class="bookmark-drawer" id="bookmark-drawer" role="dialog" aria-labelledby="bookmark-drawer-title">
+        <div class="bookmark-drawer-header">
+            <h3 id="bookmark-drawer-title">🔖 Saved Stories</h3>
+            <button type="button" class="drawer-close-btn" id="drawer-close-btn" aria-label="Close saved stories">✕</button>
+        </div>
+        <div class="bookmark-drawer-content" id="bookmark-drawer-content">
+            <p class="bookmark-empty-state">No saved stories yet. Bookmark articles to read them later!</p>
+        </div>
+    </div>
+
     <script>
-        // Theme toggle logic (Checkbox Slider)
+        // =========================================
+        // Unified Theme Toggle (Header + Sidebar Sync)
+        // =========================================
         const themeToggle = document.getElementById('theme-toggle');
+        const sidebarThemeToggle = document.getElementById('sidebar-theme-toggle');
+        const themeTooltipText = document.getElementById('theme-tooltip-text');
         const body = document.body;
-        
-        if (themeToggle) {
-            // Ensure checkbox state matches body class on load
-            themeToggle.checked = body.classList.contains('dark-mode');
+
+        function applyTheme(theme) {
+            body.className = theme;
+            localStorage.setItem('theme', theme);
+            const isDark = theme === 'dark-mode';
             
+            if (themeToggle) {
+                themeToggle.checked = isDark;
+            }
+            if (sidebarThemeToggle) {
+                sidebarThemeToggle.setAttribute('data-theme', theme);
+            }
+            if (themeTooltipText) {
+                themeTooltipText.textContent = isDark ? 'Switch to Light' : 'Switch to Dark';
+            }
+        }
+
+        // Initialize theme UI matching existing body class
+        const currentTheme = body.classList.contains('dark-mode') ? 'dark-mode' : 'light-mode';
+        applyTheme(currentTheme);
+
+        if (themeToggle) {
             themeToggle.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    body.className = 'dark-mode';
-                    localStorage.setItem('theme', 'dark-mode');
+                applyTheme(e.target.checked ? 'dark-mode' : 'light-mode');
+            });
+        }
+
+        if (sidebarThemeToggle) {
+            sidebarThemeToggle.addEventListener('click', () => {
+                const nextTheme = body.classList.contains('dark-mode') ? 'light-mode' : 'dark-mode';
+                applyTheme(nextTheme);
+            });
+        }
+
+        // =========================================
+        // Floating Sidebar Active Route Highlighting
+        // =========================================
+        const currentPath = window.location.pathname;
+        const homeBtn = document.getElementById('sidebar-home');
+        const newBtn = document.getElementById('sidebar-new');
+
+        if (homeBtn && (currentPath === '/' || currentPath === '')) {
+            homeBtn.classList.add('is-active');
+        } else if (newBtn && currentPath.startsWith('/new')) {
+            newBtn.classList.add('is-active');
+        }
+
+        // =========================================
+        // Scroll To Top Button Logic
+        // =========================================
+        const scrollTopBtn = document.getElementById('sidebar-scroll-top');
+        if (scrollTopBtn) {
+            scrollTopBtn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+
+        // =========================================
+        // Bookmarks / Reading List Local Management
+        // =========================================
+        const bookmarksBtn = document.getElementById('sidebar-bookmarks');
+        const bookmarkDrawer = document.getElementById('bookmark-drawer');
+        const bookmarkBackdrop = document.getElementById('bookmark-drawer-backdrop');
+        const drawerCloseBtn = document.getElementById('drawer-close-btn');
+        const bookmarkDrawerContent = document.getElementById('bookmark-drawer-content');
+        const bookmarkCountBadge = document.getElementById('bookmark-count');
+
+        function getStoredBookmarks() {
+            try {
+                return JSON.parse(localStorage.getItem('miniblogs_bookmarks') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function updateBookmarkBadge() {
+            const bookmarks = getStoredBookmarks();
+            if (bookmarkCountBadge) {
+                if (bookmarks.length > 0) {
+                    bookmarkCountBadge.textContent = bookmarks.length;
+                    bookmarkCountBadge.style.display = 'inline-flex';
                 } else {
-                    body.className = 'light-mode';
-                    localStorage.setItem('theme', 'light-mode');
+                    bookmarkCountBadge.style.display = 'none';
+                }
+            }
+        }
+
+        function renderBookmarkDrawer() {
+            const bookmarks = getStoredBookmarks();
+            if (!bookmarkDrawerContent) return;
+
+            if (bookmarks.length === 0) {
+                bookmarkDrawerContent.innerHTML = '<p class="bookmark-empty-state">No saved stories yet. Click the bookmark icon on any post to save it for later!</p>';
+                return;
+            }
+
+            let html = '<ul class="bookmark-list">';
+            bookmarks.forEach((item, index) => {
+                html += `
+                    <li class="bookmark-item">
+                        <a href="/posts/${item.id}" class="bookmark-link">
+                            <span class="bookmark-item-title">${escapeHTML(item.title)}</span>
+                            <span class="bookmark-item-meta">By ${escapeHTML(item.author || 'Author')}</span>
+                        </a>
+                        <button type="button" class="bookmark-remove-btn" data-index="${index}" title="Remove bookmark" aria-label="Remove bookmark">✕</button>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            bookmarkDrawerContent.innerHTML = html;
+
+            bookmarkDrawerContent.querySelectorAll('.bookmark-remove-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.getAttribute('data-index'), 10);
+                    const current = getStoredBookmarks();
+                    current.splice(idx, 1);
+                    localStorage.setItem('miniblogs_bookmarks', JSON.stringify(current));
+                    updateBookmarkBadge();
+                    renderBookmarkDrawer();
+                });
+            });
+        }
+
+        function escapeHTML(str) {
+            return String(str).replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        function syncBookmarkButtons() {
+            const bookmarks = getStoredBookmarks();
+            const savedIds = new Set(bookmarks.map(b => String(b.id)));
+
+            document.querySelectorAll('.post-card-bookmark-btn, .post-page-bookmark-btn').forEach(btn => {
+                const id = String(btn.getAttribute('data-id'));
+                const isSaved = savedIds.has(id);
+                if (isSaved) {
+                    btn.classList.add('is-saved');
+                    btn.title = 'Remove from bookmarks';
+                    const textSpan = btn.querySelector('.bookmark-btn-text');
+                    if (textSpan) textSpan.textContent = 'Saved Story';
+                } else {
+                    btn.classList.remove('is-saved');
+                    btn.title = 'Save to bookmarks';
+                    const textSpan = btn.querySelector('.bookmark-btn-text');
+                    if (textSpan) textSpan.textContent = 'Save Story';
                 }
             });
         }
+
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.post-card-bookmark-btn, .post-page-bookmark-btn');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const id = String(btn.getAttribute('data-id'));
+            const title = btn.getAttribute('data-title') || 'Untitled';
+            const author = btn.getAttribute('data-author') || 'Anonymous';
+
+            let bookmarks = getStoredBookmarks();
+            const existingIndex = bookmarks.findIndex(b => String(b.id) === id);
+
+            if (existingIndex >= 0) {
+                bookmarks.splice(existingIndex, 1);
+            } else {
+                bookmarks.push({ id, title, author });
+            }
+
+            localStorage.setItem('miniblogs_bookmarks', JSON.stringify(bookmarks));
+            updateBookmarkBadge();
+            syncBookmarkButtons();
+            if (bookmarkDrawer && bookmarkDrawer.classList.contains('is-open')) {
+                renderBookmarkDrawer();
+            }
+        });
+
+        if (bookmarksBtn && bookmarkDrawer) {
+            bookmarksBtn.addEventListener('click', () => {
+                renderBookmarkDrawer();
+                bookmarkDrawer.classList.add('is-open');
+                if (bookmarkBackdrop) bookmarkBackdrop.classList.add('is-open');
+            });
+        }
+
+        function closeBookmarkDrawer() {
+            if (bookmarkDrawer) bookmarkDrawer.classList.remove('is-open');
+            if (bookmarkBackdrop) bookmarkBackdrop.classList.remove('is-open');
+        }
+
+        if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeBookmarkDrawer);
+        if (bookmarkBackdrop) bookmarkBackdrop.addEventListener('click', closeBookmarkDrawer);
+        updateBookmarkBadge();
+        syncBookmarkButtons();
 
         // =========================================
         // Dynamic Island Morphing & Progress Tracker (Zero Lag + Hysteresis)
@@ -52,6 +249,14 @@
             }
             if (dynamicPercent) {
                 dynamicPercent.textContent = scrollPercent + '%';
+            }
+
+            if (scrollTopBtn) {
+                if (scrollTop > 200) {
+                    scrollTopBtn.classList.add('is-visible');
+                } else {
+                    scrollTopBtn.classList.remove('is-visible');
+                }
             }
 
             if (dynamicHeader) {

@@ -18,7 +18,14 @@
                     <% } %>
                 </div>
                 <p class="post-excerpt"><%= post.excerpt %></p>
-                <a href="/posts/<%= post.id %>" class="read-more">Read Story →</a>
+                <div class="post-card-footer">
+                    <a href="/posts/<%= post.id %>" class="read-more">Read Story →</a>
+                    <button type="button" class="post-card-bookmark-btn" data-id="<%= post.id %>" data-title="<%= post.title %>" data-author="<%= post.author %>" title="Save to bookmarks" aria-label="Save to bookmarks">
+                        <svg class="card-bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </button>
+                </div>
             </article>
         <% }) %>
     <% } else { %>

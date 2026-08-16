@@ -517,6 +517,14 @@ input:checked + .slider:before {
     box-shadow: 2px 2px 0px var(--text-color);
 }
 
+.post-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 15px;
+    gap: 12px;
+}
+
 .read-more {
     display: inline-block;
     color: var(--accent-color);
@@ -536,6 +544,64 @@ input:checked + .slider:before {
     border-color: var(--accent-color);
     transform: translate(1px, 1px);
     box-shadow: 0px 0px 0px var(--text-color);
+}
+
+.post-card-bookmark-btn {
+    background: transparent;
+    border: 2px solid var(--border-color);
+    color: var(--text-color);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.post-card-bookmark-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: scale(1.15);
+    background: rgba(140, 122, 169, 0.15);
+}
+
+.post-card-bookmark-btn.is-saved {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--bg-color);
+}
+
+.post-card-bookmark-btn.is-saved .card-bookmark-icon {
+    fill: currentColor;
+}
+
+.card-bookmark-icon {
+    width: 17px;
+    height: 17px;
+    transition: transform 0.2s ease;
+}
+
+.post-page-bookmark-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.post-page-bookmark-btn.is-saved {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+}
+
+.post-page-bookmark-btn.is-saved .post-action-icon {
+    fill: currentColor;
+}
+
+.post-action-icon {
+    width: 18px;
+    height: 18px;
 }
 
 .back-link a {
@@ -1425,3 +1491,411 @@ body.dark-mode .reading-time {
     border-top: 2px solid var(--border-color);
     background-color: var(--secondary-bg);
 }
+
+/* =========================================
+   FLOATING PILL SIDEBAR (MEDIUM-INSPIRED)
+   ========================================= */
+
+.floating-pill-sidebar {
+    position: fixed;
+    left: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 990;
+    pointer-events: auto;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+
+.sidebar-pill-track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 10px;
+    background: var(--pill-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 2px solid var(--pill-border);
+    border-radius: 9999px;
+    box-shadow: var(--pill-shadow);
+    box-sizing: border-box;
+}
+
+.sidebar-pill-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: var(--text-color);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    outline: none;
+    transition: 
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.25s ease,
+        color 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+.sidebar-icon {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.25s ease, stroke 0.25s ease;
+}
+
+.sidebar-pill-btn:hover {
+    color: var(--accent-color);
+    background: rgba(140, 122, 169, 0.18);
+    transform: scale(1.12) translateY(-2px);
+    box-shadow: 0 6px 16px var(--pill-glow);
+    text-decoration: none;
+}
+
+.sidebar-pill-btn:active {
+    transform: scale(0.95);
+}
+
+/* Active route styling */
+.sidebar-pill-btn.is-active {
+    color: var(--bg-color);
+    background-color: var(--accent-color);
+    box-shadow: 0 4px 12px var(--pill-glow);
+}
+
+.sidebar-pill-btn.is-active .sidebar-icon {
+    stroke: var(--bg-color);
+}
+
+.sidebar-pill-accent {
+    color: var(--accent-color);
+}
+
+.sidebar-divider {
+    width: 22px;
+    height: 2px;
+    background: var(--border-color);
+    border-radius: 9999px;
+    opacity: 0.7;
+    margin: 2px 0;
+}
+
+/* Tooltip on Hover */
+.pill-tooltip {
+    position: absolute;
+    left: calc(100% + 14px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-8px);
+    background: var(--secondary-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: 
+        opacity 0.22s ease,
+        transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1000;
+}
+
+/* Tooltip Little Indicator Arrow */
+.pill-tooltip::before {
+    content: '';
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 5px 6px 5px 0;
+    border-style: solid;
+    border-color: transparent var(--border-color) transparent transparent;
+}
+
+.sidebar-pill-btn:hover .pill-tooltip {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+/* Theme Icon Switcher within Sidebar */
+#sidebar-theme-toggle .icon-sun {
+    display: none;
+}
+#sidebar-theme-toggle .icon-moon {
+    display: block;
+}
+
+body:not(.dark-mode) #sidebar-theme-toggle .icon-sun {
+    display: block;
+}
+body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
+    display: none;
+}
+
+/* Scroll To Top Button Animation */
+#sidebar-scroll-top {
+    opacity: 0;
+    max-height: 0;
+    transform: scale(0.6);
+    pointer-events: none;
+    transition: opacity 0.3s ease, max-height 0.3s ease, transform 0.3s ease;
+    overflow: hidden;
+}
+
+#sidebar-scroll-top.is-visible {
+    opacity: 1;
+    max-height: 44px;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+#sidebar-scroll-top.is-visible:hover {
+    transform: scale(1.12) translateY(-2px);
+}
+
+/* Badge Counter */
+.sidebar-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: var(--accent-color);
+    color: var(--bg-color);
+    font-size: 0.65rem;
+    font-weight: 700;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--pill-bg);
+}
+
+/* =========================================
+   BOOKMARK DRAWER / MODAL
+   ========================================= */
+
+.bookmark-drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1050;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.bookmark-drawer-backdrop.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.bookmark-drawer {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    width: 90%;
+    max-width: 480px;
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    z-index: 1060;
+    padding: 24px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.3s ease;
+}
+
+.bookmark-drawer.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.bookmark-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+.bookmark-drawer-header h3 {
+    font-size: 1.15rem;
+    color: var(--text-color);
+}
+
+.drawer-close-btn {
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.drawer-close-btn:hover {
+    transform: scale(1.1);
+    background: var(--accent-color);
+    color: var(--bg-color);
+}
+
+.bookmark-empty-state {
+    text-align: center;
+    color: var(--text-color);
+    opacity: 0.75;
+    padding: 24px 0;
+    font-size: 0.9rem;
+}
+
+.bookmark-list {
+    list-style: none;
+    max-height: 320px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bookmark-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.bookmark-item:hover {
+    transform: translateX(3px);
+    border-color: var(--accent-color);
+}
+
+.bookmark-link {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: var(--text-color);
+    flex: 1;
+    overflow: hidden;
+}
+
+.bookmark-item-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bookmark-item-meta {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 2px;
+}
+
+.bookmark-remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    opacity: 0.6;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: opacity 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.bookmark-remove-btn:hover {
+    opacity: 1;
+    color: #e74c3c;
+    transform: scale(1.2);
+}
+
+/* =========================================
+   RESPONSIVE DOCK BEHAVIOR (MOBILE / TABLET)
+   ========================================= */
+
+@media (max-width: 768px) {
+    .floating-pill-sidebar {
+        left: 50%;
+        bottom: 14px;
+        top: auto;
+        transform: translateX(-50%);
+    }
+
+    .sidebar-pill-track {
+        flex-direction: row;
+        gap: 14px;
+        padding: 8px 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .sidebar-divider {
+        width: 2px;
+        height: 20px;
+        margin: 0 2px;
+    }
+
+    .sidebar-pill-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .sidebar-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Tooltip positioned above dock on mobile */
+    .pill-tooltip {
+        left: 50%;
+        bottom: calc(100% + 12px);
+        top: auto;
+        transform: translateX(-50%) translateY(6px);
+    }
+
+    .pill-tooltip::before {
+        right: auto;
+        left: 50%;
+        top: 100%;
+        transform: translateX(-50%);
+        border-width: 6px 5px 0 5px;
+        border-color: var(--border-color) transparent transparent transparent;
+    }
+
+    .sidebar-pill-btn:hover .pill-tooltip {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    /* Avoid content underlap at the bottom of the page */
+    body {
+        padding-bottom: 80px;
+    }
+}
+
