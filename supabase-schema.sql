@@ -3,15 +3,19 @@
 -- ==========================================================
 -- Run this SQL in your Supabase Dashboard -> SQL Editor
 
--- 1. Create the posts table
+-- 1. Create the posts table (with topic tags)
 CREATE TABLE IF NOT EXISTS posts (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
     excerpt TEXT,
     author TEXT NOT NULL,
+    tags TEXT[] DEFAULT ARRAY['Thoughts']::TEXT[],
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- (If table already exists, run this migration to add tags column:)
+-- ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT ARRAY['Thoughts']::TEXT[];
 
 -- 2. Create index on created_at for fast descending chronological feed
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts (created_at DESC);

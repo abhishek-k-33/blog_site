@@ -681,6 +681,205 @@ main {
     font-size: 0.95rem;
 }
 
+/* =========================================
+   TOPICS PILL FILTER BAR & TAG SYSTEM
+   ========================================= */
+
+.topics-pill-bar-wrapper {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.topics-pill-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 6px 8px 12px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.topics-pill-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.topic-pill-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 9999px;
+    background: var(--secondary-bg);
+    border: 2px solid var(--border-color);
+    color: var(--text-color);
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: 
+        transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.22s ease,
+        border-color 0.22s ease,
+        color 0.22s ease,
+        box-shadow 0.22s ease;
+}
+
+.topic-pill-chip:hover {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px var(--pill-glow);
+    text-decoration: none;
+}
+
+.topic-pill-chip.is-active {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+    box-shadow: 0 6px 18px var(--pill-glow);
+}
+
+.topic-pill-count {
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+.topic-pill-chip.is-active .topic-pill-count {
+    background: rgba(0, 0, 0, 0.25);
+    color: #fff;
+}
+
+/* Post Card & Post Detail Tags */
+.post-tags-row,
+.post-detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.post-pill-tag {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(140, 122, 169, 0.15);
+    color: var(--accent-color);
+    border: 1px solid var(--border-color);
+    padding: 3px 11px;
+    border-radius: 9999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: 
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+.post-pill-tag:hover {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+    transform: translateY(-1.5px);
+    text-decoration: none;
+}
+
+/* Sidebar Topic Item */
+.sidebar-topic-hash {
+    color: var(--accent-color);
+    font-weight: 700;
+    font-size: 1.05rem;
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Composer Topic Tag Selector */
+.composer-tag-picker {
+    margin-bottom: 24px;
+    padding: 14px 18px;
+    background: var(--secondary-bg);
+    border: 1.5px dashed var(--border-color);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tag-picker-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.tag-picker-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.tag-preset-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag-preset-btn {
+    background: var(--bg-color);
+    border: 1.5px solid var(--border-color);
+    color: var(--text-color);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tag-preset-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.tag-preset-btn.is-selected {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+    box-shadow: 0 2px 8px var(--pill-glow);
+}
+
+.custom-tag-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.custom-tag-input:focus {
+    border-color: var(--accent-color);
+}
+
 /* Posts Grid */
 .posts-grid {
     display: grid;

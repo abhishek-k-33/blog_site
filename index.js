@@ -27,7 +27,45 @@ if (supabaseUrl && supabaseKey) {
 
 const DATA_FILE = path.join(__dirname, "data.json");
 
-// Helper: Format post object date, word count, and reading time
+// Helper: Extract and normalize tags from post object with smart heuristics
+const extractTags = (post) => {
+    if (Array.isArray(post.tags) && post.tags.length > 0) {
+        return post.tags.map(t => String(t).trim().replace(/^#/, "")).filter(Boolean);
+    }
+    if (typeof post.tags === "string" && post.tags.trim()) {
+        try {
+            const parsed = JSON.parse(post.tags);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed.map(t => String(t).trim().replace(/^#/, "")).filter(Boolean);
+            }
+        } catch (e) {
+            const splitTags = post.tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean);
+            if (splitTags.length > 0) return splitTags;
+        }
+    }
+    if (post.tag && typeof post.tag === "string" && post.tag.trim()) {
+        return [post.tag.trim().replace(/^#/, "")];
+    }
+
+    // Smart heuristic topic inference for existing stories
+    const text = ((post.title || "") + " " + (post.content || "")).toLowerCase();
+    const inferred = [];
+    if (text.includes("code") || text.includes("javascript") || text.includes("web") || text.includes("dev") || text.includes("api") || text.includes("sql") || text.includes("bug") || text.includes("project")) {
+        inferred.push("Tech");
+    }
+    if (text.includes("design") || text.includes("ui") || text.includes("ux") || text.includes("css") || text.includes("aesthetic") || text.includes("pill") || text.includes("island") || text.includes("sidebar")) {
+        inferred.push("Design");
+    }
+    if (text.includes("book") || text.includes("read") || text.includes("story") || text.includes("life") || text.includes("habit") || text.includes("day") || text.includes("coffee")) {
+        inferred.push("Life");
+    }
+    if (inferred.length === 0) {
+        inferred.push("Thoughts");
+    }
+    return inferred;
+};
+
+// Helper: Format post object date, word count, reading time, and tags
 const formatPost = (post) => {
     if (!post) return null;
     let formattedDate = post.date;
@@ -44,12 +82,14 @@ const formatPost = (post) => {
     }
     const words = post.content ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
     const readingTime = Math.max(1, Math.ceil(words / 180));
+    const tags = extractTags(post);
 
     return {
         ...post,
         date: formattedDate || new Date().toLocaleDateString(),
         readingTime,
         words,
+        tags,
     };
 };
 
@@ -118,15 +158,26 @@ const getPostById = async (id) => {
     return post ? formatPost(post) : null;
 };
 
-const createPost = async ({ title, content, excerpt, author }) => {
+const createPost = async ({ title, content, excerpt, author, tags }) => {
+    const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
     if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .insert([{ title, content, excerpt, author, tags: cleanTags }])
+                .select()
+                .single();
+            if (!error && data) return formatPost(data);
+        } catch (e) {
+            // Fallback if tags column does not exist
+        }
         const { data, error } = await supabase
             .from("posts")
             .insert([{ title, content, excerpt, author }])
             .select()
             .single();
         if (error) throw error;
-        return formatPost(data);
+        return formatPost({ ...data, tags: cleanTags });
     }
     const localPosts = await readLocalPosts();
     const newPost = {
@@ -135,6 +186,7 @@ const createPost = async ({ title, content, excerpt, author }) => {
         content,
         excerpt,
         author,
+        tags: cleanTags.length > 0 ? cleanTags : undefined,
         created_at: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
     };
@@ -143,8 +195,20 @@ const createPost = async ({ title, content, excerpt, author }) => {
     return formatPost(newPost);
 };
 
-const updatePost = async (id, { title, content, excerpt, author }) => {
+const updatePost = async (id, { title, content, excerpt, author, tags }) => {
+    const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
     if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .update({ title, content, excerpt, author, tags: cleanTags })
+                .eq("id", id)
+                .select()
+                .single();
+            if (!error && data) return formatPost(data);
+        } catch (e) {
+            // Fallback if tags column does not exist
+        }
         const { data, error } = await supabase
             .from("posts")
             .update({ title, content, excerpt, author })
@@ -152,7 +216,7 @@ const updatePost = async (id, { title, content, excerpt, author }) => {
             .select()
             .single();
         if (error) throw error;
-        return formatPost(data);
+        return formatPost({ ...data, tags: cleanTags });
     }
     const localPosts = await readLocalPosts();
     const index = localPosts.findIndex((p) => String(p.id) === String(id));
@@ -163,6 +227,7 @@ const updatePost = async (id, { title, content, excerpt, author }) => {
             content,
             excerpt,
             author,
+            tags: cleanTags.length > 0 ? cleanTags : undefined,
         };
         await writeLocalPosts(localPosts);
         return formatPost(localPosts[index]);
@@ -206,12 +271,28 @@ const generateExcerpt = (content) => {
 
 // --- ROUTES ---
 
-// GET /: Display all posts
+// GET /: Display all posts (with tag filtering)
 app.get("/", async (req, res, next) => {
     try {
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
-        const posts = await getAllPosts();
-        res.render("index.ejs", { posts });
+        const allPosts = await getAllPosts();
+        const selectedTag = req.query.tag ? req.query.tag.trim() : null;
+
+        // Collect all unique available tags
+        const tagCounts = {};
+        allPosts.forEach(p => {
+            (p.tags || []).forEach(t => {
+                tagCounts[t] = (tagCounts[t] || 0) + 1;
+            });
+        });
+        const allTags = Object.keys(tagCounts);
+
+        // Filter posts if tag is selected
+        const posts = selectedTag && selectedTag !== "All"
+            ? allPosts.filter(p => (p.tags || []).some(t => t.toLowerCase() === selectedTag.toLowerCase()))
+            : allPosts;
+
+        res.render("index.ejs", { posts, allPosts, allTags, selectedTag, tagCounts });
     } catch (err) {
         next(err);
     }
@@ -225,7 +306,7 @@ app.get("/new", (req, res) => {
 // POST /posts: Create a new post
 app.post("/posts", async (req, res, next) => {
     try {
-        const { title, content, author } = req.body;
+        const { title, content, author, tags } = req.body;
         if (!title?.trim() || !content?.trim() || !author?.trim()) {
             return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
         }
@@ -235,6 +316,7 @@ app.post("/posts", async (req, res, next) => {
             content: content.trim(),
             excerpt: generateExcerpt(content.trim()),
             author: simpleSanitize(author.trim()),
+            tags: tags ? simpleSanitize(tags.trim()) : undefined,
         });
 
         res.redirect("/");
@@ -274,7 +356,7 @@ app.get("/edit/:id", async (req, res, next) => {
 // POST /update/:id: Update an existing post
 app.post("/update/:id", async (req, res, next) => {
     try {
-        const { title, content, author } = req.body;
+        const { title, content, author, tags } = req.body;
         if (!title?.trim() || !content?.trim() || !author?.trim()) {
             return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
         }
@@ -284,6 +366,7 @@ app.post("/update/:id", async (req, res, next) => {
             content: content.trim(),
             excerpt: generateExcerpt(content.trim()),
             author: simpleSanitize(author.trim()),
+            tags: tags ? simpleSanitize(tags.trim()) : undefined,
         });
 
         if (updated) {

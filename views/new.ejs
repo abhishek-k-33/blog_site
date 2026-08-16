@@ -113,6 +113,22 @@
             <!-- Author Input -->
             <input type="text" id="author" name="author" required placeholder="Author name..." autocomplete="off" class="medium-author-input">
 
+            <!-- Topic Tags Selector -->
+            <div class="composer-tag-picker" id="composer-tag-picker">
+                <div class="tag-picker-header">
+                    <span class="tag-picker-label">🏷️ Topics:</span>
+                    <div class="tag-preset-chips" id="tag-preset-chips">
+                        <button type="button" class="tag-preset-btn is-selected" data-tag="Thoughts">#Thoughts</button>
+                        <button type="button" class="tag-preset-btn" data-tag="Tech">#Tech</button>
+                        <button type="button" class="tag-preset-btn" data-tag="Design">#Design</button>
+                        <button type="button" class="tag-preset-btn" data-tag="Life">#Life</button>
+                        <button type="button" class="tag-preset-btn" data-tag="Coding">#Coding</button>
+                    </div>
+                </div>
+                <input type="text" id="custom-tag-input" placeholder="+ Add custom tags (comma separated)..." class="custom-tag-input" autocomplete="off">
+                <input type="hidden" name="tags" id="hidden-tags" value="Thoughts">
+            </div>
+
             <!-- Live Editable Story Canvas -->
             <div id="editor-body" class="medium-editor-body" contenteditable="true" data-placeholder="Tell your story..."></div>
         </div>
@@ -482,6 +498,31 @@
         inserterTrigger.classList.remove('active');
     });
 
+    // Topic Tags Picker Interactivity
+    const tagPresetBtns = document.querySelectorAll('.tag-preset-btn');
+    const customTagInput = document.getElementById('custom-tag-input');
+    const hiddenTags = document.getElementById('hidden-tags');
+
+    tagPresetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.classList.toggle('is-selected');
+            updateTagsValue();
+        });
+    });
+
+    if (customTagInput) {
+        customTagInput.addEventListener('input', updateTagsValue);
+    }
+
+    function updateTagsValue() {
+        const selected = Array.from(document.querySelectorAll('.tag-preset-btn.is-selected')).map(b => b.dataset.tag);
+        const custom = customTagInput ? customTagInput.value.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean) : [];
+        const combined = [...new Set([...selected, ...custom])];
+        if (hiddenTags) {
+            hiddenTags.value = combined.length > 0 ? combined.join(',') : 'Thoughts';
+        }
+    }
+
     // 3. Form Submit Validation & Synchronization
     form.addEventListener('submit', (e) => {
         const rawContent = editor.innerHTML.trim();
@@ -494,6 +535,7 @@
             return;
         }
 
+        updateTagsValue();
         hiddenContent.value = rawContent;
     });
 </script>

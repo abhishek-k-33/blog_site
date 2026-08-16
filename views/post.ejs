@@ -3,11 +3,18 @@
 <article class="single-post">
     <!-- It grabs the title, author and date from the post object from our server and dynamically prints them into html. -->
     <header class="post-header">
+        <% if (post.tags && post.tags.length > 0) { %>
+            <div class="post-detail-tags">
+                <% post.tags.forEach(tag => { %>
+                    <a href="/?tag=<%= encodeURIComponent(tag) %>" class="post-pill-tag">#<%= tag %></a>
+                <% }) %>
+            </div>
+        <% } %>
         <h2><%= post.title %></h2>
         <div class="post-meta">
             <span class="author">By <%= post.author %></span> • <span class="date"><%= post.date %></span>
             <% if (post.readingTime) { %>
-                • <span class="reading-time"><%= post.readingTime %> min read</span>
+                • <span class="reading-time">☕ <%= post.readingTime %> min read</span>
             <% } %>
         </div>
     </header>

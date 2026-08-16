@@ -2,14 +2,39 @@
 
 <div class="hero">
     <h2>Welcome to miniblogs</h2>
-
     <p>A chill place to write your thoughts.</p>
 </div>
 
+<!-- Topics / Tags Pill Filter Bar -->
+<div class="topics-pill-bar-wrapper">
+    <div class="topics-pill-bar" role="navigation" aria-label="Topic filter">
+        <a href="/" class="topic-pill-chip <%= (!selectedTag || selectedTag === 'All') ? 'is-active' : '' %>">
+            ✨ All Stories
+        </a>
+        <% if (typeof allTags !== 'undefined' && allTags.length > 0) { %>
+            <% allTags.forEach(tag => { %>
+                <a href="/?tag=<%= encodeURIComponent(tag) %>" class="topic-pill-chip <%= (selectedTag === tag) ? 'is-active' : '' %>">
+                    #<%= tag %>
+                    <% if (typeof tagCounts !== 'undefined' && tagCounts[tag]) { %>
+                        <span class="topic-pill-count"><%= tagCounts[tag] %></span>
+                    <% } %>
+                </a>
+            <% }) %>
+        <% } %>
+    </div>
+</div>
+
 <div class="posts-grid">
-    <% if (posts.length > 0) { %><%# this checks if the array contains a post or not%>
+    <% if (posts.length > 0) { %>
         <% posts.forEach(post => { %>
             <article class="post-card">
+                <% if (post.tags && post.tags.length > 0) { %>
+                    <div class="post-tags-row">
+                        <% post.tags.forEach(tag => { %>
+                            <a href="/?tag=<%= encodeURIComponent(tag) %>" class="post-pill-tag">#<%= tag %></a>
+                        <% }) %>
+                    </div>
+                <% } %>
                 <h3 class="post-title"><a href="/posts/<%= post.id %>"><%= post.title %></a></h3>
                 <div class="post-meta">
                     <span class="author">By <%= post.author %></span> • <span class="date"><%= post.date %></span>
@@ -30,7 +55,7 @@
         <% }) %>
     <% } else { %>
         <div class="no-posts">
-            <p>No posts yet. <a href="/new">Be the first to write something.</a></p>
+            <p>No stories found in this topic. <a href="/new">Be the first to write something!</a></p>
         </div>
     <% } %>
 </div>
