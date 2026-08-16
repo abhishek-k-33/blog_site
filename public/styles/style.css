@@ -9,7 +9,7 @@
     --accent-color: #d19a79;
     --secondary-bg: #e8dfcc;
     --border-color: #c5bba3;
-    --card-shadow: 4px 4px 0px rgba(74, 64, 54, 0.2);
+    --card-shadow: 0 10px 25px -4px rgba(74, 64, 54, 0.12), 0 4px 6px -2px rgba(74, 64, 54, 0.05);
     --btn-hover: #b58364;
     --pill-bg: rgba(244, 238, 224, 0.88);
     --pill-border: rgba(197, 187, 163, 0.9);
@@ -24,7 +24,7 @@ body.dark-mode {
     --accent-color: #8c7aa9;
     --secondary-bg: #2a2438;
     --border-color: #4a4063;
-    --card-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+    --card-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.55), 0 4px 10px -2px rgba(0, 0, 0, 0.35);
     --btn-hover: #75668e;
     --pill-bg: rgba(26, 22, 37, 0.88);
     --pill-border: rgba(74, 64, 99, 0.9);
@@ -645,7 +645,7 @@ main {
 .hero {
     text-align: center;
     margin-bottom: 50px;
-    padding: 40px 20px;
+    padding: 42px 24px;
     background-image: repeating-linear-gradient(
         45deg,
         var(--secondary-bg) 25%,
@@ -656,61 +656,75 @@ main {
     );
     background-size: 20px 20px;
     border: 2px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 18px;
     box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
 }
 
 .hero h2 {
-    font-size: 2rem;
-    margin-bottom: 10px;
+    font-size: 2.1rem;
+    margin-bottom: 14px;
     background-color: var(--bg-color);
     display: inline-block;
-    padding: 5px 15px;
+    padding: 6px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
 }
 
 .hero p {
     background-color: var(--bg-color);
     display: inline-block;
-    padding: 5px 15px;
+    padding: 6px 18px;
+    border-radius: 9999px;
+    border: 1px solid var(--border-color);
+    font-size: 0.95rem;
 }
 
 /* Posts Grid */
 .posts-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 30px;
+    gap: 28px;
 }
 
 .post-card {
     background-color: var(--secondary-bg);
     border: 2px solid var(--border-color);
-    padding: 25px;
-    border-radius: 4px;
+    padding: 28px;
+    border-radius: 16px;
     box-shadow: var(--card-shadow);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: 
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
+        box-shadow 0.25s ease,
+        border-color 0.25s ease;
     animation: fadeInUp 0.6s ease-out forwards;
+    position: relative;
 }
 
 .post-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
+    transform: translateY(-4px);
+    border-color: var(--accent-color);
+    box-shadow: 0 16px 32px -6px var(--pill-glow), var(--pill-shadow);
 }
 
 .post-title {
-    font-size: 1.6rem;
+    font-size: 1.65rem;
     margin-bottom: 10px;
+    line-height: 1.35;
 }
 
 .post-meta {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     color: var(--text-color);
-    opacity: 0.8;
-    margin-bottom: 15px;
-    font-style: italic;
+    opacity: 0.82;
+    margin-bottom: 16px;
 }
 
 .post-excerpt {
     margin-bottom: 20px;
+    line-height: 1.7;
+    opacity: 0.92;
 }
 
 /* Forms */
@@ -718,10 +732,10 @@ main {
     max-width: 600px;
     margin: 0 auto;
     background-color: var(--secondary-bg);
-    padding: 30px;
+    padding: 34px;
     border: 2px solid var(--border-color);
     box-shadow: var(--card-shadow);
-    border-radius: 4px;
+    border-radius: 16px;
 }
 
 .form-container h2 {
@@ -743,19 +757,20 @@ main {
 .form-group input,
 .form-group textarea {
     width: 100%;
-    padding: 12px;
+    padding: 12px 14px;
     font-family: 'Space Mono', monospace;
     background-color: var(--bg-color);
     color: var(--text-color);
     border: 2px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 10px;
     outline: none;
-    transition: border-color 0.3s;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
     border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--pill-glow);
 }
 
 .form-actions {
@@ -767,11 +782,11 @@ main {
 /* Single Post */
 .single-post {
     background-color: var(--secondary-bg);
-    padding: 40px;
+    padding: 44px 40px;
     border: 2px solid var(--border-color);
     box-shadow: var(--card-shadow);
     margin-bottom: 30px;
-    border-radius: 8px;
+    border-radius: 18px;
 }
 
 /* Reading Time Badge */
