@@ -177,6 +177,7 @@ a:hover {
     height: 100%;
     display: block;
     color: var(--text-color);
+    overflow: visible;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
     transition: color 0.3s ease, filter 0.3s ease;
 }
@@ -188,6 +189,20 @@ a:hover {
     transition: color 0.3s ease;
 }
 
+/* Header logo SVG part transitions (resting state) */
+.header-logo-tail {
+    transform-origin: 60% 0%;
+    transform-box: fill-box;
+    transition: transform 0.3s ease;
+}
+
+.header-logo-fold {
+    transform-origin: 0% 0%;
+    transform-box: fill-box;
+    transition: transform 0.3s ease;
+}
+
+/* --- Hover: trigger tail wag + fold peek --- */
 .pill-logo:hover {
     text-decoration: none;
     background: rgba(140, 122, 169, 0.15);
@@ -195,11 +210,37 @@ a:hover {
 }
 
 .pill-logo:hover .pill-logo-icon {
-    transform: rotate(-4deg) scale(1.1);
+    transform: scale(1.08);
+}
+
+.pill-logo:hover .header-logo-tail {
+    animation: hoverTailWag 0.7s cubic-bezier(0.22, 0.68, 0.36, 1) both;
+}
+
+.pill-logo:hover .header-logo-fold {
+    animation: hoverFoldPeek 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
 .pill-logo:active {
     transform: scale(0.98);
+}
+
+/* --- Hover keyframes --- */
+
+@keyframes hoverTailWag {
+    0%   { transform: rotate(0deg); }
+    14%  { transform: rotate(-16deg); }
+    28%  { transform: rotate(12deg); }
+    42%  { transform: rotate(-9deg); }
+    58%  { transform: rotate(6deg); }
+    74%  { transform: rotate(-3deg); }
+    100% { transform: rotate(0deg); }
+}
+
+@keyframes hoverFoldPeek {
+    0%   { transform: rotate(0deg) scale(1); }
+    40%  { transform: rotate(-25deg) scale(1.1); }
+    100% { transform: rotate(0deg) scale(1); }
 }
 
 /* Crisp Dynamic Island Info Center */

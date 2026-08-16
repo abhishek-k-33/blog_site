@@ -100,8 +100,13 @@
                                         <feDropShadow dx="-1" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
                                     </filter>
                                 </defs>
-                                <path d="M 20 8 L 65 8 L 65 24 Q 65 32, 73 32 L 88 32 L 88 72 Q 88 84, 76 84 L 36 84 L 16 100 L 20 84 Q 8 84, 8 72 L 8 20 Q 8 8, 20 8 Z" fill="currentColor"/>
-                                <path d="M 65 8 L 88 32 L 73 32 Q 65 32, 65 24 Z" fill="url(#headerFoldGrad)" filter="url(#headerFoldShadow)"/>
+                                <!-- Bubble body (without tail) -->
+                                <path class="header-logo-body" d="M 20 8 L 65 8 L 65 24 Q 65 32, 73 32 L 88 32 L 88 72 Q 88 84, 76 84 L 20 84 Q 8 84, 8 72 L 8 20 Q 8 8, 20 8 Z" fill="currentColor"/>
+                                <!-- Tail (separate for wag on hover) -->
+                                <path class="header-logo-tail" d="M 36 84 L 16 100 L 20 84 Z" fill="currentColor"/>
+                                <!-- Dog-ear fold -->
+                                <path class="header-logo-fold" d="M 65 8 L 88 32 L 73 32 Q 65 32, 65 24 Z" fill="url(#headerFoldGrad)" filter="url(#headerFoldShadow)"/>
+                                <!-- Article lines -->
                                 <rect x="22" y="42" width="30" height="4.5" rx="2.25" fill="url(#headerFoldGrad)" opacity="0.45"/>
                                 <rect x="22" y="52" width="46" height="4.5" rx="2.25" fill="url(#headerFoldGrad)" opacity="0.3"/>
                                 <rect x="22" y="62" width="24" height="4.5" rx="2.25" fill="url(#headerFoldGrad)" opacity="0.2"/>
