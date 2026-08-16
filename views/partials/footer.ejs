@@ -24,6 +24,7 @@
         const themeToggle = document.getElementById('theme-toggle');
         const sidebarThemeToggle = document.getElementById('sidebar-theme-toggle');
         const themeTooltipText = document.getElementById('theme-tooltip-text');
+        const themeLabelText = document.getElementById('theme-label-text');
         const body = document.body;
 
         function applyTheme(theme) {
@@ -39,6 +40,9 @@
             }
             if (themeTooltipText) {
                 themeTooltipText.textContent = isDark ? 'Switch to Light' : 'Switch to Dark';
+            }
+            if (themeLabelText) {
+                themeLabelText.textContent = isDark ? 'Light' : 'Dark';
             }
         }
 
