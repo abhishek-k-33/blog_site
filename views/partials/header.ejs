@@ -24,6 +24,62 @@
             document.body.className = savedTheme;
         }
     </script>
+
+    <!-- ========== SPLASH INTRO ANIMATION ========== -->
+    <div class="splash-overlay" id="splash-overlay">
+        <div class="splash-content">
+            <svg class="splash-logo" viewBox="0 0 100 112" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                    <linearGradient id="splashFoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#d19a79"/>
+                        <stop offset="100%" stop-color="#8c7aa9"/>
+                    </linearGradient>
+                    <filter id="splashFoldShadow" x="-30%" y="-30%" width="160%" height="160%">
+                        <feDropShadow dx="-1.5" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.4"/>
+                    </filter>
+                </defs>
+
+                <!-- Bubble body (WITHOUT the tail — tail is a separate element for wagging) -->
+                <path class="splash-body"
+                    d="M 20 8 L 65 8 L 65 24 Q 65 32, 73 32 L 88 32 L 88 72 Q 88 84, 76 84 L 20 84 Q 8 84, 8 72 L 8 20 Q 8 8, 20 8 Z"
+                    fill="currentColor"/>
+
+                <!-- Speech bubble tail (separate for wag animation) -->
+                <path class="splash-tail"
+                    d="M 36 84 L 16 100 L 20 84 Z"
+                    fill="currentColor"/>
+
+                <!-- Dog-ear fold (separate for fold-in animation) -->
+                <path class="splash-fold"
+                    d="M 65 8 L 88 32 L 73 32 Q 65 32, 65 24 Z"
+                    fill="url(#splashFoldGrad)" filter="url(#splashFoldShadow)"/>
+
+                <!-- Article skeleton lines (staggered fade-in) -->
+                <rect class="splash-line splash-line-1" x="22" y="42" width="30" height="4.5" rx="2.25" fill="url(#splashFoldGrad)" opacity="0"/>
+                <rect class="splash-line splash-line-2" x="22" y="52" width="46" height="4.5" rx="2.25" fill="url(#splashFoldGrad)" opacity="0"/>
+                <rect class="splash-line splash-line-3" x="22" y="62" width="24" height="4.5" rx="2.25" fill="url(#splashFoldGrad)" opacity="0"/>
+            </svg>
+            <span class="splash-wordmark">miniblogs</span>
+        </div>
+    </div>
+    <script>
+        // Only show splash once per browser session
+        (function() {
+            const splash = document.getElementById('splash-overlay');
+            if (sessionStorage.getItem('miniblogsSplashShown')) {
+                splash.style.display = 'none';
+            } else {
+                sessionStorage.setItem('miniblogsSplashShown', 'true');
+                // Remove splash from DOM after animation completes
+                setTimeout(function() {
+                    splash.style.pointerEvents = 'none';
+                    splash.addEventListener('animationend', function() {
+                        splash.remove();
+                    });
+                }, 2400);
+            }
+        })();
+    </script>
     <header class="site-header pill-header" id="dynamic-island-header">
         <div class="pill-navbar" id="pill-navbar" role="navigation" aria-label="Main Navigation">
             <!-- Dynamic Scroll / Reading Progress Line -->
