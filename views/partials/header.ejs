@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>miniblogs</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+    <link rel="alternate icon" href="/images/favicon.svg">
     <!-- Modern typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +33,24 @@
                 <!-- Left: Interactive Logo Badge -->
                 <div class="pill-left">
                     <a href="/" class="pill-logo" title="miniblogs home">
-                        <span class="logo-pulse"></span>
+                        <span class="pill-logo-icon">
+                            <svg class="pill-logo-svg" viewBox="0 0 100 108" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="headerFoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#d19a79"/>
+                                        <stop offset="100%" stop-color="#8c7aa9"/>
+                                    </linearGradient>
+                                    <filter id="headerFoldShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feDropShadow dx="-1" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
+                                    </filter>
+                                </defs>
+                                <path d="M 20 8 L 65 8 L 65 24 Q 65 32, 73 32 L 88 32 L 88 72 Q 88 84, 76 84 L 36 84 L 16 100 L 20 84 Q 8 84, 8 72 L 8 20 Q 8 8, 20 8 Z" fill="currentColor"/>
+                                <path d="M 65 8 L 88 32 L 73 32 Q 65 32, 65 24 Z" fill="url(#headerFoldGrad)" filter="url(#headerFoldShadow)"/>
+                                <rect x="22" y="42" width="30" height="4.5" rx="2.25" fill="url(#headerFoldGrad)" opacity="0.45"/>
+                                <rect x="22" y="52" width="46" height="4.5" rx="2.25" fill="url(#headerFoldGrad)" opacity="0.3"/>
+                                <rect x="22" y="62" width="24" height="4.5" rx="2.25" fill="url(#headerFoldGrad)" opacity="0.2"/>
+                            </svg>
+                        </span>
                         <span class="logo-text">miniblogs</span>
                     </a>
                 </div>
