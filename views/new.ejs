@@ -60,29 +60,6 @@
         <button type="button" class="bubble-btn format-trigger" data-action="createLink" title="Link">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
         </button>
-    </div>
-
-    <!-- Inline Inserter (+) Button for Empty Lines -->
-    <div id="inline-inserter" class="inline-inserter">
-        <button type="button" class="inserter-trigger-btn" id="inserter-trigger" title="Add an element">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        </button>
-        <div class="inserter-options" id="inserter-options">
-            <button type="button" class="inserter-opt-btn" id="btn-insert-image" title="Insert Image">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                <span>Photo</span>
-            </button>
-            <button type="button" class="inserter-opt-btn" id="btn-insert-divider" title="Divider line">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line></svg>
-                <span>Divider</span>
-            </button>
-            <button type="button" class="inserter-opt-btn" id="btn-insert-quote" title="Quote block">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h4c0 3.5-1 5.5-5 6v2z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h4c0 3.5-1 5.5-5 6v2z"></path></svg>
-                <span>Quote</span>
-            </button>
-        </div>
-    </div>
-
     <!-- Hidden Media File Picker -->
     <input type="file" id="media-image-picker" accept="image/*" style="display: none;">
 
@@ -145,9 +122,6 @@
     const editor = document.getElementById('editor-body');
     const hiddenContent = document.getElementById('hidden-content');
     const bubbleToolbar = document.getElementById('bubble-toolbar');
-    const inserter = document.getElementById('inline-inserter');
-    const inserterTrigger = document.getElementById('inserter-trigger');
-    const inserterOptions = document.getElementById('inserter-options');
     const form = document.getElementById('medium-story-form');
 
     // Helper: Find closest matching ancestor within editor
@@ -397,48 +371,6 @@
         }
     });
 
-    // 2. Inline Inserter (+) Logic for Empty Lines
-    function updateInserterPosition() {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) {
-            inserter.classList.remove('show');
-            return;
-        }
-
-        const node = selection.anchorNode;
-        if (!node || !editor.contains(node)) {
-            inserter.classList.remove('show');
-            return;
-        }
-
-        const element = node.nodeType === 1 ? node : node.parentElement;
-        const text = element ? element.innerText.trim() : '';
-
-        if (text === '' && (element === editor || element.parentElement === editor)) {
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            const layoutRect = editorLayout.getBoundingClientRect();
-            const editorRect = editor.getBoundingClientRect();
-
-            inserter.style.top = `${rect.top - layoutRect.top}px`;
-            inserter.style.left = `${editorRect.left - layoutRect.left - 46}px`;
-            inserter.classList.add('show');
-        } else {
-            inserter.classList.remove('show');
-            inserterOptions.classList.remove('open');
-            inserterTrigger.classList.remove('active');
-        }
-    }
-
-    editor.addEventListener('keyup', updateInserterPosition);
-    editor.addEventListener('click', updateInserterPosition);
-
-    inserterTrigger.addEventListener('click', (e) => {
-        e.preventDefault();
-        inserterTrigger.classList.toggle('active');
-        inserterOptions.classList.toggle('open');
-    });
-
     // Inserter Actions (Photo Media Picker & Divider)
     const mediaImagePicker = document.getElementById('media-image-picker');
 
@@ -458,9 +390,6 @@
             editor.focus();
             document.execCommand('insertHTML', false, figureHtml);
             mediaImagePicker.value = '';
-            inserter.classList.remove('show');
-            inserterOptions.classList.remove('open');
-            inserterTrigger.classList.remove('active');
         };
         reader.readAsDataURL(file);
     });
@@ -480,22 +409,6 @@
     document.getElementById('toolbox-insert-divider')?.addEventListener('click', (e) => {
         e.preventDefault();
         insertDividerAction();
-    });
-
-    document.getElementById('btn-insert-image')?.addEventListener('click', () => {
-        openMediaPicker();
-    });
-
-    document.getElementById('btn-insert-divider')?.addEventListener('click', () => {
-        insertDividerAction();
-        inserterOptions.classList.remove('open');
-        inserterTrigger.classList.remove('active');
-    });
-
-    document.getElementById('btn-insert-quote')?.addEventListener('click', () => {
-        document.execCommand('insertHTML', false, '<blockquote>"A memory or reflection to remember..."</blockquote><p><br></p>');
-        inserterOptions.classList.remove('open');
-        inserterTrigger.classList.remove('active');
     });
 
     // Topic Tags Picker Interactivity
