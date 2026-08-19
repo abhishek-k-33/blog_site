@@ -1,0 +1,186 @@
+================================================================================
+MINIBLOGS (26 BLOG PROJECT) - COMPLETE PROJECT FILES & RESOURCES INVENTORY
+================================================================================
+Generated: 2026-08-19
+
+================================================================================
+1. PROJECT FILE DIRECTORY & INVENTORY
+================================================================================
+
+--- BACKEND & CONFIGURATION ---
+• index.js (411 lines, ~13.7 KB)
+  - Main Express server and application router.
+  - Handles database connection to Supabase PostgreSQL with local JSON fallback.
+  - Automatic tag extraction & smart heuristics for legacy stories.
+  - Reading time calculation, input sanitization, and excerpt generation.
+  - Full CRUD routes:
+      GET  /            -> Home feed with tag filtering
+      GET  /new         -> Medium-style story composer
+      POST /posts       -> Create new story
+      GET  /posts/:id   -> Single story reading view
+      GET  /edit/:id    -> Story edit view
+      POST /update/:id  -> Update existing story
+      POST /delete/:id  -> Delete story
+
+• api/index.js (3 lines, 58 B)
+  - Serverless function entrypoint for Vercel deployment.
+  - Exports the main Express app instance from index.js.
+
+• package.json (21 lines, 422 B)
+  - Node.js project configuration and scripts ("npm start").
+  - Lists production dependencies: @supabase/supabase-js, dotenv, ejs, express, marked.
+
+• package-lock.json (~37 KB)
+  - Deterministic lockfile for all installed npm packages and their dependency trees.
+
+• supabase-schema.sql (45 lines, ~1.5 KB)
+  - PostgreSQL schema definitions for Supabase.
+  - Creates the `posts` table (id UUID, title, content, excerpt, author, tags TEXT[], created_at).
+  - Creates descending index on `created_at` for high-performance feed queries.
+  - Configures Row Level Security (RLS) policies for public SELECT, INSERT, UPDATE, DELETE.
+
+• vercel.json (6 lines, 73 B)
+  - Deployment configuration for Vercel to route all traffic (/(.*)) to the /api serverless function.
+
+• start.cmd (5 lines, 75 B)
+  - Windows batch script to launch the local dev server using `npx nodemon index.js`.
+
+• .env
+  - Local environment variables containing SUPABASE_URL, SUPABASE_ANON_KEY, and PORT.
+  - Excluded from version control.
+
+• .env.example (7 lines, 140 B)
+  - Template showing required environment variables for database connectivity.
+
+• .gitignore (45 B)
+  - Git ignore file excluding node_modules/, .env, and OS-generated metadata.
+
+• .agents/AGENTS.md (4 lines, 267 B)
+  - Workspace behavioral instructions (rules for granular git commits).
+
+• README.md (107 lines, ~3.8 KB)
+  - Comprehensive project documentation, feature list, tech stack, and setup/deployment guides.
+
+• READING_GUIDE.md (52 lines, ~2.95 KB)
+  - Recommended reading order and code explanation for understanding the codebase.
+
+
+--- FRONTEND VIEWS (EJS TEMPLATES) ---
+• views/partials/header.ejs (238 lines, ~14.2 KB)
+  - Shared HTML <head>, Google Fonts links, stylesheet link, and favicon.
+  - Zero-flicker client-side theme initialization script (runs before DOM render).
+  - Splash Intro Animation overlay with turned-down folded page SVG logo & wagging tail.
+  - Floating Medium-style Sidebar Navigation (Feed, Library, Topics #Tech, #Design, #Thoughts, Theme Switcher, Back to Top).
+  - Dynamic Island Pill Navbar with reading/scroll progress percentage tracker and interactive branding.
+
+• views/partials/footer.ejs (292 lines, ~12.5 KB)
+  - Shared page footer with copyright notice.
+  - Saved Stories (Bookmark Library) slide-out drawer modal.
+  - Client-side synchronized dark/light theme switching logic.
+  - LocalStorage-backed bookmark management system (add/remove/drawer rendering).
+  - Dynamic Island scroll listener with requestAnimationFrame and hysteresis threshold.
+
+• views/index.ejs (72 lines, ~4.1 KB)
+  - Homepage story feed.
+  - Hero header with retro badge.
+  - Interactive topic pill filter chips (#Tech, #Design, #Thoughts, #Life, #Coding) with dynamic post counts.
+  - Post card grid showing title, author, date, reading time pill, tags, excerpt, and bookmark toggle.
+  - Graceful empty state when no posts match filter.
+
+• views/post.ejs (60 lines, ~3.3 KB)
+  - Full reading view for single blog posts.
+  - Displays tags, post heading, author pill, date pill, reading time.
+  - Formatted multi-paragraph / rich-HTML story body.
+  - Action buttons: Bookmark story, Edit post, Delete post.
+
+• views/new.ejs (459 lines, ~23.2 KB)
+  - Medium-style rich text story composer.
+  - Sub-header formatting pill toolbox (Bold, Italic, H2, H3, Quote, Bullet List, Link, Photo, Divider).
+  - Floating bubble selection toolbar anchored to active highlighted text.
+  - Base64 local image picker and insertion.
+  - Preset and custom topic tag selector chips.
+  - ContentEditable live writing canvas with custom placeholder.
+
+• views/edit.ejs (460 lines, ~23.9 KB)
+  - Story editing view pre-populated with existing post title, author, tags, and rich content.
+  - Full editing toolset matching new.ejs for seamless updates.
+
+• views/404.ejs (13 lines, 393 B)
+  - Custom styled error and missing post page with return-to-home button.
+
+
+--- STYLES & GRAPHICS ---
+• public/styles/style.css (2,449 lines, ~57.5 KB)
+  - Comprehensive CSS design system with CSS custom properties:
+    - Light Mode Palette (Warm cream/terracotta: #f4eee0, #4a4036, #d19a79)
+    - Dark Mode Palette (Synth night/violet: #1a1625, #e0dced, #8c7aa9)
+  - Typography systems (Lora serif for stories, Inter for UI, Space Mono for lofi accents).
+  - Dynamic Island pill animations and morphing classes.
+  - Medium floating sidebar styling with active route indicators and tooltips.
+  - Bookmark drawer modal styles and backdrop filters.
+  - Responsive breakpoints for mobile, tablet, and desktop viewports.
+
+• public/images/logo.svg (47 lines, ~1.5 KB)
+  - Custom vector logo: speech bubble body with turned-down corner fold, terracotta-to-violet gradient, and micro article lines.
+
+• public/images/favicon.svg (47 lines, ~1.5 KB)
+  - Vector favicon for browser tabs.
+
+• public/images/star-christmas-svgrepo-com.svg (39 lines, ~1.9 KB)
+  - Decorative star vector icon asset.
+
+
+================================================================================
+2. NPM PACKAGES & RUNTIME DEPENDENCIES
+================================================================================
+• express (^4.21.0)
+  - Fast, minimalist web framework for Node.js handling routing and middleware.
+
+• ejs (^3.1.10)
+  - Embedded JavaScript templating engine for rendering server-side dynamic HTML views.
+
+• @supabase/supabase-js (^2.112.3)
+  - Official Supabase client for performing queries and mutations on PostgreSQL.
+
+• dotenv (^17.4.2)
+  - Loads environment variables from .env file into process.env.
+
+• marked (^18.0.9)
+  - High-speed markdown parser and compiler.
+
+
+================================================================================
+3. EXTERNAL WEB SERVICES, CDNS & FONTS
+================================================================================
+• Google Fonts CDN (fonts.googleapis.com / fonts.gstatic.com):
+  1. Lora (Weights: 400, 500, 600, 700 - Normal & Italic)
+     - Applied to: Story titles, article paragraphs, quotes, long-form reading content.
+  2. Inter (Weights: 400, 500, 600, 700)
+     - Applied to: Navigation bar, buttons, dialogs, form inputs, tooltips, sidebar.
+  3. Space Mono (Weights: 400, 700 - Normal & Italic)
+     - Applied to: Brand wordmark, topic tags, metadata pills, date stamps, hero badges.
+
+• Supabase Cloud:
+  - Managed PostgreSQL database with instant REST APIs, connection pooling, and Row Level Security.
+
+• Vercel Cloud:
+  - Serverless edge hosting and deployment platform.
+
+
+================================================================================
+4. CLIENT-SIDE BROWSER TECHNOLOGIES & APIS USED
+================================================================================
+• localStorage:
+  - "theme": Persists "dark-mode" or "light-mode" across page reloads with zero flicker.
+  - "miniblogs_bookmarks": Stores saved story objects ([{id, title, author}]) for offline library access.
+
+• sessionStorage:
+  - "miniblogsSplashShown": Tracks splash screen playback so the intro animation only runs once per browser session.
+
+• Web APIs & DOM APIs:
+  - Selection & Range API: Calculates exact bounding rect coordinates to anchor floating bubble toolbars over selected text.
+  - FileReader API: Converts user-selected image files to Base64 data URLs for inline article embeds.
+  - ContentEditable & document.execCommand: Provides rich text formatting (bold, italic, headings, lists, quotes, links).
+  - requestAnimationFrame: Throttles dynamic scroll progress calculations for lag-free 60fps navbar morphing.
+
+================================================================================
