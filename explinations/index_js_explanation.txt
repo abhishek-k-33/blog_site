@@ -1,0 +1,518 @@
+================================================================================
+LINE-BY-LINE EXPLANATION OF INDEX.JS (MINIBLOGS BACKEND)
+================================================================================
+
+This document provides a thorough, line-by-line breakdown of index.js.
+It explains what each line of code does, why it is written that way, and how all the
+components (Express, Supabase, Middleware, CRUD routes, and Fallbacks) work together.
+
+================================================================================
+SECTION 1: IMPORTS & ENVIRONMENT CONFIGURATION (Lines 1 - 6)
+================================================================================
+
+Line 1:
+    require("dotenv").config();
+    • What it does: Loads the 'dotenv' package and runs its config() method.
+    • Why: It reads the hidden '.env' file in the root folder and loads any defined
+      variables (like SUPABASE_URL, SUPABASE_ANON_KEY, and PORT) into Node.js's
+      'process.env' object. This keeps sensitive API keys and secrets safe.
+
+Line 2:
+    const express = require("express");
+    • What it does: Imports the Express framework module into the 'express' constant.
+    • Why: Express is the core web framework used to create the HTTP server, define
+      URL routes, and handle requests/responses.
+
+Line 3:
+    const path = require("path");
+    • What it does: Imports Node.js's built-in 'path' module.
+    • Why: Provides cross-platform utilities for working with file and directory
+      paths (handles Windows '\' and Linux/Mac '/' automatically).
+
+Line 4:
+    const fs = require("fs").promises;
+    • What it does: Imports the promise-based (asynchronous) version of Node's
+      built-in File System module.
+    • Why: Allows us to read and write local JSON files asynchronously using
+      modern async/await syntax without blocking server operations.
+
+Line 5:
+    const fsSync = require("fs");
+    • What it does: Imports the standard synchronous File System module.
+    • Why: Used for quick synchronous utility checks like checking if a file
+      exists (fsSync.existsSync).
+
+Line 6:
+    (Empty line for readability and section separation).
+
+
+================================================================================
+SECTION 2: INITIALIZING THE EXPRESS APPLICATION & SETTINGS (Lines 7 - 14)
+================================================================================
+
+Line 7:
+    const app = express();
+    • What it does: Creates an instance of an Express application.
+    • Why: 'app' is the central object used to register middleware, define routes,
+      and configure server settings.
+
+Line 8:
+    const port = process.env.PORT || 5000;
+    • What it does: Determines the port number the server will listen on.
+    • Why: Checks if a PORT variable is set in process.env (e.g., when hosted on a
+      cloud platform). If not set, it defaults to port 5000 for local development.
+
+Line 9:
+    (Empty line).
+
+Line 10:
+    app.set("views", path.join(__dirname, "views"));
+    • What it does: Tells Express where the frontend template files (views) are located.
+    • Why: '__dirname' is the absolute path to the directory containing index.js.
+      path.join ensures the path resolves correctly to the '/views' folder on any OS.
+
+Line 11:
+    app.set("view engine", "ejs");
+    • What it does: Sets EJS (Embedded JavaScript) as the default template engine.
+    • Why: Enables Express to render dynamic .ejs files when res.render() is called.
+
+Line 12:
+    app.use(express.static(path.join(__dirname, "public")));
+    • What it does: Registers built-in static file middleware pointing to the '/public' folder.
+    • Why: Allows the browser to directly fetch static assets like CSS files
+      (/styles/style.css), images (/images/logo.svg), and scripts without needing
+      explicit route handlers.
+
+Line 13:
+    app.use(express.urlencoded({ extended: true }));
+    • What it does: Middleware that parses incoming HTTP POST request bodies containing
+      URL-encoded form data (from standard HTML <form> submissions).
+    • Why: Makes form input fields accessible under 'req.body' (e.g., req.body.title).
+      '{ extended: true }' allows parsing of rich objects and arrays.
+
+Line 14:
+    (Empty line).
+
+
+================================================================================
+SECTION 3: DATABASE LAYER SETUP (SUPABASE & LOCAL FALLBACK) (Lines 15 - 29)
+================================================================================
+
+Line 15:
+    // --- DATABASE LAYER (Supabase PostgreSQL / Local Fallback) ---
+    • Comment describing the database connectivity architecture.
+
+Line 16:
+    let supabase = null;
+    • What it does: Declares a variable 'supabase' and initializes it to null.
+    • Why: Holds the active Supabase client instance if credentials are valid.
+
+Line 17:
+    const supabaseUrl = process.env.SUPABASE_URL;
+    • What it does: Retrieves the Supabase project URL from the environment variables.
+
+Line 18:
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+    • What it does: Retrieves the public/anon API key from the environment variables.
+
+Line 19:
+    (Empty line).
+
+Line 20:
+    if (supabaseUrl && supabaseKey) {
+    • What it does: Checks whether both Supabase URL and Key are provided.
+
+Line 21:
+    const { createClient } = require("@supabase/supabase-js");
+    • What it does: Imports the 'createClient' factory function from the official Supabase SDK.
+
+Line 22:
+    supabase = createClient(supabaseUrl, supabaseKey);
+    • What it does: Initializes the Supabase client connected to your cloud PostgreSQL database.
+
+Line 23:
+    console.log("Connected to Supabase (PostgreSQL).");
+    • What it does: Logs a success message to the terminal console.
+
+Line 24:
+    } else {
+    • What it does: Fallback branch executed if Supabase credentials are missing.
+
+Line 25:
+    console.log("Supabase credentials not found. Using local JSON file fallback.");
+    • What it does: Logs a notification that the app will work offline using local JSON storage.
+
+Line 26:
+    }
+
+Line 27:
+    (Empty line).
+
+Line 28:
+    const DATA_FILE = path.join(__dirname, "data.json");
+    • What it does: Absolute path to the fallback file 'data.json' used when offline.
+
+Line 29:
+    (Empty line).
+
+
+================================================================================
+SECTION 4: HELPER FUNCTIONS & DATA FORMATTERS (Lines 30 - 99)
+================================================================================
+
+--- Function: extractTags(post) (Lines 30 - 66) ---
+Extracts, sanitizes, and normalizes tags from any post object format.
+
+Line 30:
+    // Helper: Extract and normalize tags from post object with smart heuristics
+Line 31:
+    const extractTags = (post) => {
+    • Begins the tag extraction helper function.
+
+Lines 32-34:
+    if (Array.isArray(post.tags) && post.tags.length > 0) {
+        return post.tags.map(t => String(t).trim().replace(/^#/, "")).filter(Boolean);
+    }
+    • If post.tags is already an array, trims whitespace, removes leading '#' symbols,
+      and filters out any empty strings.
+
+Lines 35-45:
+    if (typeof post.tags === "string" && post.tags.trim()) {
+        try {
+            const parsed = JSON.parse(post.tags);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed.map(t => String(t).trim().replace(/^#/, "")).filter(Boolean);
+            }
+        } catch (e) {
+            const splitTags = post.tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean);
+            if (splitTags.length > 0) return splitTags;
+        }
+    }
+    • If post.tags is a string, first attempts to parse it as JSON (in case it was
+      stored as a stringified array in PostgreSQL). If not JSON, it splits the
+      string by commas (e.g. "Tech, Coding") and cleans up each tag.
+
+Lines 46-48:
+    if (post.tag && typeof post.tag === "string" && post.tag.trim()) {
+        return [post.tag.trim().replace(/^#/, "")];
+    }
+    • Backwards compatibility for older single 'tag' field.
+
+Lines 50-65:
+    // Smart heuristic topic inference for existing stories
+    const text = ((post.title || "") + " " + (post.content || "")).toLowerCase();
+    const inferred = [];
+    if (text.includes("code") || text.includes("javascript") || text.includes("web") || ...) {
+        inferred.push("Tech");
+    }
+    if (text.includes("design") || text.includes("ui") || text.includes("css") || ...) {
+        inferred.push("Design");
+    }
+    if (text.includes("book") || text.includes("read") || text.includes("story") || ...) {
+        inferred.push("Life");
+    }
+    if (inferred.length === 0) {
+        inferred.push("Thoughts");
+    }
+    return inferred;
+    • If no tags exist on an older blog post, automatically categorizes the story into
+      relevant topics ("Tech", "Design", "Life", or "Thoughts") based on keywords
+      in its title and content.
+
+Line 66:
+    };
+
+
+--- Function: formatPost(post) (Lines 68 - 94) ---
+Enriches a raw post record with formatted date, reading time estimate, and word count.
+
+Line 68-69:
+    const formatPost = (post) => {
+        if (!post) return null;
+    • Guard clause: returns null if the input post is null/undefined.
+
+Lines 70-82:
+    let formattedDate = post.date;
+    if (post.created_at) {
+        try {
+            formattedDate = new Date(post.created_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            });
+        } catch (e) {
+            formattedDate = post.date || new Date().toLocaleDateString();
+        }
+    }
+    • Formats PostgreSQL TIMESTAMPTZ (ISO timestamp) into clean reader-friendly dates
+      (e.g., "Aug 19, 2026").
+
+Lines 83-84:
+    const words = post.content ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
+    const readingTime = Math.max(1, Math.ceil(words / 180));
+    • Calculates total word count by splitting text on whitespace.
+    • Computes reading time in minutes based on average human reading speed
+      (180 words/min), guaranteeing a minimum of 1 minute.
+
+Lines 85-93:
+    const tags = extractTags(post);
+    return {
+        ...post,
+        date: formattedDate || new Date().toLocaleDateString(),
+        readingTime,
+        words,
+        tags,
+    };
+    • Returns the enriched post object including all normalized properties.
+
+Line 94:
+    };
+
+
+--- Function: generateId() (Lines 96 - 99) ---
+Line 96-99:
+    const generateId = () => {
+        return Math.random().toString(36).substring(2, 11);
+    };
+    • Generates a unique 9-character alphanumeric ID for local offline fallback posts.
+
+
+================================================================================
+SECTION 5: LOCAL JSON STORAGE HELPERS (Lines 101 - 120)
+================================================================================
+
+Lines 101-112:
+    const readLocalPosts = async () => {
+        try {
+            if (fsSync.existsSync(DATA_FILE)) {
+                const data = await fs.readFile(DATA_FILE, "utf-8");
+                return JSON.parse(data);
+            }
+        } catch (err) {
+            console.error("Error reading local posts file:", err);
+        }
+        return [];
+    };
+    • Asynchronously reads and parses 'data.json'. Returns empty array if file does not exist.
+
+Lines 114-120:
+    const writeLocalPosts = async (posts) => {
+        try {
+            await fs.writeFile(DATA_FILE, JSON.stringify(posts, null, 2), "utf-8");
+        } catch (err) {
+            console.error("Error writing local posts file:", err);
+        }
+    };
+    • Asynchronously serializes post records to 'data.json' formatted with 2-space indentation.
+
+
+================================================================================
+SECTION 6: UNIFIED DATA ACCESS LAYER (CRUD OPERATIONS) (Lines 122 - 251)
+================================================================================
+
+--- 1. getAllPosts() (Lines 123 - 139) ---
+Lines 123-136:
+    const getAllPosts = async () => {
+        if (supabase) {
+            try {
+                const { data, error } = await supabase
+                    .from("posts")
+                    .select("*")
+                    .order("created_at", { ascending: false });
+                if (error) throw error;
+                return (data || []).map(formatPost);
+            } catch (err) {
+                console.error("Supabase getAllPosts error:", err.message);
+                return [];
+            }
+        }
+        const localPosts = await readLocalPosts();
+        return localPosts.map(formatPost);
+    };
+    • Queries all posts from Supabase ordered by newest first ('created_at' DESC).
+    • If Supabase is offline or not configured, falls back to reading 'data.json'.
+
+
+--- 2. getPostById(id) (Lines 141 - 159) ---
+Lines 141-159:
+    const getPostById = async (id) => {
+        if (supabase) {
+            try {
+                const { data, error } = await supabase
+                    .from("posts")
+                    .select("*")
+                    .eq("id", id)
+                    .maybeSingle();
+                if (error) throw error;
+                return data ? formatPost(data) : null;
+            } catch (err) {
+                console.error("Supabase getPostById error:", err.message);
+                return null;
+            }
+        }
+        const localPosts = await readLocalPosts();
+        const post = localPosts.find((p) => String(p.id) === String(id));
+        return post ? formatPost(post) : null;
+    };
+    • Fetches a single post matching the given ID from Supabase or local array.
+
+
+--- 3. createPost({ title, content, excerpt, author, tags }) (Lines 161 - 196) ---
+Lines 161-181:
+    • Normalizes tags into an array.
+    • Inserts a new row into the Supabase 'posts' table and returns the created record.
+    • Has built-in backward compatibility if the database schema does not yet have a 'tags' column.
+Lines 182-196:
+    • Local fallback: Generates an ID, stamps current timestamp, prepends to array (unshift),
+      and writes to 'data.json'.
+
+
+--- 4. updatePost(id, { title, content, excerpt, author, tags }) (Lines 198 - 236) ---
+Lines 198-220:
+    • Updates the row in Supabase where column 'id' matches the parameter ID.
+Lines 221-236:
+    • Local fallback: Finds the matching index in local array and replaces properties.
+
+
+--- 5. deletePost(id) (Lines 238 - 251) ---
+Lines 238-246:
+    • Executes a SQL DELETE on Supabase for the row with the matching ID.
+Lines 247-251:
+    • Local fallback: Filters out the post from the local array and saves 'data.json'.
+
+
+================================================================================
+SECTION 7: SANITIZATION & EXCERPT GENERATORS (Lines 253 - 270)
+================================================================================
+
+Lines 253-261:
+    const simpleSanitize = (str) => {
+        if (!str) return "";
+        return String(str)
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+    • Sanitizes user input for author and title to prevent Cross-Site Scripting (XSS) attacks.
+
+Lines 263-270:
+    const generateExcerpt = (content) => {
+        if (!content) return "";
+        const cleanText = content
+            .replace(/<[^>]*>?/gm, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        return cleanText.length > 130 ? cleanText.substring(0, 127) + "..." : cleanText;
+    };
+    • Strips HTML tags from rich content, collapses whitespace, and generates a clean
+      130-character preview snippet with "..." for post cards on the home page.
+
+
+================================================================================
+SECTION 8: HTTP ROUTES & CONTROLLERS (Lines 272 - 390)
+================================================================================
+
+--- Route 1: GET / (Homepage Feed & Tag Filtering) (Lines 275 - 299) ---
+Line 275: app.get("/", async (req, res, next) => {
+Line 277: res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    • Prevents browsers from showing stale cached feeds after updates.
+Line 278: const allPosts = await getAllPosts();
+Line 279: const selectedTag = req.query.tag ? req.query.tag.trim() : null;
+    • Reads optional '?tag=Tech' query string from the URL.
+Lines 281-288:
+    • Aggregates total post counts per tag across all available articles.
+Lines 290-294:
+    • Filters the post list if a specific tag was clicked by the user.
+Line 295: res.render("index.ejs", { posts, allPosts, allTags, selectedTag, tagCounts });
+    • Renders 'views/index.ejs' and injects the posts, tags, and count data into the template.
+
+
+--- Route 2: GET /new (Write Story Composer Form) (Lines 301 - 304) ---
+Line 301: app.get("/new", (req, res) => {
+Line 303: res.render("new.ejs");
+    • Displays the Medium-style rich text story composer form.
+
+
+--- Route 3: POST /posts (Publish New Story) (Lines 307 - 326) ---
+Line 307: app.post("/posts", async (req, res, next) => {
+Lines 309-312:
+    • Validates that title, content, and author are non-empty. Returns 400 Bad Request if missing.
+Lines 314-320:
+    • Sanitizes inputs and calls createPost().
+Line 322: res.redirect("/");
+    • Redirects the user to the homepage feed upon successful post creation.
+
+
+--- Route 4: GET /posts/:id (View Single Post) (Lines 329 - 340) ---
+Line 329: app.get("/posts/:id", async (req, res, next) => {
+Line 331: const post = await getPostById(req.params.id);
+Lines 332-336:
+    • Renders 'views/post.ejs' if post exists; otherwise renders 'views/404.ejs'.
+
+
+--- Route 5: GET /edit/:id (Show Edit Post Form) (Lines 342 - 354) ---
+Line 342: app.get("/edit/:id", async (req, res, next) => {
+Line 344: const post = await getPostById(req.params.id);
+Lines 345-350:
+    • Renders 'views/edit.ejs' pre-filled with post data, or 404 if post is missing.
+
+
+--- Route 6: POST /update/:id (Update Existing Post) (Lines 357 - 380) ---
+Line 357: app.post("/update/:id", async (req, res, next) => {
+Lines 359-362:
+    • Validates required form fields.
+Lines 364-370:
+    • Updates the post in database with sanitized title, author, tags, and new excerpt.
+Lines 372-376:
+    • Redirects to '/posts/:id' to view the updated story.
+
+
+--- Route 7: POST /delete/:id (Delete Post) (Lines 383 - 390) ---
+Line 383: app.post("/delete/:id", async (req, res, next) => {
+Line 385: await deletePost(req.params.id);
+Line 386: res.redirect("/");
+    • Deletes the post and redirects back to the homepage feed.
+
+
+================================================================================
+SECTION 9: ERROR HANDLING & SERVER EXPORT (Lines 392 - 411)
+================================================================================
+
+--- Catch-All 404 Route (Lines 393 - 395) ---
+Lines 393-395:
+    app.use((req, res) => {
+        res.status(404).render("404.ejs", { message: "Page not found." });
+    });
+    • Catches any incoming HTTP request that did not match any defined routes and
+      renders the retro 404 error page.
+
+
+--- Global Error Handler (Lines 398 - 401) ---
+Lines 398-401:
+    app.use((err, req, res, next) => {
+        console.error("Unhandled error:", err);
+        res.status(500).render("404.ejs", { message: "An unexpected error occurred. Please try again later." });
+    });
+    • 4-argument Express error middleware. Catches unhandled exceptions and displays
+      a friendly 500 error screen instead of crashing the server process.
+
+
+--- Server Listen & Export (Lines 404 - 410) ---
+Lines 404-408:
+    if (!process.env.VERCEL) {
+        app.listen(port, () => {
+            console.log(`Server running on port ${port}`);
+        });
+    }
+    • When running locally (or on a dedicated VPS), starts listening for HTTP
+      connections on the specified port.
+    • Skips starting a listener when deployed on Vercel, because Vercel wraps the
+      app inside a serverless lambda function automatically.
+
+Line 410:
+    module.exports = app;
+    • Exports the configured Express application object so it can be imported by
+      'api/index.js' or automated test suites.
+
+================================================================================
