@@ -101,8 +101,8 @@ a:hover {
     border-radius: 9999px;
     box-shadow: var(--pill-shadow);
     padding: 8px 20px;
-    width: auto;
-    min-width: 320px;
+    width: 100%;
+    min-width: 0;
     max-width: 800px;
     display: flex;
     align-items: center;
@@ -356,81 +356,28 @@ a:hover {
     box-shadow: 1px 1px 0px var(--text-color);
 }
 
-/* =========================================
-   MORPHED DYNAMIC ISLAND STATE (ON SCROLL)
-   ========================================= */
-
-.site-header.is-morphed .pill-navbar {
-    padding: 6px 18px;
-    border-color: var(--accent-color);
-    box-shadow: 0 10px 25px -4px var(--pill-glow), var(--pill-shadow);
+/* Responsive Navbar Button Text States */
+.btn-pill-text-desktop {
+    display: inline;
 }
 
-.site-header.is-morphed .pill-dynamic-info {
-    opacity: 1;
-    max-width: 280px;
-    padding: 0 10px;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 600px) {
-    .site-header.pill-header {
-        top: 10px;
-        padding: 0 8px;
-    }
-
-    .pill-navbar {
-        min-width: unset;
-        width: 100%;
-        padding: 6px 12px;
-    }
-
-    .pill-content {
-        gap: 8px;
-    }
-
-    .pill-logo .logo-text {
-        font-size: 0.95rem;
-    }
-
-    .pill-nav-link {
-        display: none;
-    }
-
-    .btn-pill-primary {
-        padding: 4px 10px;
-        font-size: 0.8rem;
-    }
-
-    .theme-switch {
-        width: 48px;
-        height: 28px;
-    }
-
-    .slider:before {
-        height: 20px;
-        width: 20px;
-        font-size: 11px;
-        left: 4px;
-        bottom: 4px;
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(20px);
-    }
+.btn-pill-text-mobile {
+    display: none;
 }
 
 /* Buttons & Switches */
 .theme-switch-wrapper {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .theme-switch {
     position: relative;
     display: inline-block;
-    width: 60px;
-    height: 34px;
+    width: 52px;
+    height: 30px;
+    flex-shrink: 0;
 }
 
 .theme-switch input {
@@ -447,22 +394,22 @@ a:hover {
     right: 0;
     bottom: 0;
     background-color: #ccc;
-    transition: .4s;
+    transition: .3s;
 }
 
 .slider:before {
     position: absolute;
     content: "☀️";
-    font-size: 14px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 26px;
-    width: 26px;
+    height: 22px;
+    width: 22px;
     left: 4px;
     bottom: 4px;
     background-color: white;
-    transition: .4s;
+    transition: .3s;
 }
 
 input:checked + .slider {
@@ -470,7 +417,7 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-    transform: translateX(26px);
+    transform: translateX(22px);
     content: "🌙";
 }
 
@@ -2405,15 +2352,89 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 @media (max-width: 768px) {
     /* Header Safe Area & Fluid Navbar */
     .site-header.pill-header {
-        top: max(10px, env(safe-area-inset-top));
-        padding: 0 12px;
-        margin-bottom: 24px;
+        top: max(8px, env(safe-area-inset-top));
+        padding: 0 8px;
+        margin-bottom: 20px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .pill-navbar {
-        min-width: unset;
         width: 100%;
-        padding: 7px 14px;
+        max-width: 100%;
+        min-width: 0;
+        padding: 6px 10px;
+        box-sizing: border-box;
+    }
+
+    .pill-content {
+        width: 100%;
+        gap: 6px;
+        justify-content: space-between;
+    }
+
+    .pill-left {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .pill-logo {
+        padding: 2px 4px;
+        gap: 6px;
+    }
+
+    .pill-logo-icon {
+        width: 22px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    .pill-logo .logo-text {
+        font-size: 0.92rem;
+    }
+
+    .pill-nav {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .pill-nav-link {
+        display: none;
+    }
+
+    .btn-pill-text-desktop {
+        display: none;
+    }
+
+    .btn-pill-text-mobile {
+        display: inline;
+    }
+
+    .btn-pill-primary {
+        padding: 5px 10px;
+        font-size: 0.78rem;
+        white-space: nowrap;
+    }
+
+    .theme-switch {
+        width: 42px;
+        height: 24px;
+        min-width: 42px;
+    }
+
+    .slider:before {
+        height: 16px;
+        width: 16px;
+        font-size: 10px;
+        left: 4px;
+        bottom: 4px;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(18px);
     }
 
     /* Floating Dock at Bottom */
@@ -2423,22 +2444,29 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
         top: auto;
         transform: translateX(-50%);
         z-index: 1050;
+        width: max-content;
+        max-width: calc(100vw - 20px);
     }
 
     .sidebar-card-track {
         flex-direction: row;
         width: auto;
-        gap: 6px;
-        padding: 6px 10px;
-        border-radius: 16px;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 9999px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
     }
 
+    .sidebar-topics-section,
+    .sidebar-divider {
+        display: none !important;
+    }
+
     .sidebar-section {
         flex-direction: row;
-        gap: 6px;
+        gap: 8px;
         width: auto;
     }
 
@@ -2447,23 +2475,18 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
         display: none;
     }
 
-    .sidebar-divider {
-        width: 1px;
-        height: 22px;
-        margin: auto 2px;
-    }
-
     .sidebar-item-btn {
-        width: 42px;
-        height: 42px;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
         padding: 0;
         justify-content: center;
-        border-radius: 10px;
+        border-radius: 50%;
     }
 
     .sidebar-icon {
-        width: 20px;
-        height: 20px;
+        width: 19px;
+        height: 19px;
     }
 
     .sidebar-badge {
@@ -2478,13 +2501,14 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 
     /* Footer clearance for bottom dock */
     body {
-        padding-bottom: max(90px, calc(76px + env(safe-area-inset-bottom)));
+        padding-bottom: max(96px, calc(80px + env(safe-area-inset-bottom)));
     }
 
     .site-footer {
-        padding: 36px 16px;
-        padding-bottom: max(95px, calc(80px + env(safe-area-inset-bottom)));
-        margin-top: 40px;
+        padding: 32px 16px;
+        padding-bottom: max(100px, calc(85px + env(safe-area-inset-bottom)));
+        margin-top: 36px;
+        text-align: center;
     }
 
     /* Containers */
@@ -2494,16 +2518,16 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 
     /* Hero */
     .hero {
-        padding: 36px 20px;
-        margin-bottom: 30px;
+        padding: 34px 18px;
+        margin-bottom: 26px;
         border-radius: 16px;
     }
 
     .hero h1,
     .hero h2,
     .hero-title {
-        font-size: 1.95rem;
-        padding: 6px 18px;
+        font-size: 1.85rem;
+        padding: 6px 16px;
         line-height: 1.3;
     }
 
@@ -2514,7 +2538,7 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 
     /* Topics Pill Bar */
     .topics-pill-bar-wrapper {
-        margin-bottom: 24px;
+        margin-bottom: 22px;
         padding: 0 4px;
     }
 
@@ -2531,24 +2555,24 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 
     /* Posts Feed */
     .posts-grid {
-        gap: 24px;
+        gap: 22px;
     }
 
     .post-card {
-        padding: 24px 20px;
+        padding: 22px 18px;
         border-radius: 16px;
     }
 
     .post-title {
-        font-size: 1.55rem;
+        font-size: 1.5rem;
         line-height: 1.35;
         margin-bottom: 10px;
     }
 
     .post-excerpt {
-        font-size: 1.04rem;
+        font-size: 1.02rem;
         line-height: 1.68;
-        margin-bottom: 18px;
+        margin-bottom: 16px;
     }
 
     .post-meta-pills {
@@ -2577,21 +2601,21 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 
     /* Reader View */
     .single-post {
-        padding: 32px 22px;
+        padding: 28px 18px;
         border-radius: 18px;
-        margin-bottom: 32px;
+        margin-bottom: 30px;
     }
 
     .single-post .post-header {
-        margin-bottom: 28px;
-        padding-bottom: 20px;
+        margin-bottom: 26px;
+        padding-bottom: 18px;
     }
 
     .single-post .post-header h1,
     .single-post .post-header h2,
     .single-post-title {
-        font-size: 2.1rem;
-        line-height: 1.26;
+        font-size: 1.95rem;
+        line-height: 1.28;
         margin: 12px 0 16px;
     }
 
@@ -2601,26 +2625,26 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
     }
 
     .medium-story-content p {
-        margin-bottom: 22px;
+        margin-bottom: 20px;
         font-size: 1.14rem;
     }
 
     .medium-story-content h2 {
-        font-size: 1.7rem;
-        margin-top: 38px;
+        font-size: 1.65rem;
+        margin-top: 36px;
         margin-bottom: 14px;
     }
 
     .medium-story-content h3 {
-        font-size: 1.35rem;
-        margin-top: 30px;
+        font-size: 1.32rem;
+        margin-top: 28px;
         margin-bottom: 10px;
     }
 
     .medium-story-content blockquote {
-        font-size: 1.2rem;
+        font-size: 1.18rem;
         padding: 10px 0 10px 18px;
-        margin: 28px 0;
+        margin: 26px 0;
     }
 
     .post-actions {
@@ -2639,11 +2663,11 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
     /* Composer / Editor */
     .medium-editor-layout {
         padding: 0 4px;
-        margin-bottom: 40px;
+        margin-bottom: 36px;
     }
 
     .editor-header-toolbox {
-        top: max(68px, calc(58px + env(safe-area-inset-top)));
+        top: max(64px, calc(54px + env(safe-area-inset-top)));
     }
 
     .toolbox-pill {
@@ -2659,7 +2683,7 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
     }
 
     .medium-title-input {
-        font-size: 2rem;
+        font-size: 1.9rem;
     }
 
     .medium-story-content figure img {
@@ -2667,124 +2691,86 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
     }
 }
 
-/* Smartphone Breakpoint (<= 600px) */
-@media (max-width: 600px) {
-    /* Top Navbar */
+/* Compact Mobile (< 480px) */
+@media (max-width: 480px) {
     .site-header.pill-header {
-        padding: 0 8px;
+        padding: 0 6px;
     }
 
     .pill-navbar {
-        padding: 6px 10px;
-    }
-
-    .pill-content {
-        gap: 8px;
+        padding: 5px 8px;
     }
 
     .pill-logo .logo-text {
-        font-size: 0.95rem;
-    }
-
-    .pill-nav-link {
-        display: none;
+        font-size: 0.88rem;
     }
 
     .btn-pill-primary {
-        padding: 5px 11px;
-        font-size: 0.78rem;
-    }
-
-    .theme-switch {
-        width: 48px;
-        height: 28px;
-    }
-
-    .slider:before {
-        height: 20px;
-        width: 20px;
-        font-size: 11px;
-        left: 4px;
-        bottom: 4px;
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(20px);
-    }
-
-    /* Bottom Dock Simplification for Small Screens */
-    .sidebar-topics-section,
-    .sidebar-divider:nth-of-type(1) {
-        display: none;
+        padding: 4px 8px;
+        font-size: 0.74rem;
     }
 
     .sidebar-card-track {
-        gap: 8px;
-        padding: 6px 10px;
+        gap: 5px;
+        padding: 5px 8px;
     }
 
     .sidebar-item-btn {
-        width: 42px;
-        height: 42px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
     }
 
-    /* Bookmark Modal */
-    .bookmark-drawer {
-        width: calc(100% - 24px);
-        max-width: 420px;
-        padding: 18px 16px;
-        border-radius: 14px;
+    .sidebar-icon {
+        width: 17px;
+        height: 17px;
     }
-}
 
-/* Compact Mobile (< 480px) */
-@media (max-width: 480px) {
     .hero {
-        padding: 28px 14px;
-        margin-bottom: 24px;
+        padding: 26px 12px;
+        margin-bottom: 22px;
     }
 
     .hero h1,
     .hero h2,
     .hero-title {
-        font-size: 1.62rem;
-        padding: 6px 14px;
+        font-size: 1.55rem;
+        padding: 6px 12px;
     }
 
     .hero-pill-badge {
-        font-size: 0.8rem;
-        padding: 5px 12px;
-        text-align: center;
+        font-size: 0.78rem;
+        padding: 5px 10px;
     }
 
     .post-card {
-        padding: 18px 14px;
+        padding: 16px 12px;
         border-radius: 14px;
     }
 
     .post-title {
-        font-size: 1.38rem;
+        font-size: 1.32rem;
         line-height: 1.32;
     }
 
     .post-excerpt {
-        font-size: 0.98rem;
+        font-size: 0.96rem;
         margin-bottom: 14px;
     }
 
     .single-post {
-        padding: 22px 14px;
+        padding: 20px 12px;
         border-radius: 14px;
     }
 
     .single-post .post-header h1,
     .single-post .post-header h2,
     .single-post-title {
-        font-size: 1.75rem;
+        font-size: 1.68rem;
     }
 
     .medium-title-input {
-        font-size: 1.7rem;
+        font-size: 1.65rem;
     }
 
     .medium-composer-actions {
@@ -2799,17 +2785,22 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
         justify-content: center;
     }
 
+    .bookmark-drawer {
+        width: calc(100% - 16px);
+        padding: 16px 12px;
+    }
+
     .error-hero {
-        padding: 36px 18px;
-        margin: 20px auto;
+        padding: 32px 14px;
+        margin: 16px auto;
     }
 
     .error-title {
-        font-size: 1.85rem;
+        font-size: 1.75rem;
     }
 
     .error-description {
-        font-size: 1rem;
+        font-size: 0.95rem;
     }
 }
 
@@ -2848,6 +2839,7 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
     padding: 12px 28px;
     font-size: 1rem;
 }
+
 
 
 
