@@ -963,53 +963,99 @@ body.dark-mode .no-posts-cta:hover {
 .topic-pill-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 16px;
+    gap: 7px;
+    padding: 7px 18px;
     border-radius: 9999px;
-    background: var(--secondary-bg);
-    border: 2px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-color);
     color: var(--text-color);
-    font-size: 0.84rem;
-    font-weight: 700;
-    text-decoration: none;
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none !important;
     white-space: nowrap;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    opacity: 0.8;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
     transition: 
         transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
         background-color 0.22s ease,
         border-color 0.22s ease,
         color 0.22s ease,
+        opacity 0.22s ease,
         box-shadow 0.22s ease;
+}
+
+body.dark-mode .topic-pill-chip {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--text-color);
+    opacity: 0.85;
 }
 
 .topic-pill-chip:hover {
     color: var(--accent-color);
     border-color: var(--accent-color);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px var(--pill-glow);
-    text-decoration: none;
+    box-shadow: 0 6px 18px var(--pill-glow);
+    opacity: 1;
+    text-decoration: none !important;
 }
 
+/* High-Contrast Active Pill (wegrow & Option 1 style) */
 .topic-pill-chip.is-active {
-    background-color: var(--accent-color);
-    color: var(--bg-color);
+    background: #18181B;
+    color: #ffffff !important;
+    border-color: #18181B;
+    box-shadow: 0 4px 14px rgba(24, 24, 27, 0.2);
+    font-weight: 700;
+    opacity: 1;
+}
+
+body.dark-mode .topic-pill-chip.is-active {
+    background: #ffffff;
+    color: #121214 !important;
+    border-color: #ffffff;
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.25);
+    font-weight: 800;
+}
+
+.topic-pill-chip.is-active:hover {
+    background: var(--accent-color);
     border-color: var(--accent-color);
-    box-shadow: 0 6px 18px var(--pill-glow);
+    color: #ffffff !important;
+    box-shadow: 0 8px 22px var(--pill-glow);
+}
+
+body.dark-mode .topic-pill-chip.is-active:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #121214 !important;
 }
 
 .topic-pill-count {
-    background: var(--bg-color);
+    background: rgba(0, 0, 0, 0.06);
     color: var(--text-color);
-    font-size: 0.7rem;
-    padding: 1px 6px;
+    font-size: 0.72rem;
+    padding: 2px 7px;
     border-radius: 9999px;
     font-weight: 700;
     margin-left: 2px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body.dark-mode .topic-pill-count {
+    background: rgba(255, 255, 255, 0.12);
+    color: #F4F4F5;
 }
 
 .topic-pill-chip.is-active .topic-pill-count {
-    background: rgba(0, 0, 0, 0.25);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+body.dark-mode .topic-pill-chip.is-active .topic-pill-count {
+    background: rgba(0, 0, 0, 0.16);
+    color: #121214;
 }
 
 /* Active Category / Tag Filter Status Banner */
