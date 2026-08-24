@@ -2363,7 +2363,7 @@ body.dark-mode .meta-pill.meta-reading-time {
 }
 
 .single-post .post-header {
-    margin-bottom: 36px;
+    margin-bottom: 28px;
     padding-bottom: 24px;
     border-bottom: 1.5px dashed var(--border-color);
 }
@@ -2379,6 +2379,25 @@ body.dark-mode .meta-pill.meta-reading-time {
     margin: 16px 0 20px;
     color: var(--text-color);
     text-wrap: balance;
+}
+
+/* Article Lead Cover Banner */
+.article-lead-cover-wrapper {
+    width: 100%;
+    max-height: 420px;
+    margin: 0 0 32px 0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--secondary-bg);
+    border: 1.5px solid var(--border-color);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.article-lead-cover-img {
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover;
+    display: block;
 }
 
 /* Focused Longform Article Typography */

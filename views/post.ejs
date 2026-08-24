@@ -28,6 +28,12 @@
                 </div>
             </header>
 
+            <% if (post.coverImage || post.thumbnail) { %>
+                <div class="article-lead-cover-wrapper">
+                    <img src="<%= post.coverImage || post.thumbnail %>" alt="<%= post.title %>" class="article-lead-cover-img" loading="eager">
+                </div>
+            <% } %>
+
             <!-- Inline Mobile Table of Contents (if headings exist) -->
             <div class="mobile-toc-accordion" id="mobile-toc-accordion" style="display: none;">
                 <button type="button" class="mobile-toc-toggle" id="mobile-toc-toggle" aria-expanded="false">

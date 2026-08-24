@@ -72,6 +72,29 @@ const extractTags = (post) => {
     return inferred;
 };
 
+// Helper: Extract cover image and clean content
+const extractCoverAndCleanContent = (rawContent) => {
+    if (!rawContent) return { cleanContent: "", coverImage: null };
+    let content = rawContent;
+    let coverImage = null;
+
+    // Check for explicit cover tag <!-- COVER_IMAGE: url/data -->
+    const coverMatch = content.match(/<!--\s*COVER_IMAGE:\s*([\s\S]*?)\s*-->/);
+    if (coverMatch) {
+        coverImage = coverMatch[1].trim();
+        content = content.replace(/<!--\s*COVER_IMAGE:\s*[\s\S]*?\s*-->/, "").trim();
+    }
+
+    // Check for hidden cover div <div data-cover-image="..." style="display:none"></div>
+    const divMatch = content.match(/<div\s+data-cover-image=["']([\s\S]*?)["'][^>]*>\s*<\/div>/i);
+    if (divMatch) {
+        if (!coverImage) coverImage = divMatch[1].trim();
+        content = content.replace(/<div\s+data-cover-image=["'][\s\S]*?["'][^>]*>\s*<\/div>/gi, "").trim();
+    }
+
+    return { cleanContent: content, coverImage };
+};
+
 // Helper: Format post object date, word count, reading time, and tags
 const formatPost = (post) => {
     if (!post) return null;
@@ -87,15 +110,17 @@ const formatPost = (post) => {
             formattedDate = post.date || new Date().toLocaleDateString();
         }
     }
-    const words = post.content ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
+    const { cleanContent, coverImage: embeddedCover } = extractCoverAndCleanContent(post.content || "");
+    const words = cleanContent ? cleanContent.trim().split(/\s+/).filter(Boolean).length : 0;
     const readingTime = Math.max(1, Math.ceil(words / 180));
     const tags = extractTags(post);
-    const imgMatch = post.content ? post.content.match(/<img[^>]+src=["']([^"']+)["']/i) : null;
-    const thumbnail = post.coverImage || post.cover_image || (imgMatch ? imgMatch[1] : null);
+    const imgMatch = cleanContent ? cleanContent.match(/<img[^>]+src=["']([^"']+)["']/i) : null;
+    const thumbnail = post.coverImage || post.cover_image || embeddedCover || (imgMatch ? imgMatch[1] : null);
     const primaryTag = (tags && tags.length > 0) ? tags[0].toLowerCase() : "thoughts";
 
     return {
         ...post,
+        content: cleanContent,
         date: formattedDate || new Date().toLocaleDateString(),
         readingTime,
         words,
@@ -168,11 +193,17 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage })
     const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
     const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
 
+    // Permanently embed cover into content for guaranteed persistence across all database schemas
+    let contentWithCover = content || "";
+    if (cleanCover) {
+        contentWithCover = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithCover;
+    }
+
     if (supabase) {
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title, content, excerpt, author, tags: cleanTags, cover_image: cleanCover }])
+                .insert([{ title, content: contentWithCover, excerpt, author, tags: cleanTags, cover_image: cleanCover }])
                 .select()
                 .single();
             if (!error && data) return formatPost(data);
@@ -182,7 +213,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage })
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title, content, excerpt, author, tags: cleanTags }])
+                .insert([{ title, content: contentWithCover, excerpt, author, tags: cleanTags }])
                 .select()
                 .single();
             if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
@@ -191,7 +222,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage })
         }
         const { data, error } = await supabase
             .from("posts")
-            .insert([{ title, content, excerpt, author }])
+            .insert([{ title, content: contentWithCover, excerpt, author }])
             .select()
             .single();
         if (error) throw error;
@@ -201,7 +232,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage })
     const newPost = {
         id: generateId(),
         title,
-        content,
+        content: contentWithCover,
         excerpt,
         author,
         tags: cleanTags.length > 0 ? cleanTags : undefined,
@@ -218,11 +249,18 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
     const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
     const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
 
+    // Clean prior embedded cover first, then embed new one if present
+    const { cleanContent } = extractCoverAndCleanContent(content || "");
+    let contentWithCover = cleanContent;
+    if (cleanCover) {
+        contentWithCover = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithCover;
+    }
+
     if (supabase) {
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .update({ title, content, excerpt, author, tags: cleanTags, cover_image: cleanCover })
+                .update({ title, content: contentWithCover, excerpt, author, tags: cleanTags, cover_image: cleanCover })
                 .eq("id", id)
                 .select()
                 .single();
@@ -233,7 +271,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .update({ title, content, excerpt, author, tags: cleanTags })
+                .update({ title, content: contentWithCover, excerpt, author, tags: cleanTags })
                 .eq("id", id)
                 .select()
                 .single();
@@ -243,7 +281,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
         }
         const { data, error } = await supabase
             .from("posts")
-            .update({ title, content, excerpt, author })
+            .update({ title, content: contentWithCover, excerpt, author })
             .eq("id", id)
             .select()
             .single();
