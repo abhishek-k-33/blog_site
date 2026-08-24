@@ -335,6 +335,31 @@ body.dark-mode .navbar-search-box {
         padding 0.25s ease;
 }
 
+.site-header.is-morphed .pill-dynamic-info {
+    opacity: 1;
+    max-width: 320px;
+    padding: 0 4px;
+}
+
+.pill-tagline-info {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-tagline-text {
+    font-family: var(--font-ui);
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.65;
+    letter-spacing: 0.02em;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
 .dynamic-title {
     max-width: 140px;
     overflow: hidden;
@@ -3407,7 +3432,8 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
         overflow: hidden;
     }
 
-    .navbar-topics-nav {
+    .navbar-topics-nav,
+    .pill-tagline-info {
         display: none !important;
     }
 

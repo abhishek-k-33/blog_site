@@ -230,12 +230,18 @@
                     <input type="search" id="navbar-search-input" class="navbar-search-input" placeholder="Search..." aria-label="Search stories" autocomplete="off">
                 </div>
 
-                <!-- Center: Dynamic Island Scroll & Reading Tracker (Visible when scrolled on single post) -->
-                <div class="pill-dynamic-info" id="pill-dynamic-info">
-                    <span class="dynamic-dot"></span>
-                    <span class="dynamic-title" id="dynamic-title">Reading</span>
-                    <span class="dynamic-percent" id="dynamic-percent">0%</span>
-                </div>
+                <!-- Center: Dynamic Island Scroll & Reading Tracker (Visible ONLY on single post pages when reading) -->
+                <% if (typeof post !== 'undefined' && post && post.title) { %>
+                    <div class="pill-dynamic-info" id="pill-dynamic-info">
+                        <span class="dynamic-dot"></span>
+                        <span class="dynamic-title" id="dynamic-title"><%= post.title.length > 20 ? post.title.substring(0, 18) + '…' : post.title %></span>
+                        <span class="dynamic-percent" id="dynamic-percent">0%</span>
+                    </div>
+                <% } else { %>
+                    <div class="pill-tagline-info" id="pill-tagline-info">
+                        <span class="navbar-tagline-text">Stories &amp; Ideas</span>
+                    </div>
+                <% } %>
 
                 <!-- Right: Navigation Controls & Actions -->
                 <nav class="pill-nav" id="pill-nav">

@@ -254,11 +254,12 @@
         const dynamicPercent = document.getElementById('dynamic-percent');
         const dynamicTitle = document.getElementById('dynamic-title');
 
-        // Check if there is a blog post title on the page
-        const postHeading = document.querySelector('.post-header h2');
+        // Check if current page is an article reader page
+        const isPostPage = Boolean(document.querySelector('.single-post'));
+        const postHeading = document.querySelector('.single-post-title, .post-header h1, .post-header h2');
         if (postHeading && dynamicTitle) {
             const cleanTitle = postHeading.innerText.trim();
-            dynamicTitle.innerText = cleanTitle.length > 18 ? cleanTitle.slice(0, 16) + '…' : cleanTitle;
+            dynamicTitle.innerText = cleanTitle.length > 20 ? cleanTitle.slice(0, 18) + '…' : cleanTitle;
         }
 
         let isTicking = false;
@@ -269,10 +270,13 @@
             const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
             const scrollPercent = scrollHeight > 0 ? Math.min(100, Math.max(0, Math.round((scrollTop / scrollHeight) * 100))) : 0;
 
-            if (progressBar) {
+            if (progressBar && isPostPage) {
                 progressBar.style.transform = `scaleX(${scrollPercent / 100})`;
+            } else if (progressBar) {
+                progressBar.style.transform = 'scaleX(0)';
             }
-            if (dynamicPercent) {
+
+            if (dynamicPercent && isPostPage) {
                 dynamicPercent.textContent = scrollPercent + '%';
             }
 
@@ -285,12 +289,16 @@
             }
 
             if (dynamicHeader) {
-                // Hysteresis threshold to prevent rapid toggle glitching near scroll boundary
-                if (!isMorphed && scrollTop > 80) {
-                    isMorphed = true;
-                    dynamicHeader.classList.add('is-morphed');
-                } else if (isMorphed && scrollTop < 35) {
-                    isMorphed = false;
+                // Only morph into reading percentage mode when on an article post page
+                if (isPostPage) {
+                    if (!isMorphed && scrollTop > 80) {
+                        isMorphed = true;
+                        dynamicHeader.classList.add('is-morphed');
+                    } else if (isMorphed && scrollTop < 35) {
+                        isMorphed = false;
+                        dynamicHeader.classList.remove('is-morphed');
+                    }
+                } else {
                     dynamicHeader.classList.remove('is-morphed');
                 }
             }
