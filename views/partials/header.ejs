@@ -214,23 +214,17 @@
                     </a>
                 </div>
 
-                <!-- Center-Left: Primary Topic Categories (Desktop / Tablet) -->
-                <nav class="navbar-topics-nav" aria-label="Topic Categories">
-                    <a href="/?tag=Tech" class="nav-topic-link">#Tech</a>
-                    <a href="/?tag=Design" class="nav-topic-link">#Design</a>
-                    <a href="/?tag=Thoughts" class="nav-topic-link">#Thoughts</a>
+                <!-- Center: Clean Modern Text Navigation (wegrow style) -->
+                <nav class="navbar-center-nav" aria-label="Main Navigation">
+                    <a href="/" class="nav-center-link">Home</a>
+                    <a href="/?tag=Tech" class="nav-center-link">Tech</a>
+                    <a href="/?tag=Design" class="nav-center-link">Design</a>
+                    <a href="/?tag=Guides" class="nav-center-link">Guides</a>
+                    <a href="/?tag=Opinion" class="nav-center-link">Opinion</a>
+                    <a href="/?tag=Thoughts" class="nav-center-link">Thoughts</a>
                 </nav>
 
-                <!-- Center-Right: Glassmorphic Search Bar -->
-                <div class="navbar-search-box" role="search">
-                    <svg class="navbar-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    <input type="search" id="navbar-search-input" class="navbar-search-input" placeholder="Search..." aria-label="Search stories" autocomplete="off">
-                </div>
-
-                <!-- Center: Dynamic Island Scroll & Reading Tracker (Visible ONLY on single post pages when reading) -->
+                <!-- Center Dynamic Info (Visible on single post reader pages) -->
                 <% if (typeof post !== 'undefined' && post && post.title) { %>
                     <div class="pill-dynamic-info" id="pill-dynamic-info">
                         <span class="dynamic-dot"></span>
@@ -239,25 +233,37 @@
                     </div>
                 <% } %>
 
-                <!-- Right: Navigation Controls & Actions -->
-                <nav class="pill-nav" id="pill-nav">
+                <!-- Right: Search, Newsletter, Theme & High-Contrast Pill CTA -->
+                <div class="pill-nav" id="pill-nav">
+                    <!-- Glassmorphic Search Bar -->
+                    <div class="navbar-search-box" role="search">
+                        <svg class="navbar-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="search" id="navbar-search-input" class="navbar-search-input" placeholder="Search..." aria-label="Search stories" autocomplete="off">
+                    </div>
+
                     <button type="button" class="btn-navbar-newsletter" id="navbar-newsletter-btn" title="Newsletter Subscription" aria-label="Newsletter Subscription">
-                        <svg class="nav-newsletter-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg class="nav-newsletter-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                             <polyline points="22,6 12,13 2,6"></polyline>
                         </svg>
                     </button>
-                    <a href="/new" class="btn btn-pill-primary" aria-label="Create New Post">
-                        <span class="btn-pill-text-desktop">+ New Post</span>
-                        <span class="btn-pill-text-mobile">+ Write</span>
-                    </a>
+
                     <div class="theme-switch-wrapper">
                         <label class="theme-switch" for="theme-toggle" title="Toggle Theme">
                             <input type="checkbox" id="theme-toggle" checked />
                             <span class="slider round"></span>
                         </label>
                     </div>
-                </nav>
+
+                    <!-- High-Contrast Crisp Pill Button (wegrow 'Start today' style) -->
+                    <a href="/new" class="btn-pill-cta" aria-label="Create New Post">
+                        <span class="btn-pill-text-desktop">+ New Post</span>
+                        <span class="btn-pill-text-mobile">+ Write</span>
+                    </a>
+                </div>
             </div>
         </div>
     </header>
