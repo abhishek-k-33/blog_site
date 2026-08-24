@@ -109,21 +109,143 @@
                 <input type="hidden" name="tags" id="hidden-tags" value="Thoughts">
             </div>
 
-            <!-- Cover / Thumbnail Image Selector -->
+            <!-- Cover / Thumbnail Visual Item Selector -->
             <div class="composer-cover-picker" id="composer-cover-picker">
                 <div class="cover-picker-header">
-                    <span class="cover-picker-label">Cover Image / Thumbnail:</span>
-                    <button type="button" class="btn-toggle-cover-input" id="btn-toggle-cover-input">
-                        <span id="cover-toggle-text">+ Add Image URL</span>
+                    <div class="cover-picker-title-group">
+                        <span class="cover-picker-label">Cover Artwork & Thumbnail:</span>
+                        <span class="cover-selected-badge" id="cover-selected-badge">Generative Mesh</span>
+                    </div>
+                    <button type="button" class="btn-toggle-custom-cover" id="btn-toggle-custom-cover">
+                        <span id="custom-cover-toggle-text">+ Custom URL</span>
                     </button>
                 </div>
-                <div class="cover-input-container" id="cover-input-container" style="display: none;">
+
+                <!-- Curated Preset Item Grid -->
+                <div class="cover-preset-grid" id="cover-preset-grid" role="radiogroup" aria-label="Select story cover artwork">
+                    <!-- Preset 1: Generative Topic Mesh (Default) -->
+                    <button type="button" class="cover-preset-card is-selected" data-cover-url="" data-cover-name="Generative Mesh" role="radio" aria-checked="true">
+                        <div class="cover-card-art-preview topic-mesh-preview">
+                            <div class="mesh-mini-glow"></div>
+                            <div class="mesh-mini-circle"></div>
+                            <span class="mesh-mini-tag">Topic Mesh</span>
+                        </div>
+                        <div class="cover-card-info">
+                            <span class="cover-card-title">Generative Mesh</span>
+                            <span class="cover-card-badge">Dynamic</span>
+                        </div>
+                        <div class="cover-card-check">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </button>
+
+                    <!-- Preset 2: Tech Workspace -->
+                    <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80" data-cover-name="Tech Workspace" role="radio" aria-checked="false">
+                        <div class="cover-card-img-preview">
+                            <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=400&q=80" alt="Tech Workspace" loading="lazy">
+                        </div>
+                        <div class="cover-card-info">
+                            <span class="cover-card-title">Tech Workspace</span>
+                            <span class="cover-card-badge">Code</span>
+                        </div>
+                        <div class="cover-card-check">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </button>
+
+                    <!-- Preset 3: Minimal Architecture -->
+                    <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80" data-cover-name="Minimal Space" role="radio" aria-checked="false">
+                        <div class="cover-card-img-preview">
+                            <img src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80" alt="Minimal Space" loading="lazy">
+                        </div>
+                        <div class="cover-card-info">
+                            <span class="cover-card-title">Minimal Space</span>
+                            <span class="cover-card-badge">Design</span>
+                        </div>
+                        <div class="cover-card-check">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </button>
+
+                    <!-- Preset 4: Editorial Coffee -->
+                    <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80" data-cover-name="Warm Reading" role="radio" aria-checked="false">
+                        <div class="cover-card-img-preview">
+                            <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80" alt="Warm Reading" loading="lazy">
+                        </div>
+                        <div class="cover-card-info">
+                            <span class="cover-card-title">Warm Reading</span>
+                            <span class="cover-card-badge">Thoughts</span>
+                        </div>
+                        <div class="cover-card-check">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </button>
+
+                    <!-- Preset 5: Cyber Neon -->
+                    <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80" data-cover-name="Neon Cyber" role="radio" aria-checked="false">
+                        <div class="cover-card-img-preview">
+                            <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=400&q=80" alt="Neon Cyber" loading="lazy">
+                        </div>
+                        <div class="cover-card-info">
+                            <span class="cover-card-title">Neon Cyber</span>
+                            <span class="cover-card-badge">Future</span>
+                        </div>
+                        <div class="cover-card-check">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </button>
+
+                    <!-- Preset 6: Abstract Modern Art -->
+                    <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80" data-cover-name="Abstract Flow" role="radio" aria-checked="false">
+                        <div class="cover-card-img-preview">
+                            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80" alt="Abstract Flow" loading="lazy">
+                        </div>
+                        <div class="cover-card-info">
+                            <span class="cover-card-title">Abstract Flow</span>
+                            <span class="cover-card-badge">Art</span>
+                        </div>
+                        <div class="cover-card-check">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </button>
+
+                    <!-- Preset 7: Forest Fog -->
+                    <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80" data-cover-name="Forest Mist" role="radio" aria-checked="false">
+                        <div class="cover-card-img-preview">
+                            <img src="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=400&q=80" alt="Forest Mist" loading="lazy">
+                        </div>
+                        <div class="cover-card-info">
+                            <span class="cover-card-title">Forest Mist</span>
+                            <span class="cover-card-badge">Nature</span>
+                        </div>
+                        <div class="cover-card-check">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </button>
+
+                    <!-- Preset 8: Amber Sunset -->
+                    <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80" data-cover-name="Amber Horizon" role="radio" aria-checked="false">
+                        <div class="cover-card-img-preview">
+                            <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80" alt="Amber Horizon" loading="lazy">
+                        </div>
+                        <div class="cover-card-info">
+                            <span class="cover-card-title">Amber Horizon</span>
+                            <span class="cover-card-badge">Light</span>
+                        </div>
+                        <div class="cover-card-check">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Hidden Form Input synchronizing coverImage -->
+                <input type="hidden" id="cover-image-input" name="coverImage" value="">
+
+                <!-- Optional Custom URL Accordion -->
+                <div class="cover-custom-container" id="cover-custom-container" style="display: none;">
                     <div class="cover-input-row">
-                        <input type="url" id="cover-image-input" name="coverImage" placeholder="Paste image URL (e.g. Unsplash, imgur, https://...)" class="cover-image-input" autocomplete="off">
-                        <button type="button" class="btn-clear-cover" id="btn-clear-cover" title="Clear">Clear</button>
-                    </div>
-                    <div class="cover-preview-wrapper" id="cover-preview-wrapper" style="display: none;">
-                        <img src="" alt="Cover preview" id="cover-preview-img" class="cover-preview-img">
+                        <input type="url" id="custom-cover-input" placeholder="Paste custom image URL (Unsplash, imgur, https://...)" class="cover-image-input" autocomplete="off">
+                        <button type="button" class="btn btn-secondary btn-apply-custom-cover" id="btn-apply-custom-cover">Apply URL</button>
                     </div>
                 </div>
             </div>
@@ -458,40 +580,53 @@
         }
     }
 
-    // 3. Cover Image Picker & Live Preview
-    const btnToggleCover = document.getElementById('btn-toggle-cover-input');
-    const coverInputContainer = document.getElementById('cover-input-container');
+    // 3. Visual Cover Preset Item Selector Logic
+    const coverPresetCards = document.querySelectorAll('.cover-preset-card');
     const coverImageInput = document.getElementById('cover-image-input');
-    const btnClearCover = document.getElementById('btn-clear-cover');
-    const coverPreviewWrapper = document.getElementById('cover-preview-wrapper');
-    const coverPreviewImg = document.getElementById('cover-preview-img');
-    const coverToggleText = document.getElementById('cover-toggle-text');
+    const coverSelectedBadge = document.getElementById('cover-selected-badge');
+    const btnToggleCustomCover = document.getElementById('btn-toggle-custom-cover');
+    const coverCustomContainer = document.getElementById('cover-custom-container');
+    const customCoverToggleText = document.getElementById('custom-cover-toggle-text');
+    const customCoverInput = document.getElementById('custom-cover-input');
+    const btnApplyCustomCover = document.getElementById('btn-apply-custom-cover');
 
-    if (btnToggleCover && coverInputContainer) {
-        btnToggleCover.addEventListener('click', () => {
-            const isHidden = coverInputContainer.style.display === 'none';
-            coverInputContainer.style.display = isHidden ? 'block' : 'none';
-            if (coverToggleText) coverToggleText.textContent = isHidden ? 'Hide Cover Input' : '+ Add Image URL';
-            if (isHidden && coverImageInput) coverImageInput.focus();
+    coverPresetCards.forEach(card => {
+        card.addEventListener('click', () => {
+            coverPresetCards.forEach(c => {
+                c.classList.remove('is-selected');
+                c.setAttribute('aria-checked', 'false');
+            });
+            card.classList.add('is-selected');
+            card.setAttribute('aria-checked', 'true');
+
+            const url = card.dataset.coverUrl || '';
+            const name = card.dataset.coverName || 'Generative Mesh';
+
+            if (coverImageInput) coverImageInput.value = url;
+            if (coverSelectedBadge) coverSelectedBadge.textContent = name;
+        });
+    });
+
+    if (btnToggleCustomCover && coverCustomContainer) {
+        btnToggleCustomCover.addEventListener('click', () => {
+            const isHidden = coverCustomContainer.style.display === 'none';
+            coverCustomContainer.style.display = isHidden ? 'block' : 'none';
+            if (customCoverToggleText) customCoverToggleText.textContent = isHidden ? 'Hide Custom' : '+ Custom URL';
+            if (isHidden && customCoverInput) customCoverInput.focus();
         });
     }
 
-    if (coverImageInput) {
-        coverImageInput.addEventListener('input', () => {
-            const url = coverImageInput.value.trim();
-            if (url) {
-                if (coverPreviewImg) coverPreviewImg.src = url;
-                if (coverPreviewWrapper) coverPreviewWrapper.style.display = 'block';
-            } else {
-                if (coverPreviewWrapper) coverPreviewWrapper.style.display = 'none';
+    if (btnApplyCustomCover && customCoverInput) {
+        btnApplyCustomCover.addEventListener('click', () => {
+            const customUrl = customCoverInput.value.trim();
+            if (customUrl) {
+                coverPresetCards.forEach(c => {
+                    c.classList.remove('is-selected');
+                    c.setAttribute('aria-checked', 'false');
+                });
+                if (coverImageInput) coverImageInput.value = customUrl;
+                if (coverSelectedBadge) coverSelectedBadge.textContent = 'Custom URL';
             }
-        });
-    }
-
-    if (btnClearCover && coverImageInput) {
-        btnClearCover.addEventListener('click', () => {
-            coverImageInput.value = '';
-            if (coverPreviewWrapper) coverPreviewWrapper.style.display = 'none';
         });
     }
 
