@@ -1800,12 +1800,68 @@ body.dark-mode .reading-time {
     border-bottom: 1px dashed var(--border-color);
 }
 
+.toc-header-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.toc-header-title-row h4 {
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: 0.01em;
+}
+
+.toc-progress-percentage {
+    font-family: var(--font-ui);
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.toc-reading-progress-track {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-color);
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.toc-reading-progress-bar {
+    width: 0%;
+    height: 100%;
+    background: var(--accent-color);
+    border-radius: 9999px;
+    transition: width 0.15s ease-out;
+}
+
 .companion-card-header h4 {
     font-family: var(--font-ui);
     font-size: 0.88rem;
     font-weight: 700;
     color: var(--text-color);
     letter-spacing: 0.01em;
+}
+
+.story-section-heading {
+    scroll-margin-top: 100px;
+    position: relative;
+}
+
+.heading-anchor-symbol {
+    opacity: 0;
+    color: var(--accent-color);
+    font-size: 0.85em;
+    margin-left: 8px;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.story-section-heading:hover .heading-anchor-symbol {
+    opacity: 0.8;
 }
 
 /* Table of Contents Links */

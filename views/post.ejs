@@ -84,10 +84,16 @@
 
         <!-- Sticky Reading Companion Sidebar (Desktop) -->
         <aside class="article-reading-companion" aria-label="Reading Tools">
-            <!-- Dynamic Table of Contents -->
+            <!-- Sticky Table of Contents (Auto-updating anchors for long articles) -->
             <div class="companion-card companion-toc-card" id="desktop-toc-card" style="display: none;">
                 <div class="companion-card-header">
-                    <h4>📑 Table of Contents</h4>
+                    <div class="toc-header-title-row">
+                        <h4>📑 Table of Contents</h4>
+                        <span class="toc-progress-percentage" id="toc-progress-pct">0%</span>
+                    </div>
+                    <div class="toc-reading-progress-track">
+                        <div class="toc-reading-progress-bar" id="toc-progress-bar"></div>
+                    </div>
                 </div>
                 <nav class="companion-toc-nav" id="desktop-toc-nav"></nav>
             </div>
@@ -135,7 +141,7 @@
 
 <script>
     // =========================================
-    // Dynamic Table of Contents Generator & Active Scroll Tracker
+    // Dynamic Table of Contents Generator & Reading Progress Tracker
     // =========================================
     document.addEventListener('DOMContentLoaded', () => {
         const contentBody = document.getElementById('story-content-body');
@@ -149,9 +155,19 @@
             const mobileTocAccordion = document.getElementById('mobile-toc-accordion');
 
             headings.forEach((heading, index) => {
-                const id = 'section-heading-' + index;
+                const id = 'section-' + (heading.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || index);
                 heading.id = id;
-                const text = heading.textContent.trim();
+                heading.classList.add('story-section-heading');
+
+                // Append subtle heading anchor link
+                const anchorLink = document.createElement('a');
+                anchorLink.href = '#' + id;
+                anchorLink.className = 'heading-anchor-symbol';
+                anchorLink.setAttribute('aria-label', 'Anchor link to ' + heading.textContent.trim());
+                anchorLink.textContent = '#';
+                heading.appendChild(anchorLink);
+
+                const text = heading.childNodes[0] ? heading.childNodes[0].textContent.trim() : heading.textContent.trim();
                 const level = heading.tagName.toLowerCase();
 
                 // Desktop link
@@ -198,6 +214,21 @@
 
             headings.forEach(h => observer.observe(h));
         }
+
+        // Reading Progress Tracker (Auto-updating % and progress bar)
+        const progressBar = document.getElementById('toc-progress-bar');
+        const progressPct = document.getElementById('toc-progress-pct');
+        function updateReadingProgress() {
+            if (!contentBody || !progressBar) return;
+            const rect = contentBody.getBoundingClientRect();
+            const totalHeight = rect.height;
+            const scrolledPast = Math.max(0, -rect.top + 100);
+            const percentage = Math.min(100, Math.max(0, Math.round((scrolledPast / totalHeight) * 100)));
+            progressBar.style.width = percentage + '%';
+            if (progressPct) progressPct.textContent = percentage + '%';
+        }
+        window.addEventListener('scroll', updateReadingProgress, { passive: true });
+        updateReadingProgress();
 
         // Mobile TOC Accordion Toggle
         const mobileTocToggle = document.getElementById('mobile-toc-toggle');
