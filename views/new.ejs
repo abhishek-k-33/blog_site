@@ -388,7 +388,7 @@
         const reader = new FileReader();
         reader.onload = (event) => {
             const base64Data = event.target.result;
-            const figureHtml = `<figure class="medium-figure"><img src="${base64Data}" alt="Story Photo"><figcaption contenteditable="true" data-placeholder="Type a caption (optional)..."></figcaption></figure><p><br></p>`;
+            const figureHtml = `<figure class="medium-figure"><img src="${base64Data}" alt="Story Photo" loading="lazy" decoding="async"><figcaption contenteditable="true" data-placeholder="Type a caption (optional)..."></figcaption></figure><p><br></p>`;
             editor.focus();
             document.execCommand('insertHTML', false, figureHtml);
             mediaImagePicker.value = '';
