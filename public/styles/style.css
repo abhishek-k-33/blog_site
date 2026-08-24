@@ -1205,14 +1205,14 @@ main {
 .posts-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 32px;
+    gap: 28px;
 }
 
 .post-card {
     background-color: var(--secondary-bg);
     border: 2px solid var(--border-color);
-    padding: 32px;
-    border-radius: 18px;
+    padding: 28px;
+    border-radius: 20px;
     box-shadow: var(--card-shadow);
     content-visibility: auto;
     contain-intrinsic-size: 0 200px;
@@ -1228,6 +1228,109 @@ main {
     transform: translateY(-4px);
     border-color: var(--accent-color);
     box-shadow: 0 16px 32px -6px var(--pill-glow), var(--pill-shadow);
+}
+
+/* Editorial Feed Card Layout (Clean Grid/List with Thumbnails) */
+.feed-post-card {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 24px;
+    padding: 24px;
+}
+
+.card-thumbnail-container {
+    flex-shrink: 0;
+    width: 210px;
+    min-height: 160px;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+}
+
+.card-thumbnail-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.card-thumbnail-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.feed-post-card:hover .card-thumbnail-img {
+    transform: scale(1.06);
+}
+
+.card-thumbnail-fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: 160px;
+    background: linear-gradient(135deg, rgba(178, 83, 37, 0.12), rgba(191, 165, 232, 0.18));
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.card-thumbnail-topic {
+    font-family: var(--font-ui);
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    background: var(--pill-bg);
+    border: 1px solid var(--border-color);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-thumbnail-deco {
+    position: absolute;
+    bottom: -15px;
+    right: -15px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px dashed var(--accent-color);
+    opacity: 0.25;
+}
+
+.card-content-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.featured-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.featured-story-card:hover .featured-cover-img {
+    transform: scale(1.04);
+}
+
+.featured-cover-link {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .post-title {
@@ -3084,6 +3187,18 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
     .post-card {
         padding: 22px 18px;
         border-radius: 16px;
+    }
+
+    .feed-post-card {
+        flex-direction: column;
+        gap: 16px;
+        padding: 18px 16px;
+    }
+
+    .card-thumbnail-container {
+        width: 100%;
+        height: 140px;
+        min-height: 140px;
     }
 
     .post-title {

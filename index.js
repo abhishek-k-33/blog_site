@@ -83,6 +83,8 @@ const formatPost = (post) => {
     const words = post.content ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
     const readingTime = Math.max(1, Math.ceil(words / 180));
     const tags = extractTags(post);
+    const imgMatch = post.content ? post.content.match(/<img[^>]+src=["']([^"']+)["']/i) : null;
+    const thumbnail = imgMatch ? imgMatch[1] : (post.coverImage || null);
 
     return {
         ...post,
@@ -90,6 +92,7 @@ const formatPost = (post) => {
         readingTime,
         words,
         tags,
+        thumbnail,
     };
 };
 

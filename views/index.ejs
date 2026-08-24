@@ -52,20 +52,26 @@
             
             <article class="featured-story-card post-card">
                 <div class="featured-card-cover-wrapper">
-                    <!-- Editorial Visual Cover Artwork -->
-                    <div class="featured-cover-visual">
-                        <div class="featured-cover-abstract-shapes">
-                            <div class="featured-shape-glow"></div>
-                            <div class="featured-shape-circle"></div>
-                        </div>
-                        <div class="featured-cover-overlay">
-                            <% if (featuredPost.tags && featuredPost.tags.length > 0) { %>
+                    <% if (featuredPost.thumbnail) { %>
+                        <a href="/posts/<%= featuredPost.id %>" class="featured-cover-link">
+                            <img src="<%= featuredPost.thumbnail %>" alt="<%= featuredPost.title %>" class="featured-cover-img" loading="lazy" decoding="async">
+                        </a>
+                    <% } else { %>
+                        <!-- Editorial Visual Cover Artwork -->
+                        <div class="featured-cover-visual">
+                            <div class="featured-cover-abstract-shapes">
+                                <div class="featured-shape-glow"></div>
+                                <div class="featured-shape-circle"></div>
+                            </div>
+                            <div class="featured-cover-overlay">
+                                <% if (featuredPost.tags && featuredPost.tags.length > 0) { %>
                                 <span class="featured-cover-topic">#<%= featuredPost.tags[0] %></span>
-                            <% } else { %>
+                                <% } else { %>
                                 <span class="featured-cover-topic">#Featured</span>
-                            <% } %>
+                                <% } %>
+                            </div>
                         </div>
-                    </div>
+                    <% } %>
                 </div>
 
                 <div class="featured-card-body">
@@ -116,36 +122,50 @@
 
             <div class="posts-grid">
                 <% posts.slice(1).forEach(post => { %>
-                    <article class="post-card">
-                        <% if (post.tags && post.tags.length > 0) { %>
-                            <div class="post-tags-row">
-                                <% post.tags.forEach(tag => { %>
-                                    <a href="/?tag=<%= encodeURIComponent(tag) %>" class="post-pill-tag">#<%= tag %></a>
-                                <% }) %>
-                            </div>
-                        <% } %>
-                        <h3 class="post-title"><a href="/posts/<%= post.id %>"><%= post.title %></a></h3>
-                        <div class="post-meta post-meta-pills">
-                            <span class="meta-pill meta-author">
-                                <svg class="meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                <%= post.author %>
-                            </span>
-                            <span class="meta-pill meta-date">
-                                <svg class="meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                                <%= post.date %>
-                            </span>
-                            <% if (post.readingTime) { %>
-                                <span class="meta-pill meta-reading-time">☕ <%= post.readingTime %> min read</span>
+                    <article class="post-card feed-post-card">
+                        <div class="card-thumbnail-container">
+                            <% if (post.thumbnail) { %>
+                                <a href="/posts/<%= post.id %>" class="card-thumbnail-link">
+                                    <img src="<%= post.thumbnail %>" alt="<%= post.title %>" class="card-thumbnail-img" loading="lazy" decoding="async">
+                                </a>
+                            <% } else { %>
+                                <a href="/posts/<%= post.id %>" class="card-thumbnail-fallback">
+                                    <span class="card-thumbnail-topic"><%= (post.tags && post.tags[0]) ? '#' + post.tags[0] : '✨ Story' %></span>
+                                    <span class="card-thumbnail-deco"></span>
+                                </a>
                             <% } %>
                         </div>
-                        <p class="post-excerpt"><%= post.excerpt %></p>
-                        <div class="post-card-footer">
-                            <a href="/posts/<%= post.id %>" class="read-more">Read Story →</a>
-                            <button type="button" class="post-card-bookmark-btn" data-id="<%= post.id %>" data-title="<%= post.title %>" data-author="<%= post.author %>" title="Save to bookmarks" aria-label="Save to bookmarks">
-                                <svg class="card-bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </button>
+                        <div class="card-content-wrap">
+                            <% if (post.tags && post.tags.length > 0) { %>
+                                <div class="post-tags-row">
+                                    <% post.tags.forEach(tag => { %>
+                                        <a href="/?tag=<%= encodeURIComponent(tag) %>" class="post-pill-tag">#<%= tag %></a>
+                                    <% }) %>
+                                </div>
+                            <% } %>
+                            <h3 class="post-title"><a href="/posts/<%= post.id %>"><%= post.title %></a></h3>
+                            <div class="post-meta post-meta-pills">
+                                <span class="meta-pill meta-author">
+                                    <svg class="meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                    <%= post.author %>
+                                </span>
+                                <span class="meta-pill meta-date">
+                                    <svg class="meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <%= post.date %>
+                                </span>
+                                <% if (post.readingTime) { %>
+                                    <span class="meta-pill meta-reading-time">☕ <%= post.readingTime %> min read</span>
+                                <% } %>
+                            </div>
+                            <p class="post-excerpt"><%= post.excerpt %></p>
+                            <div class="post-card-footer">
+                                <a href="/posts/<%= post.id %>" class="read-more">Read Story →</a>
+                                <button type="button" class="post-card-bookmark-btn" data-id="<%= post.id %>" data-title="<%= post.title %>" data-author="<%= post.author %>" title="Save to bookmarks" aria-label="Save to bookmarks">
+                                    <svg class="card-bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </article>
                 <% }) %>
