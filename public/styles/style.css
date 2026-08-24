@@ -8,17 +8,17 @@
     --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    /* Light Mode Palette (WCAG AAA Contrast > 11:1 on text, > 5:1 on accent) */
-    --bg-color: #f7f3e8;
-    --text-color: #2b221a;
+    /* Light Mode Palette: Dark Charcoal #222 on Off-White #FAFAFA (Eye-Strain Free, WCAG AAA 15.9:1) */
+    --bg-color: #FAFAFA;
+    --text-color: #222222;
     --accent-color: #b25325;
-    --secondary-bg: #ece2cc;
-    --border-color: #c4b59b;
-    --card-shadow: 0 10px 25px -4px rgba(43, 34, 26, 0.1), 0 4px 6px -2px rgba(43, 34, 26, 0.04);
+    --secondary-bg: #f0f0ee;
+    --border-color: #dcd8d0;
+    --card-shadow: 0 10px 25px -4px rgba(34, 34, 34, 0.08), 0 4px 6px -2px rgba(34, 34, 34, 0.03);
     --btn-hover: #9c451b;
-    --pill-bg: rgba(247, 243, 232, 0.92);
-    --pill-border: rgba(196, 181, 155, 0.95);
-    --pill-shadow: 0 10px 30px -4px rgba(43, 34, 26, 0.12), 0 4px 6px -2px rgba(43, 34, 26, 0.05);
+    --pill-bg: rgba(250, 250, 250, 0.94);
+    --pill-border: rgba(220, 216, 208, 0.95);
+    --pill-shadow: 0 10px 30px -4px rgba(34, 34, 34, 0.1), 0 4px 6px -2px rgba(34, 34, 34, 0.04);
     --pill-glow: rgba(178, 83, 37, 0.25);
 }
 
@@ -45,9 +45,13 @@ body.dark-mode {
 
 body {
     font-family: var(--font-ui);
+    font-size: 19px; /* Desktop eye-comfort body text (18px-20px) */
     background-color: var(--bg-color);
     color: var(--text-color);
-    line-height: 1.6;
+    line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     transition: background-color 0.35s ease, color 0.35s ease;
     display: flex;
     flex-direction: column;
@@ -3245,6 +3249,10 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 
 /* Tablet Portrait & Mobile (<= 768px) */
 @media (max-width: 768px) {
+    body {
+        font-size: 17px;
+    }
+
     /* Header Safe Area & Fluid Navbar */
     .site-header.pill-header {
         top: max(8px, env(safe-area-inset-top));
