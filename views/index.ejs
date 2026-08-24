@@ -72,20 +72,18 @@
                             <img src="<%= featuredPost.thumbnail %>" alt="<%= featuredPost.title %>" class="featured-cover-img" loading="lazy" decoding="async">
                         </a>
                     <% } else { %>
-                        <!-- Editorial Visual Cover Artwork -->
-                        <div class="featured-cover-visual">
+                        <!-- Dynamic Generative Gradient Mesh Artwork -->
+                        <a href="/posts/<%= featuredPost.id %>" class="featured-cover-visual topic-mesh-<%= featuredPost.topicTheme || 'thoughts' %>">
                             <div class="featured-cover-abstract-shapes">
                                 <div class="featured-shape-glow"></div>
                                 <div class="featured-shape-circle"></div>
+                                <div class="featured-shape-grid"></div>
                             </div>
                             <div class="featured-cover-overlay">
-                                <% if (featuredPost.tags && featuredPost.tags.length > 0) { %>
-                                <span class="featured-cover-topic">#<%= featuredPost.tags[0] %></span>
-                                <% } else { %>
-                                <span class="featured-cover-topic">#Featured</span>
-                                <% } %>
+                                <span class="featured-cover-topic">#<%= (featuredPost.tags && featuredPost.tags[0]) ? featuredPost.tags[0] : 'Featured' %></span>
+                                <span class="featured-cover-sparkle">✨ Read Story</span>
                             </div>
-                        </div>
+                        </a>
                     <% } %>
                 </div>
 
@@ -144,7 +142,8 @@
                                     <img src="<%= post.thumbnail %>" alt="<%= post.title %>" class="card-thumbnail-img" loading="lazy" decoding="async">
                                 </a>
                             <% } else { %>
-                                <a href="/posts/<%= post.id %>" class="card-thumbnail-fallback">
+                                <a href="/posts/<%= post.id %>" class="card-thumbnail-fallback topic-thumb-mesh-<%= post.topicTheme || 'thoughts' %>">
+                                    <div class="thumb-pattern-grid"></div>
                                     <span class="card-thumbnail-topic"><%= (post.tags && post.tags[0]) ? '#' + post.tags[0] : '✨ Story' %></span>
                                     <span class="card-thumbnail-deco"></span>
                                 </a>

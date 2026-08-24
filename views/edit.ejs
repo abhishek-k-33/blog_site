@@ -110,6 +110,25 @@
                 <input type="hidden" name="tags" id="hidden-tags" value="<%= (post.tags || []).join(',') %>">
             </div>
 
+            <!-- Cover / Thumbnail Image Selector -->
+            <div class="composer-cover-picker" id="composer-cover-picker">
+                <div class="cover-picker-header">
+                    <span class="cover-picker-label">🖼️ Cover Image / Thumbnail:</span>
+                    <button type="button" class="btn-toggle-cover-input" id="btn-toggle-cover-input">
+                        <span id="cover-toggle-text"><%= post.thumbnail ? 'Edit Image URL' : '+ Add Image URL' %></span>
+                    </button>
+                </div>
+                <div class="cover-input-container" id="cover-input-container" style="<%= post.thumbnail ? 'display: block;' : 'display: none;' %>">
+                    <div class="cover-input-row">
+                        <input type="url" id="cover-image-input" name="coverImage" value="<%= post.thumbnail || '' %>" placeholder="Paste image URL (e.g. Unsplash, imgur, https://...)" class="cover-image-input" autocomplete="off">
+                        <button type="button" class="btn-clear-cover" id="btn-clear-cover" title="Clear">✕</button>
+                    </div>
+                    <div class="cover-preview-wrapper" id="cover-preview-wrapper" style="<%= post.thumbnail ? 'display: block;' : 'display: none;' %>">
+                        <img src="<%= post.thumbnail || '' %>" alt="Cover preview" id="cover-preview-img" class="cover-preview-img">
+                    </div>
+                </div>
+            </div>
+
             <!-- Live Editable Story Canvas (Pre-filled with content) -->
             <div id="editor-body" class="medium-editor-body" contenteditable="true" data-placeholder="Tell your story..."><%- post.content %></div>
         </div>
@@ -440,7 +459,45 @@
         }
     }
 
-    // 3. Form Submit Validation & Synchronization
+    // 3. Cover Image Picker & Live Preview
+    const btnToggleCover = document.getElementById('btn-toggle-cover-input');
+    const coverInputContainer = document.getElementById('cover-input-container');
+    const coverImageInput = document.getElementById('cover-image-input');
+    const btnClearCover = document.getElementById('btn-clear-cover');
+    const coverPreviewWrapper = document.getElementById('cover-preview-wrapper');
+    const coverPreviewImg = document.getElementById('cover-preview-img');
+    const coverToggleText = document.getElementById('cover-toggle-text');
+
+    if (btnToggleCover && coverInputContainer) {
+        btnToggleCover.addEventListener('click', () => {
+            const isHidden = coverInputContainer.style.display === 'none';
+            coverInputContainer.style.display = isHidden ? 'block' : 'none';
+            if (coverToggleText) coverToggleText.textContent = isHidden ? '✕ Hide Cover Input' : '+ Add Image URL';
+            if (isHidden && coverImageInput) coverImageInput.focus();
+        });
+    }
+
+    if (coverImageInput) {
+        coverImageInput.addEventListener('input', () => {
+            const url = coverImageInput.value.trim();
+            if (url) {
+                if (coverPreviewImg) coverPreviewImg.src = url;
+                if (coverPreviewWrapper) coverPreviewWrapper.style.display = 'block';
+            } else {
+                if (coverPreviewWrapper) coverPreviewWrapper.style.display = 'none';
+            }
+        });
+    }
+
+    if (btnClearCover && coverImageInput) {
+        btnClearCover.addEventListener('click', () => {
+            coverImageInput.value = '';
+            if (coverPreviewWrapper) coverPreviewWrapper.style.display = 'none';
+            if (coverToggleText) coverToggleText.textContent = '+ Add Image URL';
+        });
+    }
+
+    // 4. Form Submit Validation & Synchronization
     form.addEventListener('submit', (e) => {
         const rawContent = editor.innerHTML.trim();
         const plainText = editor.innerText.trim();

@@ -1106,6 +1106,110 @@ main {
     border-color: var(--accent-color);
 }
 
+/* Composer Cover Photo & Thumbnail Selector */
+.composer-cover-picker {
+    margin-bottom: 24px;
+    padding: 14px 18px;
+    background: var(--secondary-bg);
+    border: 1.5px dashed var(--border-color);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cover-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cover-picker-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.btn-toggle-cover-input {
+    background: var(--bg-color);
+    border: 1.5px solid var(--border-color);
+    color: var(--accent-color);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-toggle-cover-input:hover {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+}
+
+.cover-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cover-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cover-image-input {
+    flex: 1;
+    padding: 8px 12px;
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.cover-image-input:focus {
+    border-color: var(--accent-color);
+}
+
+.btn-clear-cover {
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.btn-clear-cover:hover {
+    background: var(--accent-color);
+    color: var(--bg-color);
+}
+
+.cover-preview-wrapper {
+    width: 100%;
+    max-height: 180px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.cover-preview-img {
+    width: 100%;
+    height: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
 /* =========================================
    FEATURED STORY SPOTLIGHT (HERO ARTICLE)
    ========================================= */
@@ -1177,6 +1281,17 @@ main {
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    text-decoration: none;
+    transition: transform 0.3s ease;
+}
+
+.featured-cover-visual:hover {
+    text-decoration: none;
+}
+
+.featured-cover-visual:hover .featured-shape-glow {
+    transform: scale(1.15);
+    opacity: 0.6;
 }
 
 .featured-cover-abstract-shapes {
@@ -1192,41 +1307,91 @@ main {
     position: absolute;
     top: -20%;
     right: 10%;
-    width: 180px;
-    height: 180px;
-    background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
-    opacity: 0.35;
-    filter: blur(20px);
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
+    opacity: 0.45;
+    filter: blur(25px);
+    transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
 .featured-shape-circle {
     position: absolute;
     bottom: -30%;
     left: 5%;
-    width: 140px;
-    height: 140px;
+    width: 160px;
+    height: 160px;
     border-radius: 50%;
-    border: 2px dashed var(--accent-color);
-    opacity: 0.25;
+    border: 2px dashed rgba(255, 255, 255, 0.35);
+    opacity: 0.35;
+}
+
+.featured-shape-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.6;
 }
 
 .featured-cover-overlay {
     position: absolute;
     bottom: 14px;
     left: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     z-index: 2;
 }
 
 .featured-cover-topic {
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(0, 0, 0, 0.5);
     color: #ffffff;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 5px 14px;
+    border-radius: 9999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.featured-cover-sparkle {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     padding: 4px 12px;
     border-radius: 9999px;
     font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Topic Generative Gradient Meshes (Spotlight) */
+.topic-mesh-tech {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 45%, #0284c7 100%);
+}
+.topic-mesh-design {
+    background: linear-gradient(135deg, #831843 0%, #be185d 45%, #7928ca 100%);
+}
+.topic-mesh-guides {
+    background: linear-gradient(135deg, #064e3b 0%, #047857 45%, #10b981 100%);
+}
+.topic-mesh-opinion {
+    background: linear-gradient(135deg, #7c2d12 0%, #ea580c 45%, #f59e0b 100%);
+}
+.topic-mesh-life {
+    background: linear-gradient(135deg, #581c87 0%, #7e22ce 45%, #ec4899 100%);
+}
+.topic-mesh-thoughts {
+    background: linear-gradient(135deg, #1e293b 0%, #475569 45%, #d19a79 100%);
 }
 
 .featured-card-body {
@@ -1372,6 +1537,7 @@ main {
     transform: scale(1.06);
 }
 
+/* Card Thumbnail Fallback Generative Meshes (Grid Cards) */
 .card-thumbnail-fallback {
     display: flex;
     flex-direction: column;
@@ -1380,23 +1546,61 @@ main {
     width: 100%;
     height: 100%;
     min-height: 160px;
-    background: linear-gradient(135deg, rgba(178, 83, 37, 0.12), rgba(191, 165, 232, 0.18));
     text-decoration: none;
     position: relative;
     overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.feed-post-card:hover .card-thumbnail-fallback {
+    transform: scale(1.04);
+}
+
+.thumb-pattern-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 16px 16px;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.topic-thumb-mesh-tech {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0284c7 100%);
+}
+.topic-thumb-mesh-design {
+    background: linear-gradient(135deg, #831843 0%, #be185d 50%, #7928ca 100%);
+}
+.topic-thumb-mesh-guides {
+    background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #10b981 100%);
+}
+.topic-thumb-mesh-opinion {
+    background: linear-gradient(135deg, #7c2d12 0%, #ea580c 50%, #f59e0b 100%);
+}
+.topic-thumb-mesh-life {
+    background: linear-gradient(135deg, #581c87 0%, #7e22ce 50%, #ec4899 100%);
+}
+.topic-thumb-mesh-thoughts {
+    background: linear-gradient(135deg, #1e293b 0%, #475569 50%, #d19a79 100%);
 }
 
 .card-thumbnail-topic {
     font-family: var(--font-ui);
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     font-weight: 700;
-    color: var(--accent-color);
-    background: var(--pill-bg);
-    border: 1px solid var(--border-color);
-    padding: 4px 12px;
+    color: #ffffff;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 5px 14px;
     border-radius: 9999px;
     z-index: 2;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .card-thumbnail-deco {
@@ -1406,8 +1610,8 @@ main {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    border: 2px dashed var(--accent-color);
-    opacity: 0.25;
+    border: 2px dashed rgba(255, 255, 255, 0.35);
+    opacity: 0.35;
 }
 
 .card-content-wrap {

@@ -90,7 +90,8 @@ const formatPost = (post) => {
     const readingTime = Math.max(1, Math.ceil(words / 180));
     const tags = extractTags(post);
     const imgMatch = post.content ? post.content.match(/<img[^>]+src=["']([^"']+)["']/i) : null;
-    const thumbnail = imgMatch ? imgMatch[1] : (post.coverImage || null);
+    const thumbnail = post.coverImage || post.cover_image || (imgMatch ? imgMatch[1] : null);
+    const primaryTag = (tags && tags.length > 0) ? tags[0].toLowerCase() : "thoughts";
 
     return {
         ...post,
@@ -99,12 +100,14 @@ const formatPost = (post) => {
         words,
         tags,
         thumbnail,
+        coverImage: thumbnail,
+        topicTheme: primaryTag,
     };
 };
 
 // Helper: Generate fallback ID for local offline development
 const generateId = () => {
-    return Math.random().toString(36).substring(2, 11);
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
 };
 
 // Local JSON File helpers (Asynchronous)
@@ -128,20 +131,18 @@ const writeLocalPosts = async (posts) => {
     }
 };
 
-// Data Access Layer
+// =========================================
+// Data Layer (Supabase PostgreSQL + Local JSON Cache Fallback)
+// =========================================
+
 const getAllPosts = async () => {
     if (supabase) {
-        try {
-            const { data, error } = await supabase
-                .from("posts")
-                .select("*")
-                .order("created_at", { ascending: false });
-            if (error) throw error;
-            return (data || []).map(formatPost);
-        } catch (err) {
-            console.error("Supabase getAllPosts error:", err.message);
-            return [];
-        }
+        const { data, error } = await supabase
+            .from("posts")
+            .select("*")
+            .order("created_at", { ascending: false });
+        if (error) throw error;
+        return (data || []).map(formatPost);
     }
     const localPosts = await readLocalPosts();
     return localPosts.map(formatPost);
@@ -149,34 +150,41 @@ const getAllPosts = async () => {
 
 const getPostById = async (id) => {
     if (supabase) {
-        try {
-            const { data, error } = await supabase
-                .from("posts")
-                .select("*")
-                .eq("id", id)
-                .maybeSingle();
-            if (error) throw error;
-            return data ? formatPost(data) : null;
-        } catch (err) {
-            console.error("Supabase getPostById error:", err.message);
-            return null;
-        }
+        const { data, error } = await supabase
+            .from("posts")
+            .select("*")
+            .eq("id", id)
+            .single();
+        if (error) return null;
+        return formatPost(data);
     }
     const localPosts = await readLocalPosts();
     const post = localPosts.find((p) => String(p.id) === String(id));
     return post ? formatPost(post) : null;
 };
 
-const createPost = async ({ title, content, excerpt, author, tags }) => {
+const createPost = async ({ title, content, excerpt, author, tags, coverImage }) => {
     const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
+    const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
+
     if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .insert([{ title, content, excerpt, author, tags: cleanTags, cover_image: cleanCover }])
+                .select()
+                .single();
+            if (!error && data) return formatPost(data);
+        } catch (e) {
+            // Fallback if cover_image column does not exist
+        }
         try {
             const { data, error } = await supabase
                 .from("posts")
                 .insert([{ title, content, excerpt, author, tags: cleanTags }])
                 .select()
                 .single();
-            if (!error && data) return formatPost(data);
+            if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
         } catch (e) {
             // Fallback if tags column does not exist
         }
@@ -186,7 +194,7 @@ const createPost = async ({ title, content, excerpt, author, tags }) => {
             .select()
             .single();
         if (error) throw error;
-        return formatPost({ ...data, tags: cleanTags });
+        return formatPost({ ...data, tags: cleanTags, coverImage: cleanCover });
     }
     const localPosts = await readLocalPosts();
     const newPost = {
@@ -196,6 +204,7 @@ const createPost = async ({ title, content, excerpt, author, tags }) => {
         excerpt,
         author,
         tags: cleanTags.length > 0 ? cleanTags : undefined,
+        coverImage: cleanCover,
         created_at: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
     };
@@ -204,9 +213,22 @@ const createPost = async ({ title, content, excerpt, author, tags }) => {
     return formatPost(newPost);
 };
 
-const updatePost = async (id, { title, content, excerpt, author, tags }) => {
+const updatePost = async (id, { title, content, excerpt, author, tags, coverImage }) => {
     const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
+    const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
+
     if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .update({ title, content, excerpt, author, tags: cleanTags, cover_image: cleanCover })
+                .eq("id", id)
+                .select()
+                .single();
+            if (!error && data) return formatPost(data);
+        } catch (e) {
+            // Fallback if cover_image column does not exist
+        }
         try {
             const { data, error } = await supabase
                 .from("posts")
@@ -214,7 +236,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags }) => {
                 .eq("id", id)
                 .select()
                 .single();
-            if (!error && data) return formatPost(data);
+            if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
         } catch (e) {
             // Fallback if tags column does not exist
         }
@@ -225,7 +247,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags }) => {
             .select()
             .single();
         if (error) throw error;
-        return formatPost({ ...data, tags: cleanTags });
+        return formatPost({ ...data, tags: cleanTags, coverImage: cleanCover });
     }
     const localPosts = await readLocalPosts();
     const index = localPosts.findIndex((p) => String(p.id) === String(id));
@@ -237,6 +259,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags }) => {
             excerpt,
             author,
             tags: cleanTags.length > 0 ? cleanTags : undefined,
+            coverImage: cleanCover !== undefined ? cleanCover : localPosts[index].coverImage,
         };
         await writeLocalPosts(localPosts);
         return formatPost(localPosts[index]);
@@ -315,7 +338,7 @@ app.get("/new", (req, res) => {
 // POST /posts: Create a new post
 app.post("/posts", async (req, res, next) => {
     try {
-        const { title, content, author, tags } = req.body;
+        const { title, content, author, tags, coverImage } = req.body;
         if (!title?.trim() || !content?.trim() || !author?.trim()) {
             return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
         }
@@ -326,6 +349,7 @@ app.post("/posts", async (req, res, next) => {
             excerpt: generateExcerpt(content.trim()),
             author: simpleSanitize(author.trim()),
             tags: tags ? simpleSanitize(tags.trim()) : undefined,
+            coverImage: coverImage ? simpleSanitize(coverImage.trim()) : undefined,
         });
 
         res.redirect("/");
@@ -376,7 +400,7 @@ app.get("/edit/:id", async (req, res, next) => {
 // POST /update/:id: Update an existing post
 app.post("/update/:id", async (req, res, next) => {
     try {
-        const { title, content, author, tags } = req.body;
+        const { title, content, author, tags, coverImage } = req.body;
         if (!title?.trim() || !content?.trim() || !author?.trim()) {
             return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
         }
@@ -387,6 +411,7 @@ app.post("/update/:id", async (req, res, next) => {
             excerpt: generateExcerpt(content.trim()),
             author: simpleSanitize(author.trim()),
             tags: tags ? simpleSanitize(tags.trim()) : undefined,
+            coverImage: coverImage ? simpleSanitize(coverImage.trim()) : undefined,
         });
 
         if (updated) {
