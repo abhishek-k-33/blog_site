@@ -199,40 +199,98 @@ a:hover {
     transition: color 0.3s ease;
 }
 
-/* Header logo SVG part transitions (resting state) */
+/* Header Logo SVG Elements & Initial Entrance Animation */
+.header-logo-body {
+    transform-origin: center center;
+    transform-box: fill-box;
+    animation: splashBodyIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
 .header-logo-tail {
     transform-origin: 60% 0%;
     transform-box: fill-box;
-    transition: transform 0.3s ease;
+    animation: 
+        splashBodyIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both,
+        splashTailWag 0.9s cubic-bezier(0.22, 0.68, 0.36, 1) 0.5s both;
 }
 
 .header-logo-fold {
     transform-origin: 0% 0%;
     transform-box: fill-box;
-    transition: transform 0.3s ease;
+    animation: splashFoldIn 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) 0.35s both;
 }
 
-/* --- Hover: trigger tail wag + fold peek --- */
+.header-logo-line-1 {
+    transform-origin: left center;
+    transform-box: fill-box;
+    animation: splashLineIn 0.35s ease 0.65s both;
+}
+
+.header-logo-line-2 {
+    transform-origin: left center;
+    transform-box: fill-box;
+    animation: splashLineIn 0.35s ease 0.78s both;
+}
+
+.header-logo-line-3 {
+    transform-origin: left center;
+    transform-box: fill-box;
+    animation: splashLineIn 0.35s ease 0.9s both;
+}
+
+/* --- Hover: Replay full signature splash animation --- */
 .pill-logo:hover {
-    text-decoration: none;
-    background: rgba(140, 122, 169, 0.12);
-    transform: translateY(-1px) scale(1.02);
+    text-decoration: none !important;
+    background: rgba(0, 0, 0, 0.04);
+    transform: translateY(-1.5px) scale(1.03);
+}
+
+body.dark-mode .pill-logo:hover {
+    background: rgba(255, 255, 255, 0.06);
 }
 
 .pill-logo:hover .pill-logo-icon {
-    transform: scale(1.08);
+    transform: scale(1.1);
+}
+
+.pill-logo:hover .header-logo-body {
+    animation: logoHoverPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .pill-logo:hover .header-logo-tail {
-    animation: hoverTailWag 0.7s cubic-bezier(0.22, 0.68, 0.36, 1) both;
+    animation: splashTailWag 0.85s cubic-bezier(0.22, 0.68, 0.36, 1) both;
 }
 
 .pill-logo:hover .header-logo-fold {
-    animation: hoverFoldPeek 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+    animation: splashFoldIn 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.pill-logo:hover .header-logo-line-1 {
+    animation: splashLineIn 0.3s ease 0.04s both;
+}
+
+.pill-logo:hover .header-logo-line-2 {
+    animation: splashLineIn 0.3s ease 0.14s both;
+}
+
+.pill-logo:hover .header-logo-line-3 {
+    animation: splashLineIn 0.3s ease 0.24s both;
+}
+
+.pill-logo:hover .logo-text {
+    color: var(--accent-color);
 }
 
 .pill-logo:active {
-    transform: scale(0.98);
+    transform: scale(0.96);
+}
+
+@keyframes logoHoverPop {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.15) rotate(-3deg); }
+    60%  { transform: scale(0.96) rotate(2deg); }
+    80%  { transform: scale(1.04) rotate(-1deg); }
+    100% { transform: scale(1) rotate(0deg); }
 }
 
 /* --- Center: Modern Sleek Text Navigation (wegrow style) --- */
