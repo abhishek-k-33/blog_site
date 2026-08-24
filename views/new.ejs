@@ -95,7 +95,7 @@
             <!-- Topic Tags Selector -->
             <div class="composer-tag-picker" id="composer-tag-picker">
                 <div class="tag-picker-header">
-                    <span class="tag-picker-label">🏷️ Topics:</span>
+                    <span class="tag-picker-label">Topics:</span>
                     <div class="tag-preset-chips" id="tag-preset-chips">
                         <button type="button" class="tag-preset-btn is-selected" data-tag="Thoughts">#Thoughts</button>
                         <button type="button" class="tag-preset-btn" data-tag="Tech">#Tech</button>
@@ -112,7 +112,7 @@
             <!-- Cover / Thumbnail Image Selector -->
             <div class="composer-cover-picker" id="composer-cover-picker">
                 <div class="cover-picker-header">
-                    <span class="cover-picker-label">🖼️ Cover Image / Thumbnail:</span>
+                    <span class="cover-picker-label">Cover Image / Thumbnail:</span>
                     <button type="button" class="btn-toggle-cover-input" id="btn-toggle-cover-input">
                         <span id="cover-toggle-text">+ Add Image URL</span>
                     </button>
@@ -120,7 +120,7 @@
                 <div class="cover-input-container" id="cover-input-container" style="display: none;">
                     <div class="cover-input-row">
                         <input type="url" id="cover-image-input" name="coverImage" placeholder="Paste image URL (e.g. Unsplash, imgur, https://...)" class="cover-image-input" autocomplete="off">
-                        <button type="button" class="btn-clear-cover" id="btn-clear-cover" title="Clear">✕</button>
+                        <button type="button" class="btn-clear-cover" id="btn-clear-cover" title="Clear">Clear</button>
                     </div>
                     <div class="cover-preview-wrapper" id="cover-preview-wrapper" style="display: none;">
                         <img src="" alt="Cover preview" id="cover-preview-img" class="cover-preview-img">
@@ -471,7 +471,7 @@
         btnToggleCover.addEventListener('click', () => {
             const isHidden = coverInputContainer.style.display === 'none';
             coverInputContainer.style.display = isHidden ? 'block' : 'none';
-            if (coverToggleText) coverToggleText.textContent = isHidden ? '✕ Hide Cover Input' : '+ Add Image URL';
+            if (coverToggleText) coverToggleText.textContent = isHidden ? 'Hide Cover Input' : '+ Add Image URL';
             if (isHidden && coverImageInput) coverImageInput.focus();
         });
     }

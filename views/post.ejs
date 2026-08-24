@@ -23,7 +23,7 @@
                         <%= post.date %>
                     </span>
                     <% if (post.readingTime) { %>
-                        <span class="meta-pill meta-reading-time">☕ <%= post.readingTime %> min read</span>
+                        <span class="meta-pill meta-reading-time"><%= post.readingTime %> min read</span>
                     <% } %>
                 </div>
             </header>
@@ -31,7 +31,7 @@
             <!-- Inline Mobile Table of Contents (if headings exist) -->
             <div class="mobile-toc-accordion" id="mobile-toc-accordion" style="display: none;">
                 <button type="button" class="mobile-toc-toggle" id="mobile-toc-toggle" aria-expanded="false">
-                    <span>📑 Table of Contents</span>
+                    <span>Table of Contents</span>
                     <svg class="toc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </button>
                 <div class="mobile-toc-list" id="mobile-toc-list"></div>
@@ -88,7 +88,7 @@
             <div class="companion-card companion-toc-card" id="desktop-toc-card" style="display: none;">
                 <div class="companion-card-header">
                     <div class="toc-header-title-row">
-                        <h4>📑 Table of Contents</h4>
+                        <h4>Table of Contents</h4>
                         <span class="toc-progress-percentage" id="toc-progress-pct">0%</span>
                     </div>
                     <div class="toc-reading-progress-track">
@@ -101,7 +101,7 @@
             <!-- Social Sharing Widget -->
             <div class="companion-card companion-share-card">
                 <div class="companion-card-header">
-                    <h4>🔗 Share Story</h4>
+                    <h4>Share Story</h4>
                 </div>
                 <div class="companion-share-buttons">
                     <button type="button" class="btn-companion-share" id="sidebar-share-copy" title="Copy Link">
@@ -119,13 +119,13 @@
             <% if (typeof relatedPosts !== 'undefined' && relatedPosts.length > 0) { %>
                 <div class="companion-card companion-related-card">
                     <div class="companion-card-header">
-                        <h4>✨ Related Reads</h4>
+                        <h4>Related Reads</h4>
                     </div>
                     <div class="companion-related-list">
                         <% relatedPosts.forEach(rel => { %>
                             <a href="/posts/<%= rel.id %>" class="companion-related-item">
                                 <span class="related-item-title"><%= rel.title %></span>
-                                <span class="related-item-meta">☕ <%= rel.readingTime %> min read • <%= rel.author %></span>
+                                <span class="related-item-meta"><%= rel.readingTime %> min read • <%= rel.author %></span>
                             </a>
                         <% }) %>
                     </div>

@@ -95,36 +95,35 @@
             <!-- Topic Tags Selector -->
             <div class="composer-tag-picker" id="composer-tag-picker">
                 <div class="tag-picker-header">
-                    <span class="tag-picker-label">🏷️ Topics:</span>
+                    <span class="tag-picker-label">Topics:</span>
                     <div class="tag-preset-chips" id="tag-preset-chips">
-                        <% const currentTags = post.tags || ['Thoughts']; %>
-                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Thoughts') ? 'is-selected' : '' %>" data-tag="Thoughts">#Thoughts</button>
-                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Tech') ? 'is-selected' : '' %>" data-tag="Tech">#Tech</button>
-                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Guides') ? 'is-selected' : '' %>" data-tag="Guides">#Guides</button>
-                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Opinion') ? 'is-selected' : '' %>" data-tag="Opinion">#Opinion</button>
-                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Design') ? 'is-selected' : '' %>" data-tag="Design">#Design</button>
-                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Life') ? 'is-selected' : '' %>" data-tag="Life">#Life</button>
+                        <button type="button" class="tag-preset-btn <%= (post.tags && post.tags.includes('Thoughts')) ? 'is-selected' : '' %>" data-tag="Thoughts">#Thoughts</button>
+                        <button type="button" class="tag-preset-btn <%= (post.tags && post.tags.includes('Tech')) ? 'is-selected' : '' %>" data-tag="Tech">#Tech</button>
+                        <button type="button" class="tag-preset-btn <%= (post.tags && post.tags.includes('Guides')) ? 'is-selected' : '' %>" data-tag="Guides">#Guides</button>
+                        <button type="button" class="tag-preset-btn <%= (post.tags && post.tags.includes('Opinion')) ? 'is-selected' : '' %>" data-tag="Opinion">#Opinion</button>
+                        <button type="button" class="tag-preset-btn <%= (post.tags && post.tags.includes('Design')) ? 'is-selected' : '' %>" data-tag="Design">#Design</button>
+                        <button type="button" class="tag-preset-btn <%= (post.tags && post.tags.includes('Life')) ? 'is-selected' : '' %>" data-tag="Life">#Life</button>
                     </div>
                 </div>
-                <input type="text" id="custom-tag-input" value="<%= (post.tags || []).filter(t => !['Thoughts','Tech','Design','Life','Coding'].includes(t)).join(', ') %>" placeholder="+ Add custom tags (comma separated)..." class="custom-tag-input" autocomplete="off">
-                <input type="hidden" name="tags" id="hidden-tags" value="<%= (post.tags || []).join(',') %>">
+                <input type="text" id="custom-tag-input" placeholder="+ Add custom tags (comma separated)..." class="custom-tag-input" autocomplete="off">
+                <input type="hidden" name="tags" id="hidden-tags" value="<%= (post.tags || []).join(', ') %>">
             </div>
 
             <!-- Cover / Thumbnail Image Selector -->
             <div class="composer-cover-picker" id="composer-cover-picker">
                 <div class="cover-picker-header">
-                    <span class="cover-picker-label">🖼️ Cover Image / Thumbnail:</span>
+                    <span class="cover-picker-label">Cover Image / Thumbnail:</span>
                     <button type="button" class="btn-toggle-cover-input" id="btn-toggle-cover-input">
-                        <span id="cover-toggle-text"><%= post.thumbnail ? 'Edit Image URL' : '+ Add Image URL' %></span>
+                        <span id="cover-toggle-text"><%= post.coverImage ? 'Hide Cover Input' : '+ Add Image URL' %></span>
                     </button>
                 </div>
-                <div class="cover-input-container" id="cover-input-container" style="<%= post.thumbnail ? 'display: block;' : 'display: none;' %>">
+                <div class="cover-input-container" id="cover-input-container" style="<%= post.coverImage ? 'display: block;' : 'display: none;' %>">
                     <div class="cover-input-row">
-                        <input type="url" id="cover-image-input" name="coverImage" value="<%= post.thumbnail || '' %>" placeholder="Paste image URL (e.g. Unsplash, imgur, https://...)" class="cover-image-input" autocomplete="off">
-                        <button type="button" class="btn-clear-cover" id="btn-clear-cover" title="Clear">✕</button>
+                        <input type="url" id="cover-image-input" name="coverImage" value="<%= post.coverImage || '' %>" placeholder="Paste image URL (e.g. Unsplash, imgur, https://...)" class="cover-image-input" autocomplete="off">
+                        <button type="button" class="btn-clear-cover" id="btn-clear-cover" title="Clear">Clear</button>
                     </div>
-                    <div class="cover-preview-wrapper" id="cover-preview-wrapper" style="<%= post.thumbnail ? 'display: block;' : 'display: none;' %>">
-                        <img src="<%= post.thumbnail || '' %>" alt="Cover preview" id="cover-preview-img" class="cover-preview-img">
+                    <div class="cover-preview-wrapper" id="cover-preview-wrapper" style="<%= post.coverImage ? 'display: block;' : 'display: none;' %>">
+                        <img src="<%= post.coverImage || '' %>" alt="Cover preview" id="cover-preview-img" class="cover-preview-img">
                     </div>
                 </div>
             </div>
@@ -472,7 +471,7 @@
         btnToggleCover.addEventListener('click', () => {
             const isHidden = coverInputContainer.style.display === 'none';
             coverInputContainer.style.display = isHidden ? 'block' : 'none';
-            if (coverToggleText) coverToggleText.textContent = isHidden ? '✕ Hide Cover Input' : '+ Add Image URL';
+            if (coverToggleText) coverToggleText.textContent = isHidden ? 'Hide Cover Input' : '+ Add Image URL';
             if (isHidden && coverImageInput) coverImageInput.focus();
         });
     }

@@ -9,8 +9,8 @@
     <div class="bookmark-drawer-backdrop" id="bookmark-drawer-backdrop"></div>
     <div class="bookmark-drawer" id="bookmark-drawer" role="dialog" aria-labelledby="bookmark-drawer-title">
         <div class="bookmark-drawer-header">
-            <h3 id="bookmark-drawer-title">🔖 Saved Stories</h3>
-            <button type="button" class="drawer-close-btn" id="drawer-close-btn" aria-label="Close saved stories">✕</button>
+            <h3 id="bookmark-drawer-title">Saved Stories</h3>
+            <button type="button" class="drawer-close-btn" id="drawer-close-btn" aria-label="Close saved stories"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
         <div class="bookmark-drawer-content" id="bookmark-drawer-content">
             <p class="bookmark-empty-state">No saved stories yet. Bookmark articles to read them later!</p>
@@ -21,8 +21,8 @@
     <div class="newsletter-modal-backdrop" id="newsletter-modal-backdrop"></div>
     <div class="newsletter-modal" id="newsletter-modal" role="dialog" aria-labelledby="newsletter-modal-title">
         <div class="newsletter-modal-header">
-            <h3 id="newsletter-modal-title">💌 miniblogs Weekly</h3>
-            <button type="button" class="newsletter-close-btn" id="newsletter-close-btn" aria-label="Close newsletter modal">✕</button>
+            <h3 id="newsletter-modal-title">miniblogs Weekly</h3>
+            <button type="button" class="newsletter-close-btn" id="newsletter-close-btn" aria-label="Close newsletter modal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
         <div class="newsletter-modal-body">
             <p class="newsletter-modal-desc">Get the freshest stories, ideas, and curated reads delivered right to your inbox once a week. Zero spam, unsubscribe anytime.</p>
@@ -33,7 +33,7 @@
                 </div>
             </form>
             <div id="newsletter-success-msg" class="newsletter-success-msg" style="display: none;">
-                ✨ You're on the list! Thanks for subscribing.
+                You're on the list! Thanks for subscribing.
             </div>
         </div>
     </div>
@@ -154,7 +154,7 @@
                             <span class="bookmark-item-title">${escapeHTML(item.title)}</span>
                             <span class="bookmark-item-meta">By ${escapeHTML(item.author || 'Author')}</span>
                         </a>
-                        <button type="button" class="bookmark-remove-btn" data-index="${index}" title="Remove bookmark" aria-label="Remove bookmark">✕</button>
+                        <button type="button" class="bookmark-remove-btn" data-index="${index}" title="Remove bookmark" aria-label="Remove bookmark"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                     </li>
                 `;
             });
