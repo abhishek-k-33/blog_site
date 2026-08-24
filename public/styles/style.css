@@ -95,15 +95,15 @@ a:hover {
     pointer-events: auto;
     position: relative;
     background: var(--pill-bg);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 2px solid var(--pill-border);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1.5px solid var(--pill-border);
     border-radius: 9999px;
     box-shadow: var(--pill-shadow);
-    padding: 8px 20px;
+    padding: 7px 16px;
     width: 100%;
     min-width: 0;
-    max-width: 800px;
+    max-width: 860px;
     display: flex;
     align-items: center;
     box-sizing: border-box;
@@ -130,7 +130,7 @@ a:hover {
     background: linear-gradient(90deg, var(--accent-color), #f39c12);
     transform: scaleX(0);
     transform-origin: left center;
-    transition: none; /* instant 60fps tracking without interpolation lag */
+    transition: none;
     border-bottom-left-radius: 9999px;
     border-bottom-right-radius: 9999px;
     opacity: 0.95;
@@ -143,7 +143,7 @@ a:hover {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    gap: 20px;
+    gap: 12px;
     position: relative;
     z-index: 2;
 }
@@ -157,12 +157,12 @@ a:hover {
 .pill-logo {
     display: inline-flex;
     align-items: center;
-    gap: 9px;
-    font-size: 1.15rem;
+    gap: 8px;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--text-color);
     text-decoration: none;
-    padding: 4px 10px 4px 6px;
+    padding: 3px 8px 3px 4px;
     border-radius: 9999px;
     transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -171,8 +171,8 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 28px;
+    width: 24px;
+    height: 26px;
     flex-shrink: 0;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -189,7 +189,7 @@ a:hover {
 
 .logo-text {
     letter-spacing: -0.02em;
-    font-size: 1.05rem;
+    font-size: 1.02rem;
     color: var(--text-color);
     transition: color 0.3s ease;
 }
@@ -210,7 +210,7 @@ a:hover {
 /* --- Hover: trigger tail wag + fold peek --- */
 .pill-logo:hover {
     text-decoration: none;
-    background: rgba(140, 122, 169, 0.15);
+    background: rgba(140, 122, 169, 0.12);
     transform: translateY(-1px) scale(1.02);
 }
 
@@ -230,22 +230,87 @@ a:hover {
     transform: scale(0.98);
 }
 
-/* --- Hover keyframes --- */
-
-@keyframes hoverTailWag {
-    0%   { transform: rotate(0deg); }
-    14%  { transform: rotate(-16deg); }
-    28%  { transform: rotate(12deg); }
-    42%  { transform: rotate(-9deg); }
-    58%  { transform: rotate(6deg); }
-    74%  { transform: rotate(-3deg); }
-    100% { transform: rotate(0deg); }
+/* --- Primary Topic Categories in Navbar --- */
+.navbar-topics-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
-@keyframes hoverFoldPeek {
-    0%   { transform: rotate(0deg) scale(1); }
-    40%  { transform: rotate(-25deg) scale(1.1); }
-    100% { transform: rotate(0deg) scale(1); }
+.nav-topic-link {
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    padding: 3px 9px;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid transparent;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+body.dark-mode .nav-topic-link {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-topic-link:hover {
+    color: var(--accent-color);
+    background: rgba(140, 122, 169, 0.18);
+    border-color: var(--border-color);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+/* --- Glassmorphic Search Bar in Navbar --- */
+.navbar-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    padding: 3px 8px 3px 10px;
+    transition: all 0.25s ease;
+}
+
+body.dark-mode .navbar-search-box {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border-color);
+}
+
+.navbar-search-box:focus-within {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--pill-glow);
+    background: var(--bg-color);
+}
+
+.navbar-search-icon {
+    color: var(--text-color);
+    opacity: 0.6;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.navbar-search-input {
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    width: 95px;
+    outline: none;
+    transition: width 0.25s ease;
+}
+
+.navbar-search-input:focus {
+    width: 140px;
+}
+
+.navbar-search-input::placeholder {
+    color: var(--text-color);
+    opacity: 0.55;
 }
 
 /* Crisp Dynamic Island Info Center */
@@ -298,32 +363,34 @@ a:hover {
 .pill-nav {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     flex-shrink: 0;
 }
 
-.pill-nav-link {
-    font-size: 0.95rem;
-    font-weight: 700;
+.btn-navbar-newsletter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-color);
     color: var(--text-color);
-    padding: 6px 14px;
-    border-radius: 9999px;
-    text-decoration: none;
-    transition: 
-        transform 0.2s ease,
-        color 0.2s ease,
-        background-color 0.2s ease;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
 }
 
-.pill-nav-link:hover {
-    text-decoration: none;
+body.dark-mode .btn-navbar-newsletter {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-navbar-newsletter:hover {
     color: var(--accent-color);
-    background: rgba(140, 122, 169, 0.15);
-    transform: translateY(-1px);
-}
-
-.pill-nav-link:active {
-    transform: translateY(0);
+    border-color: var(--accent-color);
+    transform: translateY(-1px) scale(1.06);
+    box-shadow: 0 3px 8px var(--pill-glow);
 }
 
 .btn-pill-primary {
@@ -331,8 +398,8 @@ a:hover {
     color: var(--bg-color);
     border: 2px solid var(--accent-color);
     border-radius: 9999px;
-    padding: 6px 16px;
-    font-size: 0.9rem;
+    padding: 5px 14px;
+    font-size: 0.86rem;
     font-weight: 700;
     box-shadow: 2px 2px 0px var(--text-color);
     cursor: pointer;
@@ -2348,6 +2415,137 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 }
 
 /* =========================================
+   NEWSLETTER GLASSMORPHIС MODAL DIALOG
+   ========================================= */
+
+.newsletter-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.newsletter-modal-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.newsletter-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -45%) scale(0.95);
+    width: 90%;
+    max-width: 440px;
+    background: var(--pill-bg);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1.5px solid var(--pill-border);
+    border-radius: 20px;
+    padding: 26px;
+    box-shadow: var(--card-shadow), 0 20px 45px rgba(0, 0, 0, 0.4);
+    z-index: 2001;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+
+.newsletter-modal.is-open {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.newsletter-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.newsletter-modal-header h3 {
+    font-family: var(--font-story);
+    font-size: 1.35rem;
+    color: var(--text-color);
+}
+
+.newsletter-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.newsletter-close-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.newsletter-modal-desc {
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--text-color);
+    opacity: 0.85;
+    margin-bottom: 20px;
+}
+
+.newsletter-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.newsletter-email-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-ui);
+    font-size: 0.92rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.newsletter-email-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--pill-glow);
+}
+
+.newsletter-submit-btn {
+    width: 100%;
+    padding: 11px;
+    font-size: 0.92rem;
+    text-align: center;
+    justify-content: center;
+}
+
+.newsletter-success-msg {
+    padding: 14px;
+    background: rgba(46, 204, 113, 0.15);
+    border: 1px solid rgba(46, 204, 113, 0.3);
+    border-radius: 12px;
+    color: var(--text-color);
+    font-weight: 600;
+    text-align: center;
+    font-size: 0.92rem;
+}
+
+/* =========================================
    RESPONSIVE DESIGN SYSTEM (ALL VIEWPORTS)
    ========================================= */
 
@@ -2455,6 +2653,23 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
         flex-shrink: 1;
         min-width: 0;
         overflow: hidden;
+    }
+
+    .navbar-topics-nav {
+        display: none !important;
+    }
+
+    .navbar-search-box {
+        padding: 2px 6px 2px 8px;
+    }
+
+    .navbar-search-input {
+        width: 70px;
+        font-size: 0.76rem;
+    }
+
+    .navbar-search-input:focus {
+        width: 105px;
     }
 
     .pill-logo {
@@ -2781,6 +2996,10 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 
     .pill-logo .logo-text {
         font-size: 0.88rem;
+    }
+
+    .btn-navbar-newsletter {
+        display: none;
     }
 
     .btn-pill-primary {

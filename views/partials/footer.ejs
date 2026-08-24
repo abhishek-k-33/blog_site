@@ -17,6 +17,27 @@
         </div>
     </div>
 
+    <!-- Newsletter Glassmorphic Modal Dialog -->
+    <div class="newsletter-modal-backdrop" id="newsletter-modal-backdrop"></div>
+    <div class="newsletter-modal" id="newsletter-modal" role="dialog" aria-labelledby="newsletter-modal-title">
+        <div class="newsletter-modal-header">
+            <h3 id="newsletter-modal-title">💌 miniblogs Weekly</h3>
+            <button type="button" class="newsletter-close-btn" id="newsletter-close-btn" aria-label="Close newsletter modal">✕</button>
+        </div>
+        <div class="newsletter-modal-body">
+            <p class="newsletter-modal-desc">Get the freshest stories, ideas, and curated reads delivered right to your inbox once a week. Zero spam, unsubscribe anytime.</p>
+            <form id="newsletter-form" class="newsletter-form">
+                <div class="newsletter-input-group">
+                    <input type="email" id="newsletter-email-input" class="newsletter-email-input" placeholder="Enter your email address..." required autocomplete="email">
+                    <button type="submit" class="btn btn-primary newsletter-submit-btn">Subscribe Free</button>
+                </div>
+            </form>
+            <div id="newsletter-success-msg" class="newsletter-success-msg" style="display: none;">
+                ✨ You're on the list! Thanks for subscribing.
+            </div>
+        </div>
+    </div>
+
     <script>
         // =========================================
         // Unified Theme Toggle (Header + Sidebar Sync)
@@ -286,6 +307,113 @@
         window.addEventListener('scroll', onScrollRequest, { passive: true });
         window.addEventListener('resize', onScrollRequest);
         updateDynamicIsland();
+
+        // =========================================
+        // Live Search Filtering & Quick Search
+        // =========================================
+        const searchInput = document.getElementById('navbar-search-input');
+        if (searchInput) {
+            const isHomePage = window.location.pathname === '/' || window.location.pathname === '';
+            const postCards = Array.from(document.querySelectorAll('.post-card'));
+            const postsGrid = document.querySelector('.posts-grid');
+
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim().toLowerCase();
+
+                if (isHomePage && postCards.length > 0) {
+                    let visibleCount = 0;
+                    postCards.forEach(card => {
+                        const title = (card.querySelector('.post-title') ? card.querySelector('.post-title').textContent : '').toLowerCase();
+                        const excerpt = (card.querySelector('.post-excerpt') ? card.querySelector('.post-excerpt').textContent : '').toLowerCase();
+                        const author = (card.querySelector('.meta-author') ? card.querySelector('.meta-author').textContent : '').toLowerCase();
+                        const tags = Array.from(card.querySelectorAll('.post-pill-tag')).map(t => t.textContent.toLowerCase()).join(' ');
+
+                        const matches = !query || title.includes(query) || excerpt.includes(query) || author.includes(query) || tags.includes(query);
+                        if (matches) {
+                            card.style.display = '';
+                            visibleCount++;
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+
+                    // Manage dynamic empty state
+                    let searchEmptyState = document.getElementById('dynamic-search-empty-state');
+                    if (visibleCount === 0 && query) {
+                        if (!searchEmptyState && postsGrid) {
+                            searchEmptyState = document.createElement('div');
+                            searchEmptyState.id = 'dynamic-search-empty-state';
+                            searchEmptyState.className = 'no-posts';
+                            postsGrid.appendChild(searchEmptyState);
+                        }
+                        if (searchEmptyState) {
+                            searchEmptyState.innerHTML = `<p>No stories found matching "<strong>${query.replace(/</g, '&lt;')}</strong>"</p><button type="button" class="btn btn-primary" onclick="document.getElementById('navbar-search-input').value=''; document.getElementById('navbar-search-input').dispatchEvent(new Event('input'));">Clear Search</button>`;
+                            searchEmptyState.style.display = 'block';
+                        }
+                    } else if (searchEmptyState) {
+                        searchEmptyState.style.display = 'none';
+                    }
+                }
+            });
+
+            // Redirect on Enter if not on homepage
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !isHomePage && searchInput.value.trim()) {
+                    window.location.href = `/?search=${encodeURIComponent(searchInput.value.trim())}`;
+                }
+            });
+        }
+
+        // =========================================
+        // Newsletter Glassmorphic Modal Handling
+        // =========================================
+        const newsletterBtn = document.getElementById('navbar-newsletter-btn');
+        const newsletterModal = document.getElementById('newsletter-modal');
+        const newsletterBackdrop = document.getElementById('newsletter-modal-backdrop');
+        const newsletterCloseBtn = document.getElementById('newsletter-close-btn');
+        const newsletterForm = document.getElementById('newsletter-form');
+        const newsletterSuccessMsg = document.getElementById('newsletter-success-msg');
+
+        function openNewsletterModal() {
+            if (newsletterModal && newsletterBackdrop) {
+                newsletterModal.classList.add('is-open');
+                newsletterBackdrop.classList.add('is-open');
+                const emailInput = document.getElementById('newsletter-email-input');
+                if (emailInput) setTimeout(() => emailInput.focus(), 100);
+            }
+        }
+
+        function closeNewsletterModal() {
+            if (newsletterModal && newsletterBackdrop) {
+                newsletterModal.classList.remove('is-open');
+                newsletterBackdrop.classList.remove('is-open');
+            }
+        }
+
+        if (newsletterBtn) newsletterBtn.addEventListener('click', openNewsletterModal);
+        if (newsletterCloseBtn) newsletterCloseBtn.addEventListener('click', closeNewsletterModal);
+        if (newsletterBackdrop) newsletterBackdrop.addEventListener('click', closeNewsletterModal);
+
+        if (newsletterForm) {
+            newsletterForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const emailInput = document.getElementById('newsletter-email-input');
+                const email = emailInput ? emailInput.value.trim() : '';
+                if (email) {
+                    localStorage.setItem('newsletter_subscriber', email);
+                    newsletterForm.style.display = 'none';
+                    if (newsletterSuccessMsg) newsletterSuccessMsg.style.display = 'block';
+                    setTimeout(() => {
+                        closeNewsletterModal();
+                        setTimeout(() => {
+                            newsletterForm.style.display = '';
+                            if (newsletterSuccessMsg) newsletterSuccessMsg.style.display = 'none';
+                            if (emailInput) emailInput.value = '';
+                        }, 400);
+                    }, 2200);
+                }
+            });
+        }
     </script>
 </body>
 </html>
