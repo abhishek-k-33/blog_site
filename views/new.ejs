@@ -109,7 +109,7 @@
                 <input type="hidden" name="tags" id="hidden-tags" value="Thoughts">
             </div>
 
-            <!-- Cover / Thumbnail Media Gallery Selector -->
+            <!-- Cover / Thumbnail Media Gallery & Presets Selector -->
             <div class="composer-cover-picker" id="composer-cover-picker">
                 <div class="cover-picker-header">
                     <div class="cover-picker-title-group">
@@ -124,10 +124,10 @@
                 <!-- Hidden Form Field for Form Submission -->
                 <input type="hidden" id="cover-image-input" name="coverImage" value="">
 
-                <!-- Drag & Drop / Clickable Gallery Picker Box -->
-                <div class="cover-upload-zone" id="cover-upload-zone" tabindex="0" role="button" aria-label="Select image from gallery">
+                <!-- 1. Drag & Drop / Clickable Gallery Picker Box -->
+                <div class="cover-upload-zone" id="cover-upload-zone" tabindex="0" role="button" aria-label="Select image from device gallery">
                     <div class="upload-zone-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect>
                             <circle cx="8.5" cy="8.5" r="1.5"></circle>
                             <polyline points="21 15 16 10 5 21"></polyline>
@@ -139,11 +139,11 @@
                     </div>
                     <button type="button" class="btn btn-secondary btn-browse-gallery" id="btn-browse-gallery">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        Choose Image
+                        Browse Gallery
                     </button>
                 </div>
 
-                <!-- High-res Preview Card (Shown when an image is chosen from gallery) -->
+                <!-- High-res Preview Card (Shown when an image is selected) -->
                 <div class="cover-preview-card" id="cover-preview-card" style="display: none;">
                     <div class="cover-preview-media">
                         <img src="" alt="Cover thumbnail preview" id="cover-preview-img" class="cover-preview-img">
@@ -157,6 +157,129 @@
                             <button type="button" class="btn btn-secondary btn-change-cover" id="btn-change-cover">Change Image</button>
                             <button type="button" class="btn btn-secondary btn-remove-cover" id="btn-remove-cover" title="Reset to Default Mesh">Remove</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 2. Curated Default Photo Presets -->
+                <div class="cover-presets-section">
+                    <div class="cover-presets-header">
+                        <span class="cover-presets-title">Or choose a curated default artwork:</span>
+                    </div>
+
+                    <div class="cover-preset-grid" id="cover-preset-grid" role="radiogroup" aria-label="Curated default cover photos">
+                        <!-- Preset 1: Generative Topic Mesh (Default) -->
+                        <button type="button" class="cover-preset-card is-selected" data-cover-url="" data-cover-name="Generative Mesh" role="radio" aria-checked="true">
+                            <div class="cover-card-art-preview topic-mesh-preview">
+                                <div class="mesh-mini-glow"></div>
+                                <div class="mesh-mini-circle"></div>
+                                <span class="mesh-mini-tag">Topic Mesh</span>
+                            </div>
+                            <div class="cover-card-info">
+                                <span class="cover-card-title">Generative Mesh</span>
+                                <span class="cover-card-badge">Dynamic</span>
+                            </div>
+                            <div class="cover-card-check">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </button>
+
+                        <!-- Preset 2: Tech Workspace -->
+                        <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80" data-cover-name="Tech Workspace" role="radio" aria-checked="false">
+                            <div class="cover-card-img-preview">
+                                <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=400&q=80" alt="Tech Workspace" loading="lazy">
+                            </div>
+                            <div class="cover-card-info">
+                                <span class="cover-card-title">Tech Workspace</span>
+                                <span class="cover-card-badge">Code</span>
+                            </div>
+                            <div class="cover-card-check">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </button>
+
+                        <!-- Preset 3: Minimal Architecture -->
+                        <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80" data-cover-name="Minimal Space" role="radio" aria-checked="false">
+                            <div class="cover-card-img-preview">
+                                <img src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80" alt="Minimal Space" loading="lazy">
+                            </div>
+                            <div class="cover-card-info">
+                                <span class="cover-card-title">Minimal Space</span>
+                                <span class="cover-card-badge">Design</span>
+                            </div>
+                            <div class="cover-card-check">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </button>
+
+                        <!-- Preset 4: Editorial Coffee -->
+                        <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80" data-cover-name="Warm Reading" role="radio" aria-checked="false">
+                            <div class="cover-card-img-preview">
+                                <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80" alt="Warm Reading" loading="lazy">
+                            </div>
+                            <div class="cover-card-info">
+                                <span class="cover-card-title">Warm Reading</span>
+                                <span class="cover-card-badge">Thoughts</span>
+                            </div>
+                            <div class="cover-card-check">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </button>
+
+                        <!-- Preset 5: Cyber Neon -->
+                        <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80" data-cover-name="Neon Cyber" role="radio" aria-checked="false">
+                            <div class="cover-card-img-preview">
+                                <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=400&q=80" alt="Neon Cyber" loading="lazy">
+                            </div>
+                            <div class="cover-card-info">
+                                <span class="cover-card-title">Neon Cyber</span>
+                                <span class="cover-card-badge">Future</span>
+                            </div>
+                            <div class="cover-card-check">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </button>
+
+                        <!-- Preset 6: Abstract Modern Art -->
+                        <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80" data-cover-name="Abstract Flow" role="radio" aria-checked="false">
+                            <div class="cover-card-img-preview">
+                                <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80" alt="Abstract Flow" loading="lazy">
+                            </div>
+                            <div class="cover-card-info">
+                                <span class="cover-card-title">Abstract Flow</span>
+                                <span class="cover-card-badge">Art</span>
+                            </div>
+                            <div class="cover-card-check">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </button>
+
+                        <!-- Preset 7: Forest Fog -->
+                        <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80" data-cover-name="Forest Mist" role="radio" aria-checked="false">
+                            <div class="cover-card-img-preview">
+                                <img src="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=400&q=80" alt="Forest Mist" loading="lazy">
+                            </div>
+                            <div class="cover-card-info">
+                                <span class="cover-card-title">Forest Mist</span>
+                                <span class="cover-card-badge">Nature</span>
+                            </div>
+                            <div class="cover-card-check">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </button>
+
+                        <!-- Preset 8: Amber Sunset -->
+                        <button type="button" class="cover-preset-card" data-cover-url="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80" data-cover-name="Amber Horizon" role="radio" aria-checked="false">
+                            <div class="cover-card-img-preview">
+                                <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80" alt="Amber Horizon" loading="lazy">
+                            </div>
+                            <div class="cover-card-info">
+                                <span class="cover-card-title">Amber Horizon</span>
+                                <span class="cover-card-badge">Light</span>
+                            </div>
+                            <div class="cover-card-check">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -491,7 +614,7 @@
         }
     }
 
-    // 3. Native Windows / Gallery Media File Selector Logic
+    // 3. Native Windows / Gallery Media File Selector & Presets Logic
     const coverFileInput = document.getElementById('cover-file-input');
     const coverImageInput = document.getElementById('cover-image-input');
     const coverUploadZone = document.getElementById('cover-upload-zone');
@@ -502,6 +625,7 @@
     const coverSelectedBadge = document.getElementById('cover-selected-badge');
     const btnChangeCover = document.getElementById('btn-change-cover');
     const btnRemoveCover = document.getElementById('btn-remove-cover');
+    const coverPresetCards = document.querySelectorAll('.cover-preset-card');
 
     function openGalleryPicker() {
         if (coverFileInput) coverFileInput.click();
@@ -576,9 +700,45 @@
             if (coverSelectedBadge) coverSelectedBadge.textContent = 'Custom Photo Attached';
             if (coverUploadZone) coverUploadZone.style.display = 'none';
             if (coverPreviewCard) coverPreviewCard.style.display = 'flex';
+
+            coverPresetCards.forEach(c => {
+                c.classList.remove('is-selected');
+                c.setAttribute('aria-checked', 'false');
+            });
         };
         reader.readAsDataURL(file);
     }
+
+    // Curated Preset Card Clicking
+    coverPresetCards.forEach(card => {
+        card.addEventListener('click', () => {
+            coverPresetCards.forEach(c => {
+                c.classList.remove('is-selected');
+                c.setAttribute('aria-checked', 'false');
+            });
+            card.classList.add('is-selected');
+            card.setAttribute('aria-checked', 'true');
+
+            const url = card.dataset.coverUrl || '';
+            const name = card.dataset.coverName || 'Generative Mesh';
+
+            if (coverImageInput) coverImageInput.value = url;
+            if (coverFileInput) coverFileInput.value = '';
+            if (coverSelectedBadge) coverSelectedBadge.textContent = name;
+
+            if (url) {
+                if (coverPreviewImg) coverPreviewImg.src = url;
+                if (coverFileName) coverFileName.textContent = name;
+                if (coverUploadZone) coverUploadZone.style.display = 'none';
+                if (coverPreviewCard) coverPreviewCard.style.display = 'flex';
+            } else {
+                // Generative mesh reset
+                if (coverPreviewImg) coverPreviewImg.src = '';
+                if (coverPreviewCard) coverPreviewCard.style.display = 'none';
+                if (coverUploadZone) coverUploadZone.style.display = 'flex';
+            }
+        });
+    });
 
     if (btnRemoveCover) {
         btnRemoveCover.addEventListener('click', () => {
@@ -588,6 +748,16 @@
             if (coverSelectedBadge) coverSelectedBadge.textContent = 'Dynamic Topic Mesh';
             if (coverPreviewCard) coverPreviewCard.style.display = 'none';
             if (coverUploadZone) coverUploadZone.style.display = 'flex';
+
+            coverPresetCards.forEach((c, idx) => {
+                if (idx === 0) {
+                    c.classList.add('is-selected');
+                    c.setAttribute('aria-checked', 'true');
+                } else {
+                    c.classList.remove('is-selected');
+                    c.setAttribute('aria-checked', 'false');
+                }
+            });
         });
     }
 

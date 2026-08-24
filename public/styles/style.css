@@ -1598,6 +1598,177 @@ body.dark-mode .tag-preset-btn.is-selected:hover {
     border-color: #EF4444 !important;
 }
 
+/* Curated Default Presets Section */
+.cover-presets-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.cover-presets-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cover-presets-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.cover-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.cover-preset-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-color);
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.cover-preset-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-color);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.cover-preset-card.is-selected {
+    border-color: var(--accent-color) !important;
+    background: var(--bg-color);
+    box-shadow: 0 0 0 2px var(--accent-color), 0 8px 20px -4px rgba(245, 158, 11, 0.25);
+    transform: translateY(-2px);
+}
+
+/* Card Previews */
+.cover-card-img-preview,
+.cover-card-art-preview {
+    position: relative;
+    width: 100%;
+    height: 68px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--secondary-bg);
+}
+
+.cover-card-img-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.cover-preset-card:hover .cover-card-img-preview img {
+    transform: scale(1.08);
+}
+
+/* Generative Topic Mesh Mini Swatch */
+.topic-mesh-preview {
+    background: linear-gradient(135deg, #18181B 0%, #3B200B 50%, #854D0E 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mesh-mini-glow {
+    position: absolute;
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #F59E0B 0%, transparent 70%);
+    opacity: 0.5;
+    top: 5px;
+    right: 5px;
+}
+
+.mesh-mini-circle {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    left: 10px;
+    bottom: 6px;
+}
+
+.mesh-mini-tag {
+    position: relative;
+    z-index: 2;
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+    backdrop-filter: blur(4px);
+}
+
+/* Card Meta */
+.cover-card-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 2px 2px;
+    gap: 4px;
+}
+
+.cover-card-title {
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cover-card-badge {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.6;
+}
+
+/* Selection Indicator Checkmark */
+.cover-card-check {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    color: #121214;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.cover-preset-card.is-selected .cover-card-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
 /* =========================================
    FEATURED STORY SPOTLIGHT (HERO ARTICLE)
    ========================================= */
