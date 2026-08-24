@@ -886,6 +886,75 @@ main {
     color: #fff;
 }
 
+/* Active Category / Tag Filter Status Banner */
+.active-tag-filter-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--secondary-bg);
+    border: 1.5px solid var(--accent-color);
+    border-radius: 16px;
+    padding: 12px 20px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 16px var(--pill-glow);
+    animation: fadeInUp 0.3s ease-out forwards;
+}
+
+.active-tag-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.active-tag-prefix {
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.active-tag-badge {
+    background: var(--accent-color);
+    color: #ffffff;
+    padding: 3px 12px;
+    border-radius: 9999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.active-tag-count {
+    font-size: 0.82rem;
+    color: var(--text-color);
+    opacity: 0.75;
+    font-weight: 600;
+}
+
+.btn-clear-tag-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-clear-tag-filter:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: translateY(-1px);
+    text-decoration: none;
+    box-shadow: 0 2px 8px var(--pill-glow);
+}
+
 /* Post Card & Post Detail Tags */
 .post-tags-row,
 .post-detail-tags {

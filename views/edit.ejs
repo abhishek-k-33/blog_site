@@ -100,9 +100,10 @@
                         <% const currentTags = post.tags || ['Thoughts']; %>
                         <button type="button" class="tag-preset-btn <%= currentTags.includes('Thoughts') ? 'is-selected' : '' %>" data-tag="Thoughts">#Thoughts</button>
                         <button type="button" class="tag-preset-btn <%= currentTags.includes('Tech') ? 'is-selected' : '' %>" data-tag="Tech">#Tech</button>
+                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Guides') ? 'is-selected' : '' %>" data-tag="Guides">#Guides</button>
+                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Opinion') ? 'is-selected' : '' %>" data-tag="Opinion">#Opinion</button>
                         <button type="button" class="tag-preset-btn <%= currentTags.includes('Design') ? 'is-selected' : '' %>" data-tag="Design">#Design</button>
                         <button type="button" class="tag-preset-btn <%= currentTags.includes('Life') ? 'is-selected' : '' %>" data-tag="Life">#Life</button>
-                        <button type="button" class="tag-preset-btn <%= currentTags.includes('Coding') ? 'is-selected' : '' %>" data-tag="Coding">#Coding</button>
                     </div>
                 </div>
                 <input type="text" id="custom-tag-input" value="<%= (post.tags || []).filter(t => !['Thoughts','Tech','Design','Life','Coding'].includes(t)).join(', ') %>" placeholder="+ Add custom tags (comma separated)..." class="custom-tag-input" autocomplete="off">

@@ -36,6 +36,21 @@
     </div>
 </div>
 
+<% if (selectedTag && selectedTag !== 'All') { %>
+    <!-- Active Category / Tag Filter Status Banner -->
+    <div class="active-tag-filter-banner">
+        <div class="active-tag-info">
+            <span class="active-tag-prefix">Showing stories tagged:</span>
+            <span class="active-tag-badge">#<%= selectedTag %></span>
+            <span class="active-tag-count">(<%= posts.length %> <%= posts.length === 1 ? 'story' : 'stories' %>)</span>
+        </div>
+        <a href="/" class="btn-clear-tag-filter" title="Clear topic filter" aria-label="Clear topic filter">
+            <span>Clear Filter</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </a>
+    </div>
+<% } %>
+
 <div class="posts-feed-container">
     <% if (posts.length > 0) { %>
         <% const featuredPost = posts[0]; %>
@@ -173,8 +188,16 @@
         <% } %>
     <% } else { %>
         <div class="no-posts">
-            <p>No stories found in this topic.</p>
-            <a href="/new" class="btn btn-primary no-posts-cta">✍️ Write the First Story</a>
+            <% if (selectedTag && selectedTag !== 'All') { %>
+                <p>No stories found tagged with <strong>#<%= selectedTag %></strong>.</p>
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 14px;">
+                    <a href="/" class="btn btn-secondary">Explore All Topics</a>
+                    <a href="/new" class="btn btn-primary no-posts-cta">✍️ Write About #<%= selectedTag %></a>
+                </div>
+            <% } else { %>
+                <p>No stories published yet. Be the first to share your thoughts!</p>
+                <a href="/new" class="btn btn-primary no-posts-cta">✍️ Write the First Story</a>
+            <% } %>
         </div>
     <% } %>
 </div>

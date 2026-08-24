@@ -56,6 +56,12 @@ const extractTags = (post) => {
     if (text.includes("design") || text.includes("ui") || text.includes("ux") || text.includes("css") || text.includes("aesthetic") || text.includes("pill") || text.includes("island") || text.includes("sidebar")) {
         inferred.push("Design");
     }
+    if (text.includes("guide") || text.includes("how to") || text.includes("tutorial") || text.includes("learn") || text.includes("step") || text.includes("tips")) {
+        inferred.push("Guides");
+    }
+    if (text.includes("opinion") || text.includes("think") || text.includes("perspective") || text.includes("view") || text.includes("future")) {
+        inferred.push("Opinion");
+    }
     if (text.includes("book") || text.includes("read") || text.includes("story") || text.includes("life") || text.includes("habit") || text.includes("day") || text.includes("coffee")) {
         inferred.push("Life");
     }
