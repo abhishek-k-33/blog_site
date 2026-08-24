@@ -333,7 +333,18 @@ app.get("/posts/:id", async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         if (post) {
-            res.render("post.ejs", { post });
+            const allPosts = await getAllPosts();
+            const postTags = (post.tags || []).map(t => t.toLowerCase());
+            const relatedPosts = allPosts
+                .filter(p => String(p.id) !== String(post.id))
+                .sort((a, b) => {
+                    const aMatches = (a.tags || []).filter(t => postTags.includes(t.toLowerCase())).length;
+                    const bMatches = (b.tags || []).filter(t => postTags.includes(t.toLowerCase())).length;
+                    return bMatches - aMatches;
+                })
+                .slice(0, 3);
+
+            res.render("post.ejs", { post, relatedPosts });
         } else {
             res.status(404).render("404.ejs", { message: "The requested post could not be found." });
         }

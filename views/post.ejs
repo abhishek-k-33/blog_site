@@ -1,59 +1,237 @@
 <%- include("partials/header.ejs") %>
 
-<article class="single-post">
-    <!-- It grabs the title, author and date from the post object from our server and dynamically prints them into html. -->
-    <header class="post-header">
-        <% if (post.tags && post.tags.length > 0) { %>
-            <div class="post-detail-tags">
-                <% post.tags.forEach(tag => { %>
-                    <a href="/?tag=<%= encodeURIComponent(tag) %>" class="post-pill-tag">#<%= tag %></a>
-                <% }) %>
-            </div>
-        <% } %>
-        <h1 class="single-post-title"><%= post.title %></h1>
-        <div class="post-meta post-meta-pills">
-            <span class="meta-pill meta-author">
-                <svg class="meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                <%= post.author %>
-            </span>
-            <span class="meta-pill meta-date">
-                <svg class="meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                <%= post.date %>
-            </span>
-            <% if (post.readingTime) { %>
-                <span class="meta-pill meta-reading-time">☕ <%= post.readingTime %> min read</span>
-            <% } %>
-        </div>
-    </header>
-    
-    <div class="post-content medium-story-content">
-        <% if (post.content && (post.content.includes('<p>') || post.content.includes('<div>') || post.content.includes('<h2>') || post.content.includes('<blockquote>') || post.content.includes('<ul>'))) { %>
-            <%- post.content %>
-        <% } else { %>
-            <% (post.content || '').split('\n').forEach(paragraph => { %>
-                <% if (paragraph.trim()) { %>
-                    <p><%= paragraph %></p>
+<div class="article-reader-container">
+    <div class="article-reader-layout">
+        <!-- Main Article Column (Focused ~680px) -->
+        <article class="single-post">
+            <header class="post-header">
+                <% if (post.tags && post.tags.length > 0) { %>
+                    <div class="post-detail-tags">
+                        <% post.tags.forEach(tag => { %>
+                            <a href="/?tag=<%= encodeURIComponent(tag) %>" class="post-pill-tag">#<%= tag %></a>
+                        <% }) %>
+                    </div>
                 <% } %>
-            <% }) %>
-        <% } %>
-    </div>
-    
-    <div class="post-actions">
-        <button type="button" class="btn btn-secondary post-page-bookmark-btn" id="post-page-bookmark-btn" data-id="<%= post.id %>" data-title="<%= post.title %>" data-author="<%= post.author %>">
-            <svg class="post-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <span class="bookmark-btn-text">Save Story</span>
-        </button>
-        <a href="/edit/<%= post.id %>" class="btn btn-secondary">Edit Post</a>
-        <form action="/delete/<%= post.id %>" method="POST" style="display: inline;">
-            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this post?');">Delete Post</button>
-        </form>
-    </div>
-</article>
+                <h1 class="single-post-title"><%= post.title %></h1>
+                <div class="post-meta post-meta-pills">
+                    <span class="meta-pill meta-author">
+                        <svg class="meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <%= post.author %>
+                    </span>
+                    <span class="meta-pill meta-date">
+                        <svg class="meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <%= post.date %>
+                    </span>
+                    <% if (post.readingTime) { %>
+                        <span class="meta-pill meta-reading-time">☕ <%= post.readingTime %> min read</span>
+                    <% } %>
+                </div>
+            </header>
 
-<div class="back-link">
-    <a href="/">← Back to Home</a>
+            <!-- Inline Mobile Table of Contents (if headings exist) -->
+            <div class="mobile-toc-accordion" id="mobile-toc-accordion" style="display: none;">
+                <button type="button" class="mobile-toc-toggle" id="mobile-toc-toggle" aria-expanded="false">
+                    <span>📑 Table of Contents</span>
+                    <svg class="toc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="mobile-toc-list" id="mobile-toc-list"></div>
+            </div>
+            
+            <div class="post-content medium-story-content" id="story-content-body">
+                <% if (post.content && (post.content.includes('<p>') || post.content.includes('<div>') || post.content.includes('<h2>') || post.content.includes('<blockquote>') || post.content.includes('<ul>'))) { %>
+                    <%- post.content %>
+                <% } else { %>
+                    <% (post.content || '').split('\n').forEach(paragraph => { %>
+                        <% if (paragraph.trim()) { %>
+                            <p><%= paragraph %></p>
+                        <% } %>
+                    <% }) %>
+                <% } %>
+            </div>
+            
+            <!-- Bottom Sharing & Actions Bar -->
+            <div class="post-footer-actions-card">
+                <div class="post-social-share-row">
+                    <span class="share-label">Share this story:</span>
+                    <div class="share-buttons-group">
+                        <button type="button" class="btn-share-icon" id="share-copy-btn" title="Copy Link" aria-label="Copy story link">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span class="share-btn-text">Copy Link</span>
+                        </button>
+                        <a href="https://twitter.com/intent/tweet?text=<%= encodeURIComponent(post.title) %>&url=<%= encodeURIComponent('https://mini25.vercel.app/posts/' + post.id) %>" target="_blank" rel="noopener noreferrer" class="btn-share-icon" title="Share on X" aria-label="Share on X">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/sharing/share-offsite/?url=<%= encodeURIComponent('https://mini25.vercel.app/posts/' + post.id) %>" target="_blank" rel="noopener noreferrer" class="btn-share-icon" title="Share on LinkedIn" aria-label="Share on LinkedIn">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="post-actions">
+                    <button type="button" class="btn btn-secondary post-page-bookmark-btn" id="post-page-bookmark-btn" data-id="<%= post.id %>" data-title="<%= post.title %>" data-author="<%= post.author %>">
+                        <svg class="post-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span class="bookmark-btn-text">Save Story</span>
+                    </button>
+                    <a href="/edit/<%= post.id %>" class="btn btn-secondary">Edit Post</a>
+                    <form action="/delete/<%= post.id %>" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this post?');">Delete Post</button>
+                    </form>
+                </div>
+            </div>
+        </article>
+
+        <!-- Sticky Reading Companion Sidebar (Desktop) -->
+        <aside class="article-reading-companion" aria-label="Reading Tools">
+            <!-- Dynamic Table of Contents -->
+            <div class="companion-card companion-toc-card" id="desktop-toc-card" style="display: none;">
+                <div class="companion-card-header">
+                    <h4>📑 Table of Contents</h4>
+                </div>
+                <nav class="companion-toc-nav" id="desktop-toc-nav"></nav>
+            </div>
+
+            <!-- Social Sharing Widget -->
+            <div class="companion-card companion-share-card">
+                <div class="companion-card-header">
+                    <h4>🔗 Share Story</h4>
+                </div>
+                <div class="companion-share-buttons">
+                    <button type="button" class="btn-companion-share" id="sidebar-share-copy" title="Copy Link">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <span id="copy-status-text">Copy Link</span>
+                    </button>
+                    <a href="https://twitter.com/intent/tweet?text=<%= encodeURIComponent(post.title) %>&url=<%= encodeURIComponent('https://mini25.vercel.app/posts/' + post.id) %>" target="_blank" rel="noopener noreferrer" class="btn-companion-share" title="Share on X">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        <span>Share on X</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Related Articles Widget -->
+            <% if (typeof relatedPosts !== 'undefined' && relatedPosts.length > 0) { %>
+                <div class="companion-card companion-related-card">
+                    <div class="companion-card-header">
+                        <h4>✨ Related Reads</h4>
+                    </div>
+                    <div class="companion-related-list">
+                        <% relatedPosts.forEach(rel => { %>
+                            <a href="/posts/<%= rel.id %>" class="companion-related-item">
+                                <span class="related-item-title"><%= rel.title %></span>
+                                <span class="related-item-meta">☕ <%= rel.readingTime %> min read • <%= rel.author %></span>
+                            </a>
+                        <% }) %>
+                    </div>
+                </div>
+            <% } %>
+        </aside>
+    </div>
+
+    <div class="back-link">
+        <a href="/">← Back to All Stories</a>
+    </div>
 </div>
+
+<script>
+    // =========================================
+    // Dynamic Table of Contents Generator & Active Scroll Tracker
+    // =========================================
+    document.addEventListener('DOMContentLoaded', () => {
+        const contentBody = document.getElementById('story-content-body');
+        if (!contentBody) return;
+
+        const headings = Array.from(contentBody.querySelectorAll('h2, h3'));
+        if (headings.length >= 2) {
+            const desktopTocNav = document.getElementById('desktop-toc-nav');
+            const desktopTocCard = document.getElementById('desktop-toc-card');
+            const mobileTocList = document.getElementById('mobile-toc-list');
+            const mobileTocAccordion = document.getElementById('mobile-toc-accordion');
+
+            headings.forEach((heading, index) => {
+                const id = 'section-heading-' + index;
+                heading.id = id;
+                const text = heading.textContent.trim();
+                const level = heading.tagName.toLowerCase();
+
+                // Desktop link
+                if (desktopTocNav) {
+                    const link = document.createElement('a');
+                    link.href = '#' + id;
+                    link.className = 'companion-toc-link toc-level-' + level;
+                    link.textContent = text;
+                    desktopTocNav.appendChild(link);
+                }
+
+                // Mobile link
+                if (mobileTocList) {
+                    const mLink = document.createElement('a');
+                    mLink.href = '#' + id;
+                    mLink.className = 'mobile-toc-link toc-level-' + level;
+                    mLink.textContent = text;
+                    mLink.addEventListener('click', () => {
+                        if (mobileTocAccordion) mobileTocAccordion.classList.remove('is-open');
+                    });
+                    mobileTocList.appendChild(mLink);
+                }
+            });
+
+            if (desktopTocCard) desktopTocCard.style.display = 'block';
+            if (mobileTocAccordion) mobileTocAccordion.style.display = 'block';
+
+            // Active TOC link highlighting via IntersectionObserver
+            const tocLinks = Array.from(document.querySelectorAll('.companion-toc-link'));
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.id;
+                        tocLinks.forEach(link => {
+                            if (link.getAttribute('href') === '#' + id) {
+                                link.classList.add('is-active');
+                            } else {
+                                link.classList.remove('is-active');
+                            }
+                        });
+                    }
+                });
+            }, { rootMargin: '0px 0px -65% 0px', threshold: 0.1 });
+
+            headings.forEach(h => observer.observe(h));
+        }
+
+        // Mobile TOC Accordion Toggle
+        const mobileTocToggle = document.getElementById('mobile-toc-toggle');
+        const mobileTocAccordion = document.getElementById('mobile-toc-accordion');
+        if (mobileTocToggle && mobileTocAccordion) {
+            mobileTocToggle.addEventListener('click', () => {
+                mobileTocAccordion.classList.toggle('is-open');
+            });
+        }
+
+        // Copy Share Link Functionality
+        const copyBtn = document.getElementById('share-copy-btn');
+        const sidebarCopyBtn = document.getElementById('sidebar-share-copy');
+        const copyStatusText = document.getElementById('copy-status-text');
+
+        function triggerCopy() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                if (copyStatusText) {
+                    const orig = copyStatusText.textContent;
+                    copyStatusText.textContent = 'Copied!';
+                    setTimeout(() => copyStatusText.textContent = orig, 2000);
+                }
+                const btnText = copyBtn ? copyBtn.querySelector('.share-btn-text') : null;
+                if (btnText) {
+                    const orig = btnText.textContent;
+                    btnText.textContent = 'Copied!';
+                    setTimeout(() => btnText.textContent = orig, 2000);
+                }
+            }).catch(() => {});
+        }
+
+        if (copyBtn) copyBtn.addEventListener('click', triggerCopy);
+        if (sidebarCopyBtn) sidebarCopyBtn.addEventListener('click', triggerCopy);
+    });
+</script>
 
 <%- include("partials/footer.ejs") %>
