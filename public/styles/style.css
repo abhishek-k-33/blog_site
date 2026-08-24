@@ -2806,13 +2806,11 @@ body.dark-mode .btn-medium-cancel {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: var(--pill-bg);
-    border: 1px solid var(--pill-border);
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
     border-radius: 9999px;
     padding: 8px 18px;
-    box-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.28), var(--pill-shadow);
-    backdrop-filter: blur(28px) saturate(190%);
-    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    box-shadow: 0 14px 36px -4px rgba(24, 24, 27, 0.18), 0 4px 12px rgba(24, 24, 27, 0.06);
     pointer-events: auto;
     max-width: 100%;
     overflow-x: auto;
@@ -2820,9 +2818,9 @@ body.dark-mode .btn-medium-cancel {
 }
 
 body.dark-mode .toolbox-pill {
-    background: rgba(18, 18, 20, 0.75);
-    border-color: rgba(255, 255, 255, 0.14);
-    box-shadow: 0 20px 48px -6px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.15);
+    background: #1C1C21;
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 20px 48px -4px rgba(0, 0, 0, 0.85), 0 0 20px rgba(245, 158, 11, 0.12);
 }
 
 .toolbox-pill::-webkit-scrollbar {
