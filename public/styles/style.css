@@ -2641,7 +2641,7 @@ body.dark-mode .companion-toc-link.is-active {
     max-width: 740px;
     margin: 0 auto 60px;
     position: relative;
-    padding: 0 10px;
+    padding: 0 10px 96px;
 }
 
 .medium-canvas-wrapper {
@@ -2785,59 +2785,91 @@ body.dark-mode .btn-medium-cancel {
 }
 
 /* =========================================
-   DEDICATED HEADER PILL TOOLBOX
+   FLOATING BOTTOM PILL TOOLBOX (CRAFT / LINEAR STYLE)
    ========================================= */
 
 .editor-header-toolbox {
-    position: sticky;
-    top: 75px;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1000;
     display: flex;
     justify-content: center;
-    margin-bottom: 20px;
     pointer-events: none;
+    width: auto;
+    max-width: 92vw;
+    animation: dockFloatIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .toolbox-pill {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     background: var(--pill-bg);
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--pill-border);
     border-radius: 9999px;
-    padding: 6px 14px;
-    box-shadow: 0 10px 28px -4px rgba(0, 0, 0, 0.4), 0 0 14px var(--pill-glow);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    padding: 8px 18px;
+    box-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.28), var(--pill-shadow);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
     pointer-events: auto;
-    animation: fadeInUp 0.4s ease-out;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+body.dark-mode .toolbox-pill {
+    background: rgba(18, 18, 20, 0.75);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 20px 48px -6px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+.toolbox-pill::-webkit-scrollbar {
+    display: none;
 }
 
 .toolbox-btn {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    border: none;
+    border: 1px solid transparent;
     background: transparent;
     color: var(--text-color);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .toolbox-btn:hover {
-    background: var(--accent-color);
-    color: var(--bg-color);
-    transform: scale(1.12);
+    background: rgba(0, 0, 0, 0.06);
+    border-color: var(--border-color);
+    color: var(--accent-color);
+    transform: translateY(-2px) scale(1.1);
 }
 
+body.dark-mode .toolbox-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: var(--accent-color);
+}
+
+/* High-contrast Active Formatting State (matches capsule buttons) */
 .toolbox-btn.active {
-    background: var(--accent-color) !important;
-    color: var(--bg-color) !important;
-    transform: scale(1.12);
-    box-shadow: 0 0 10px var(--accent-color);
+    background: #18181B !important;
+    color: #ffffff !important;
+    border-color: #18181B !important;
+    transform: translateY(-2px) scale(1.1);
+    box-shadow: 0 4px 12px rgba(24, 24, 27, 0.25);
+}
+
+body.dark-mode .toolbox-btn.active {
+    background: #ffffff !important;
+    color: #121214 !important;
+    border-color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.35);
 }
 
 .toolbox-btn svg {
@@ -2847,9 +2879,15 @@ body.dark-mode .btn-medium-cancel {
 
 .toolbox-divider {
     width: 1px;
-    height: 18px;
+    height: 20px;
     background: var(--border-color);
-    margin: 0 3px;
+    margin: 0 4px;
+    opacity: 0.6;
+}
+
+@keyframes dockFloatIn {
+    0%   { transform: translate(-50%, 40px); opacity: 0; }
+    100% { transform: translate(-50%, 0); opacity: 1; }
 }
 
 /* =========================================
@@ -4321,12 +4359,13 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 
     /* Composer / Editor */
     .medium-editor-layout {
-        padding: 0 4px;
+        padding: 0 4px 100px;
         margin-bottom: 36px;
     }
 
     .editor-header-toolbox {
-        top: max(64px, calc(54px + env(safe-area-inset-top)));
+        bottom: max(16px, calc(12px + env(safe-area-inset-bottom)));
+        top: auto;
     }
 
     .toolbox-pill {
