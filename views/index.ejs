@@ -5,6 +5,16 @@
     <div class="hero-subtitle-container">
         <span class="hero-pill-badge">✨ A chill place to write your thoughts.</span>
     </div>
+    <div class="hero-cta-wrapper">
+        <a href="/new" class="hero-primary-cta" aria-label="Start writing a story">
+            <span class="hero-cta-icon">✍️</span>
+            <span class="hero-cta-label">Start Writing</span>
+            <svg class="hero-cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        </a>
+    </div>
 </div>
 
 <!-- Topics / Tags Pill Filter Bar -->
@@ -64,7 +74,8 @@
         <% }) %>
     <% } else { %>
         <div class="no-posts">
-            <p>No stories found in this topic. <a href="/new">Be the first to write something!</a></p>
+            <p>No stories found in this topic.</p>
+            <a href="/new" class="btn btn-primary no-posts-cta">✍️ Write the First Story</a>
         </div>
     <% } %>
 </div>
