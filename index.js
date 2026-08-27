@@ -646,6 +646,87 @@ app.get("/api/auth/me", (req, res) => {
     return res.json({ authenticated: false, user: null });
 });
 
+// GET /api/auth/oauth/:provider: Start Google / GitHub OAuth
+app.get("/api/auth/oauth/:provider", async (req, res) => {
+    const provider = req.params.provider.toLowerCase();
+    if (!["google", "github"].includes(provider)) {
+        return res.status(400).json({ error: "Unsupported OAuth provider." });
+    }
+
+    if (!supabase) {
+        return res.status(503).render("404.ejs", {
+            message: `Supabase connection required for ${provider} sign in. Please configure SUPABASE_URL and SUPABASE_ANON_KEY in your .env file.`
+        });
+    }
+
+    const host = req.get("host");
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const redirectTo = `${protocol}://${host}/auth/callback`;
+
+    try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider,
+            options: {
+                redirectTo,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                }
+            }
+        });
+
+        if (error || !data?.url) {
+            console.error(`OAuth error for ${provider}:`, error);
+            return res.status(400).render("404.ejs", {
+                message: `Could not start ${provider} login: ${error?.message || 'Please enable ' + provider + ' provider in your Supabase Dashboard.'}`
+            });
+        }
+
+        res.redirect(data.url);
+    } catch (err) {
+        console.error("OAuth exception:", err);
+        res.status(500).render("404.ejs", { message: "An error occurred starting OAuth login." });
+    }
+});
+
+// GET /auth/callback: Handles OAuth redirect
+app.get("/auth/callback", async (req, res) => {
+    const code = req.query.code;
+    if (code && supabase) {
+        try {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            if (data?.session) {
+                res.cookie("auth_token", data.session.access_token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === "production",
+                    maxAge: 30 * 24 * 60 * 60 * 1000,
+                    sameSite: "lax"
+                });
+                return res.redirect("/");
+            }
+        } catch (e) {
+            console.error("OAuth code exchange error:", e);
+        }
+    }
+    // Fallback template to handle client-side hash tokens (#access_token=...)
+    res.render("callback.ejs");
+});
+
+// POST /api/auth/session: Set auth cookie from client-side token
+app.post("/api/auth/session", (req, res) => {
+    const { token } = req.body;
+    if (token) {
+        res.cookie("auth_token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+            sameSite: "lax"
+        });
+        return res.json({ success: true });
+    }
+    res.status(400).json({ error: "Token required" });
+});
+
 // --- PAGE & POST ROUTES ---
 
 // GET /login: Show login/signup page (redirect if already logged in)
