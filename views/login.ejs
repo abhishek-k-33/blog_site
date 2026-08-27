@@ -403,7 +403,7 @@
         }
 
         // Sign In Submit
-        document.getElementById('signin-form').addEventListener('submit', (e) => {
+        document.getElementById('signin-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             clearAllErrors('signin');
             let valid = true;
@@ -418,17 +418,39 @@
             btn.querySelector('.auth-cta-text').style.display = 'none';
             btn.querySelector('.auth-cta-spinner').style.display = 'inline-flex';
             btn.disabled = true;
-            setTimeout(() => {
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ email, password: pw })
+                });
+                const data = await res.json();
+
+                if (!res.ok || data.error) {
+                    showError('signin-password-group', 'signin-password-error', data.error || 'Invalid credentials.');
+                    shakeCard();
+                    btn.querySelector('.auth-cta-text').style.display = '';
+                    btn.querySelector('.auth-cta-spinner').style.display = 'none';
+                    btn.disabled = false;
+                    return;
+                }
+
+                showToast('Signed in successfully! Redirecting...', 'success');
+                const redirectTarget = new URLSearchParams(window.location.search).get('redirect') || '/';
+                setTimeout(() => { window.location.href = redirectTarget; }, 800);
+            } catch (err) {
+                console.error('Sign in error:', err);
+                showError('signin-password-group', 'signin-password-error', 'An unexpected connection error occurred.');
+                shakeCard();
                 btn.querySelector('.auth-cta-text').style.display = '';
                 btn.querySelector('.auth-cta-spinner').style.display = 'none';
                 btn.disabled = false;
-                showToast('Sign in successful! Redirecting...', 'success');
-                setTimeout(() => { window.location.href = '/'; }, 1500);
-            }, 1800);
+            }
         });
 
         // Sign Up Submit
-        document.getElementById('signup-form').addEventListener('submit', (e) => {
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             clearAllErrors('signup');
             let valid = true;
@@ -446,12 +468,41 @@
             btn.querySelector('.auth-cta-text').style.display = 'none';
             btn.querySelector('.auth-cta-spinner').style.display = 'inline-flex';
             btn.disabled = true;
-            setTimeout(() => {
+
+            try {
+                const res = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ name, email, password: pw })
+                });
+                const data = await res.json();
+
+                if (!res.ok || data.error) {
+                    showError('signup-email-group', 'signup-email-error', data.error || 'Could not create account.');
+                    shakeCard();
+                    btn.querySelector('.auth-cta-text').style.display = '';
+                    btn.querySelector('.auth-cta-spinner').style.display = 'none';
+                    btn.disabled = false;
+                    return;
+                }
+
+                if (data.requiresConfirmation) {
+                    showToast('Account created! Please check your email to confirm.', 'success');
+                    btn.querySelector('.auth-cta-text').style.display = '';
+                    btn.querySelector('.auth-cta-spinner').style.display = 'none';
+                    btn.disabled = false;
+                } else {
+                    showToast('Account created! Redirecting...', 'success');
+                    setTimeout(() => { window.location.href = '/'; }, 900);
+                }
+            } catch (err) {
+                console.error('Sign up error:', err);
+                showError('signup-email-group', 'signup-email-error', 'An unexpected error occurred.');
+                shakeCard();
                 btn.querySelector('.auth-cta-text').style.display = '';
                 btn.querySelector('.auth-cta-spinner').style.display = 'none';
                 btn.disabled = false;
-                showToast('Account created! Check your email to verify.', 'success');
-            }, 1800);
+            }
         });
 
         // Forgot Modal
@@ -476,7 +527,7 @@
         if (forgotBackdrop) forgotBackdrop.addEventListener('click', closeForgotModal);
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && forgotModal.classList.contains('auth-modal--visible')) closeForgotModal(); });
 
-        document.getElementById('forgot-form').addEventListener('submit', (e) => {
+        document.getElementById('forgot-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('forgot-email').value.trim();
             if (!email || !isValidEmail(email)) { showError('forgot-email-group', 'forgot-email-error', 'Enter a valid email.'); return; }
@@ -484,13 +535,25 @@
             btn.querySelector('.auth-cta-text').style.display = 'none';
             btn.querySelector('.auth-cta-spinner').style.display = 'inline-flex';
             btn.disabled = true;
-            setTimeout(() => {
+
+            try {
+                const res = await fetch('/api/auth/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
                 btn.querySelector('.auth-cta-text').style.display = '';
                 btn.querySelector('.auth-cta-spinner').style.display = 'none';
                 btn.disabled = false;
                 document.getElementById('forgot-form').style.display = 'none';
                 document.getElementById('forgot-success').style.display = 'flex';
-            }, 1800);
+            } catch (err) {
+                btn.querySelector('.auth-cta-text').style.display = '';
+                btn.querySelector('.auth-cta-spinner').style.display = 'none';
+                btn.disabled = false;
+                showError('forgot-email-group', 'forgot-email-error', 'Could not send reset link.');
+            }
         });
 
         document.querySelectorAll('.auth-input-exact').forEach(input => {

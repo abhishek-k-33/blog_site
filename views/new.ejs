@@ -90,7 +90,7 @@
             <input type="text" id="title" name="title" required placeholder="Title" autocomplete="off" class="medium-title-input" autofocus>
 
             <!-- Author Input -->
-            <input type="text" id="author" name="author" required placeholder="Author name..." autocomplete="off" class="medium-author-input">
+            <input type="text" id="author" name="author" value="<%= (typeof user !== 'undefined' && user && user.name) ? user.name : '' %>" required placeholder="Author name..." autocomplete="off" class="medium-author-input">
 
             <!-- Topic Tags Selector -->
             <div class="composer-tag-picker" id="composer-tag-picker">

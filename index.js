@@ -3,6 +3,8 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs").promises;
 const fsSync = require("fs");
+const crypto = require("crypto");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -12,6 +14,7 @@ app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
+app.use(cookieParser());
 
 // --- DATABASE LAYER (Supabase PostgreSQL / Local Fallback) ---
 let supabase = null;
@@ -27,6 +30,143 @@ if (supabaseUrl && supabaseKey) {
 }
 
 const DATA_FILE = path.join(__dirname, "data.json");
+const USERS_FILE = path.join(__dirname, "users.json");
+const AUTH_SECRET = process.env.AUTH_SECRET || "miniblogs-super-secret-key-2026";
+
+// --- LOCAL USERS & AUTH HELPERS (Offline Fallback) ---
+const hashPassword = (password) => {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+    return `${salt}:${hash}`;
+};
+
+const verifyPassword = (password, stored) => {
+    try {
+        const [salt, key] = stored.split(":");
+        const keyBuffer = Buffer.from(key, "hex");
+        const derivedKey = crypto.scryptSync(password, salt, 64);
+        return crypto.timingSafeEqual(keyBuffer, derivedKey);
+    } catch (e) {
+        return false;
+    }
+};
+
+const generateLocalToken = (user) => {
+    const payload = Buffer.from(JSON.stringify({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        exp: Date.now() + 30 * 24 * 60 * 60 * 1000
+    })).toString("base64url");
+    const signature = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
+    return `${payload}.${signature}`;
+};
+
+const verifyLocalToken = (token) => {
+    try {
+        const [payload, signature] = token.split(".");
+        if (!payload || !signature) return null;
+        const expected = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
+        if (signature !== expected) return null;
+        const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
+        if (data.exp && data.exp < Date.now()) return null;
+        return data;
+    } catch (e) {
+        return null;
+    }
+};
+
+const readLocalUsers = async () => {
+    try {
+        if (fsSync.existsSync(USERS_FILE)) {
+            const data = await fs.readFile(USERS_FILE, "utf-8");
+            return JSON.parse(data);
+        }
+    } catch (e) {
+        console.error("Error reading users file:", e);
+    }
+    return [];
+};
+
+const writeLocalUsers = async (users) => {
+    try {
+        await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+    } catch (e) {
+        console.error("Error writing users file:", e);
+    }
+};
+
+const createLocalUser = async ({ name, email, password }) => {
+    const users = await readLocalUsers();
+    const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (existing) {
+        throw new Error("An account with this email already exists.");
+    }
+    const newUser = {
+        id: "usr_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        password: hashPassword(password),
+        created_at: new Date().toISOString()
+    };
+    users.push(newUser);
+    await writeLocalUsers(users);
+    return { id: newUser.id, name: newUser.name, email: newUser.email };
+};
+
+const authenticateLocalUser = async (email, password) => {
+    const users = await readLocalUsers();
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+    if (!user) return null;
+    const isValid = verifyPassword(password, user.password);
+    if (!isValid) return null;
+    return { id: user.id, name: user.name, email: user.email };
+};
+
+// --- AUTH SESSION DETECTION MIDDLEWARE ---
+app.use(async (req, res, next) => {
+    const token = req.cookies?.auth_token || req.headers?.authorization?.replace("Bearer ", "");
+    req.user = null;
+    res.locals.user = null;
+
+    if (token) {
+        if (supabase) {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser(token);
+                if (user && !error) {
+                    req.user = {
+                        id: user.id,
+                        email: user.email,
+                        name: user.user_metadata?.display_name || user.user_metadata?.name || user.email.split("@")[0],
+                        avatar: user.user_metadata?.avatar_url || null,
+                    };
+                    res.locals.user = req.user;
+                }
+            } catch (e) {
+                // Ignore invalid Supabase session
+            }
+        }
+        if (!req.user) {
+            const localUser = verifyLocalToken(token);
+            if (localUser) {
+                req.user = localUser;
+                res.locals.user = req.user;
+            }
+        }
+    }
+    next();
+});
+
+// Middleware: Route Protection
+const requireAuth = (req, res, next) => {
+    if (!req.user) {
+        if (req.xhr || req.headers.accept?.includes("json")) {
+            return res.status(401).json({ error: "Authentication required to perform this action." });
+        }
+        return res.redirect(`/login?redirect=${encodeURIComponent(req.originalUrl)}`);
+    }
+    next();
+};
 
 // Helper: Extract and normalize tags from post object with smart heuristics
 const extractTags = (post) => {
@@ -193,7 +333,6 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage })
     const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
     const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
 
-    // Permanently embed cover into content for guaranteed persistence across all database schemas
     let contentWithCover = content || "";
     if (cleanCover) {
         contentWithCover = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithCover;
@@ -249,9 +388,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
     const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
     const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
 
-    // Clean prior embedded cover first, then embed new one if present
-    const { cleanContent } = extractCoverAndCleanContent(content || "");
-    let contentWithCover = cleanContent;
+    let contentWithCover = content || "";
     if (cleanCover) {
         contentWithCover = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithCover;
     }
@@ -294,11 +431,11 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
         localPosts[index] = {
             ...localPosts[index],
             title,
-            content,
+            content: contentWithCover,
             excerpt,
             author,
             tags: cleanTags.length > 0 ? cleanTags : undefined,
-            coverImage: cleanCover !== undefined ? cleanCover : localPosts[index].coverImage,
+            coverImage: cleanCover,
         };
         await writeLocalPosts(localPosts);
         return formatPost(localPosts[index]);
@@ -308,47 +445,222 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
 
 const deletePost = async (id) => {
     if (supabase) {
-        const { error } = await supabase
-            .from("posts")
-            .delete()
-            .eq("id", id);
+        const { error } = await supabase.from("posts").delete().eq("id", id);
         if (error) throw error;
         return true;
     }
-    let localPosts = await readLocalPosts();
-    localPosts = localPosts.filter((p) => String(p.id) !== String(id));
-    await writeLocalPosts(localPosts);
+    const localPosts = await readLocalPosts();
+    const filtered = localPosts.filter((p) => String(p.id) !== String(id));
+    await writeLocalPosts(filtered);
     return true;
 };
 
-// Text sanitization and excerpt generator
+// Simple HTML sanitizer to prevent basic XSS
 const simpleSanitize = (str) => {
-    if (!str) return "";
-    return String(str)
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    if (!str || typeof str !== "string") return "";
+    return str
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/javascript:/gi, "")
+        .replace(/onerror=/gi, "blocked=")
+        .replace(/onload=/gi, "blocked=");
 };
 
+// Helper: Generate a short excerpt from markdown/HTML content
 const generateExcerpt = (content) => {
     if (!content) return "";
     const cleanText = content
-        .replace(/<[^>]*>?/gm, " ")
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+        .replace(/[#*`_~]/g, "")
         .replace(/\s+/g, " ")
         .trim();
     return cleanText.length > 130 ? cleanText.substring(0, 127) + "..." : cleanText;
 };
 
-// --- ROUTES ---
+// --- AUTHENTICATION API ROUTES ---
 
-// GET /login: Show login/signup page
+// POST /api/auth/signup
+app.post("/api/auth/signup", async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+        if (!name?.trim() || !email?.trim() || !password || password.length < 8) {
+            return res.status(400).json({ error: "Please provide a display name, email, and password (min 8 characters)." });
+        }
+
+        if (supabase) {
+            const { data, error } = await supabase.auth.signUp({
+                email: email.trim(),
+                password: password,
+                options: {
+                    data: {
+                        display_name: name.trim(),
+                        name: name.trim()
+                    }
+                }
+            });
+
+            if (error) {
+                return res.status(400).json({ error: error.message });
+            }
+
+            if (data.session) {
+                res.cookie("auth_token", data.session.access_token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === "production",
+                    maxAge: 30 * 24 * 60 * 60 * 1000,
+                    sameSite: "lax"
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: data.session ? "Account created successfully!" : "Account created! Please check your email to confirm.",
+                requiresConfirmation: !data.session,
+                user: data.user ? {
+                    id: data.user.id,
+                    email: data.user.email,
+                    name: name.trim()
+                } : null
+            });
+        }
+
+        // Local Fallback signup
+        const localUser = await createLocalUser({ name: name.trim(), email: email.trim(), password });
+        const token = generateLocalToken(localUser);
+        res.cookie("auth_token", token, {
+            httpOnly: true,
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+            sameSite: "lax"
+        });
+
+        return res.json({
+            success: true,
+            message: "Account created successfully!",
+            user: localUser
+        });
+    } catch (err) {
+        console.error("Signup error:", err);
+        return res.status(400).json({ error: err.message || "Could not register account." });
+    }
+});
+
+// POST /api/auth/login
+app.post("/api/auth/login", async (req, res) => {
+    try {
+        const { email, password, remember } = req.body;
+        if (!email?.trim() || !password) {
+            return res.status(400).json({ error: "Please enter both email and password." });
+        }
+
+        const maxAge = remember ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+        if (supabase) {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password: password
+            });
+
+            if (error) {
+                return res.status(400).json({ error: error.message });
+            }
+
+            if (data.session) {
+                res.cookie("auth_token", data.session.access_token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === "production",
+                    maxAge,
+                    sameSite: "lax"
+                });
+
+                return res.json({
+                    success: true,
+                    message: "Signed in successfully!",
+                    user: {
+                        id: data.user.id,
+                        email: data.user.email,
+                        name: data.user.user_metadata?.display_name || data.user.user_metadata?.name || data.user.email.split("@")[0]
+                    }
+                });
+            }
+        }
+
+        // Local Fallback login
+        const localUser = await authenticateLocalUser(email.trim(), password);
+        if (!localUser) {
+            return res.status(400).json({ error: "Invalid email or password." });
+        }
+
+        const token = generateLocalToken(localUser);
+        res.cookie("auth_token", token, {
+            httpOnly: true,
+            maxAge,
+            sameSite: "lax"
+        });
+
+        return res.json({
+            success: true,
+            message: "Signed in successfully!",
+            user: localUser
+        });
+    } catch (err) {
+        console.error("Login error:", err);
+        return res.status(400).json({ error: err.message || "Invalid credentials." });
+    }
+});
+
+// Logout (POST & GET /logout)
+app.all(["/logout", "/api/auth/logout"], (req, res) => {
+    res.clearCookie("auth_token");
+    if (req.xhr || req.headers.accept?.includes("json")) {
+        return res.json({ success: true, message: "Logged out." });
+    }
+    res.redirect("/");
+});
+
+// POST /api/auth/forgot-password
+app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email?.trim()) {
+            return res.status(400).json({ error: "Email is required." });
+        }
+
+        if (supabase) {
+            const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+            if (error) return res.status(400).json({ error: error.message });
+        }
+
+        return res.json({ success: true, message: "If an account exists with this email, a password reset link has been sent." });
+    } catch (err) {
+        console.error("Forgot password error:", err);
+        return res.status(500).json({ error: "Could not send reset link." });
+    }
+});
+
+// GET /api/auth/me
+app.get("/api/auth/me", (req, res) => {
+    if (req.user) {
+        return res.json({ authenticated: true, user: req.user });
+    }
+    return res.json({ authenticated: false, user: null });
+});
+
+// --- PAGE & POST ROUTES ---
+
+// GET /login: Show login/signup page (redirect if already logged in)
 app.get("/login", (req, res) => {
+    if (req.user) {
+        return res.redirect("/");
+    }
     res.render("login.ejs");
 });
 
 // GET /signup: Redirect to login page with signup tab active
 app.get("/signup", (req, res) => {
+    if (req.user) {
+        return res.redirect("/");
+    }
     res.redirect("/login?tab=signup");
 });
 
@@ -373,21 +685,23 @@ app.get("/", async (req, res, next) => {
             ? allPosts.filter(p => (p.tags || []).some(t => t.toLowerCase() === selectedTag.toLowerCase()))
             : allPosts;
 
-        res.render("index.ejs", { posts, allPosts, allTags, selectedTag, tagCounts });
+        res.render("index.ejs", { posts, allPosts, allTags, selectedTag, tagCounts, user: req.user });
     } catch (err) {
         next(err);
     }
 });
 
-// GET /new: Show form to create new post
-app.get("/new", (req, res) => {
-    res.render("new.ejs");
+// GET /new: Show form to create new post (Protected)
+app.get("/new", requireAuth, (req, res) => {
+    res.render("new.ejs", { user: req.user });
 });
 
-// POST /posts: Create a new post
-app.post("/posts", async (req, res, next) => {
+// POST /posts: Create a new post (Protected)
+app.post("/posts", requireAuth, async (req, res, next) => {
     try {
-        const { title, content, author, tags, coverImage } = req.body;
+        const { title, content, tags, coverImage } = req.body;
+        const author = (req.body.author && req.body.author.trim()) || (req.user && req.user.name) || "Anonymous";
+
         if (!title?.trim() || !content?.trim() || !author?.trim()) {
             return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
         }
@@ -423,7 +737,7 @@ app.get("/posts/:id", async (req, res, next) => {
                 })
                 .slice(0, 3);
 
-            res.render("post.ejs", { post, relatedPosts });
+            res.render("post.ejs", { post, relatedPosts, user: req.user });
         } else {
             res.status(404).render("404.ejs", { message: "The requested post could not be found." });
         }
@@ -432,12 +746,12 @@ app.get("/posts/:id", async (req, res, next) => {
     }
 });
 
-// GET /edit/:id: Show form to edit a post
-app.get("/edit/:id", async (req, res, next) => {
+// GET /edit/:id: Show form to edit a post (Protected)
+app.get("/edit/:id", requireAuth, async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         if (post) {
-            res.render("edit.ejs", { post });
+            res.render("edit.ejs", { post, user: req.user });
         } else {
             res.status(404).render("404.ejs", { message: "The post you wish to edit does not exist." });
         }
@@ -446,8 +760,8 @@ app.get("/edit/:id", async (req, res, next) => {
     }
 });
 
-// POST /update/:id: Update an existing post
-app.post("/update/:id", async (req, res, next) => {
+// POST /update/:id: Update an existing post (Protected)
+app.post("/update/:id", requireAuth, async (req, res, next) => {
     try {
         const { title, content, author, tags, coverImage } = req.body;
         if (!title?.trim() || !content?.trim() || !author?.trim()) {
@@ -473,8 +787,8 @@ app.post("/update/:id", async (req, res, next) => {
     }
 });
 
-// POST /delete/:id: Delete a post
-app.post("/delete/:id", async (req, res, next) => {
+// POST /delete/:id: Delete a post (Protected)
+app.post("/delete/:id", requireAuth, async (req, res, next) => {
     try {
         await deletePost(req.params.id);
         res.redirect("/");
@@ -485,13 +799,13 @@ app.post("/delete/:id", async (req, res, next) => {
 
 // Fallback 404 handler for unknown routes
 app.use((req, res) => {
-    res.status(404).render("404.ejs", { message: "Page not found." });
+    res.status(404).render("404.ejs", { message: "Page not found.", user: req.user });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
     console.error("Unhandled error:", err);
-    res.status(500).render("404.ejs", { message: "An unexpected error occurred. Please try again later." });
+    res.status(500).render("404.ejs", { message: "An unexpected error occurred. Please try again later.", user: req.user });
 });
 
 // Only listen locally — on Vercel, the app is exported for serverless

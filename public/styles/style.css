@@ -534,6 +534,91 @@ body:not(.dark-mode) .btn-navbar-signin {
     }
 }
 
+/* Logged-In User Profile Menu (Header) */
+.user-header-menu {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-avatar-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px 4px 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-color);
+    cursor: default;
+    user-select: none;
+}
+
+body:not(.dark-mode) .user-avatar-chip {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar-initial {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF8A00 0%, #F59E0B 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.user-name-text {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-navbar-logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5) !important;
+    text-decoration: none !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+body:not(.dark-mode) .btn-navbar-logout {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: rgba(24, 24, 27, 0.5) !important;
+}
+
+.btn-navbar-logout:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444 !important;
+    transform: scale(1.05);
+}
+
+@media (max-width: 680px) {
+    .user-name-text {
+        display: none;
+    }
+    .user-avatar-chip {
+        padding: 3px;
+    }
+}
+
+
 /* High-Contrast Crisp Pill Button (wegrow 'Start today' style) */
 .btn-pill-cta {
     background: #18181B;
