@@ -342,6 +342,16 @@ const generateExcerpt = (content) => {
 
 // --- ROUTES ---
 
+// GET /login: Show login/signup page
+app.get("/login", (req, res) => {
+    res.render("login.ejs");
+});
+
+// GET /signup: Redirect to login page with signup tab active
+app.get("/signup", (req, res) => {
+    res.redirect("/login?tab=signup");
+});
+
 // GET /: Display all posts (with tag filtering)
 app.get("/", async (req, res, next) => {
     try {
