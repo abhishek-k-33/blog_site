@@ -205,7 +205,7 @@ const getOrCreateProfile = async (user) => {
             cover: null,
             location: "San Francisco, CA",
             website: "",
-            social: { twitter: "@" + usernameBase, github: "" },
+            social: { twitter: "@" + usernameBase },
             badges: ["Top Writer"],
             isPro: true,
             twoFactorEnabled: false,
@@ -1029,8 +1029,7 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         profile.location = location ? location.trim() : "";
         profile.website = website ? website.trim() : "";
         profile.social = {
-            twitter: twitter ? twitter.trim() : "",
-            github: github ? github.trim() : ""
+            twitter: twitter ? twitter.trim() : ""
         };
 
         // Also update local users file

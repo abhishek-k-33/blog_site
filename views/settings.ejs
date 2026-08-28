@@ -142,14 +142,9 @@
                             <input type="tel" id="setting-phone" name="phone" class="settings-input" placeholder="+1 (555) 000-0000" value="<%= profile.phone || '' %>">
                         </div>
 
-                        <div>
+                        <div class="form-full-width">
                             <label class="settings-label" for="setting-twitter">Twitter / X Handle</label>
                             <input type="text" id="setting-twitter" name="twitter" class="settings-input" placeholder="@username" value="<%= (profile.social && profile.social.twitter) || '' %>">
-                        </div>
-
-                        <div>
-                            <label class="settings-label" for="setting-github">GitHub Username</label>
-                            <input type="text" id="setting-github" name="github" class="settings-input" placeholder="username" value="<%= (profile.social && profile.social.github) || '' %>">
                         </div>
                     </div>
 
@@ -499,7 +494,6 @@
                 location: document.getElementById('setting-location').value,
                 website: document.getElementById('setting-website').value,
                 twitter: document.getElementById('setting-twitter').value,
-                github: document.getElementById('setting-github').value,
             };
 
             try {
