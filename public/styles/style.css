@@ -535,10 +535,9 @@ body:not(.dark-mode) .btn-navbar-signin {
 }
 
 /* Logged-In User Profile Menu (Header) */
-.user-header-menu {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+.user-header-dropdown-container {
+    position: relative;
+    display: inline-block;
 }
 
 .user-avatar-chip {
@@ -552,8 +551,14 @@ body:not(.dark-mode) .btn-navbar-signin {
     font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-color);
-    cursor: default;
+    cursor: pointer;
     user-select: none;
+    transition: all 0.2s ease;
+}
+
+.user-avatar-chip:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 138, 0, 0.4);
 }
 
 body:not(.dark-mode) .user-avatar-chip {

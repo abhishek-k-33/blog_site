@@ -1,0 +1,360 @@
+<%- include("partials/header.ejs") %>
+<link rel="stylesheet" href="/styles/profile.css">
+
+<div class="settings-container">
+    <div class="settings-header-banner">
+        <h1 class="settings-header-title">Account & Profile Settings</h1>
+        <p class="settings-header-desc">Manage your public persona, security credentials, notifications, monetization, and data privacy.</p>
+    </div>
+
+    <div class="settings-layout">
+        <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+        <aside class="settings-sidebar" role="tablist" aria-label="Settings Categories">
+            <button class="settings-nav-item is-active" data-tab="general" role="tab" aria-selected="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>Profile & Identity</span>
+            </button>
+            <button class="settings-nav-item" data-tab="security" role="tab" aria-selected="false">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span>Security & Sessions</span>
+            </button>
+            <button class="settings-nav-item" data-tab="notifications" role="tab" aria-selected="false">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                <span>Notifications</span>
+            </button>
+            <button class="settings-nav-item" data-tab="monetization" role="tab" aria-selected="false">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                <span>Monetization & Payouts</span>
+            </button>
+            <button class="settings-nav-item" data-tab="privacy" role="tab" aria-selected="false">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>Data & Privacy</span>
+            </button>
+        </aside>
+
+        <!-- ==================== MAIN CONTENT AREA ==================== -->
+        <main class="settings-content-card">
+            <!-- ========== TAB 1: PROFILE & IDENTITY ========== -->
+            <div class="settings-tab-panel is-active" id="settings-panel-general">
+                <h2 class="settings-section-title">Personal Information & Persona</h2>
+                <p class="settings-section-desc">Update your public identity, bio, social presence, and visual assets.</p>
+
+                <form id="profile-general-form">
+                    <div class="settings-form-grid">
+                        <div>
+                            <label class="settings-label" for="setting-name">Display Name</label>
+                            <input type="text" id="setting-name" name="name" class="settings-input" value="<%= profile.name %>" required>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-username">Unique @username</label>
+                            <input type="text" id="setting-username" name="username" class="settings-input" value="<%= profile.username || (profile.email ? profile.email.split('@')[0] : '') %>" required>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-email">Email Address</label>
+                            <input type="email" id="setting-email" name="email" class="settings-input" value="<%= profile.email %>" readonly title="Email cannot be changed directly">
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-phone">Phone Number</label>
+                            <input type="tel" id="setting-phone" name="phone" class="settings-input" placeholder="+1 (555) 000-0000" value="<%= profile.phone || '' %>">
+                        </div>
+
+                        <div class="form-full-width">
+                            <label class="settings-label" for="setting-bio">Short Bio (150–250 characters max)</label>
+                            <textarea id="setting-bio" name="bio" class="settings-textarea" rows="3" maxlength="250" placeholder="Tell readers about yourself, your passions, and what you write about..."><%= profile.bio || '' %></textarea>
+                            <span style="font-size:0.78rem;color:rgba(255,255,255,0.45);display:block;margin-top:4px;" id="bio-char-count">250 characters remaining</span>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-avatar">Profile Picture URL</label>
+                            <input type="url" id="setting-avatar" name="avatar" class="settings-input" placeholder="https://..." value="<%= profile.avatar || '' %>">
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-cover">Cover Banner Image URL</label>
+                            <input type="url" id="setting-cover" name="cover" class="settings-input" placeholder="https://..." value="<%= profile.cover || '' %>">
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-location">Location</label>
+                            <input type="text" id="setting-location" name="location" class="settings-input" placeholder="e.g. San Francisco, CA" value="<%= profile.location || '' %>">
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-website">Personal Website / Portfolio</label>
+                            <input type="url" id="setting-website" name="website" class="settings-input" placeholder="https://mywebsite.com" value="<%= profile.website || '' %>">
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-twitter">Twitter / X Handle</label>
+                            <input type="text" id="setting-twitter" name="twitter" class="settings-input" placeholder="@username" value="<%= (profile.social && profile.social.twitter) || '' %>">
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="setting-github">GitHub Username</label>
+                            <input type="text" id="setting-github" name="github" class="settings-input" placeholder="username" value="<%= (profile.social && profile.social.github) || '' %>">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 32px; display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="submit" class="btn-profile-primary" id="save-profile-btn">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ========== TAB 2: SECURITY & SESSIONS ========== -->
+            <div class="settings-tab-panel" id="settings-panel-security" style="display:none;">
+                <h2 class="settings-section-title">Security & Active Sessions</h2>
+                <p class="settings-section-desc">Manage account password, two-factor authentication, and signed-in devices.</p>
+
+                <form id="password-change-form">
+                    <div class="settings-form-grid">
+                        <div class="form-full-width">
+                            <label class="settings-label" for="current-password">Current Password</label>
+                            <input type="password" id="current-password" name="currentPassword" class="settings-input" placeholder="••••••••">
+                        </div>
+                        <div>
+                            <label class="settings-label" for="new-password">New Password</label>
+                            <input type="password" id="new-password" name="newPassword" class="settings-input" placeholder="Min. 8 characters" minlength="8">
+                        </div>
+                        <div>
+                            <label class="settings-label" for="confirm-password">Confirm New Password</label>
+                            <input type="password" id="confirm-password" name="confirmPassword" class="settings-input" placeholder="Repeat new password" minlength="8">
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn-profile-secondary">Update Password</button>
+                    </div>
+                </form>
+
+                <hr style="border:0;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0;">
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>Two-Factor Authentication (2FA)</h4>
+                        <p>Add an extra layer of security using an authenticator app (Google Authenticator, Authy).</p>
+                    </div>
+                    <label class="theme-switch">
+                        <input type="checkbox" id="toggle-2fa" <%= profile.twoFactorEnabled ? 'checked' : '' %>>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>Active Login Sessions</h4>
+                        <p>Currently logged in on Linux Chrome (Current Device) · IP 127.0.0.1</p>
+                    </div>
+                    <button type="button" class="btn-profile-secondary" style="font-size:0.82rem;padding:6px 14px;" onclick="alert('All other device sessions have been revoked.')">Log Out Other Devices</button>
+                </div>
+            </div>
+
+            <!-- ========== TAB 3: NOTIFICATIONS ========== -->
+            <div class="settings-tab-panel" id="settings-panel-notifications" style="display:none;">
+                <h2 class="settings-section-title">Notification Preferences</h2>
+                <p class="settings-section-desc">Choose what updates and digests you receive in your inbox and browser.</p>
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>Story Comments & Responses</h4>
+                        <p>Receive email notifications when someone leaves a comment on your stories.</p>
+                    </div>
+                    <label class="theme-switch">
+                        <input type="checkbox" checked id="notif-comments">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>New Followers & Claps</h4>
+                        <p>Get notified when a fellow reader follows your profile or applauds your article.</p>
+                    </div>
+                    <label class="theme-switch">
+                        <input type="checkbox" checked id="notif-followers">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>Weekly Digest & Highlights</h4>
+                        <p>A weekly roundup of trending stories tailored to your interests.</p>
+                    </div>
+                    <label class="theme-switch">
+                        <input type="checkbox" checked id="notif-digest">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>Web & Mobile Push Alerts</h4>
+                        <p>Instant browser push notifications for breaking story updates.</p>
+                    </div>
+                    <label class="theme-switch">
+                        <input type="checkbox" id="notif-push">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- ========== TAB 4: MONETIZATION & PAYOUTS ========== -->
+            <div class="settings-tab-panel" id="settings-panel-monetization" style="display:none;">
+                <h2 class="settings-section-title">Creator Monetization & Subscriptions</h2>
+                <p class="settings-section-desc">Earn revenue based on reading time and member applause from your published stories.</p>
+
+                <div class="analytics-dashboard-grid" style="margin-top:20px;">
+                    <div class="analytics-card">
+                        <div class="analytics-title">Creator Membership Status</div>
+                        <div class="analytics-num" style="font-size:1.5rem;color:#4ade80;">Active Pro</div>
+                        <div class="analytics-subtext">Tier: Partner Program</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-title">Current Balance</div>
+                        <div class="analytics-num">$142.50</div>
+                        <div class="analytics-subtext">Next payout on 1st of month</div>
+                    </div>
+                </div>
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>Connected Payout Account</h4>
+                        <p>Stripe Express (•••• 4242 · USD Direct Deposit)</p>
+                    </div>
+                    <button type="button" class="btn-profile-secondary" onclick="alert('Stripe Express dashboard management opened.')">Manage Payouts</button>
+                </div>
+            </div>
+
+            <!-- ========== TAB 5: DATA & PRIVACY ========== -->
+            <div class="settings-tab-panel" id="settings-panel-privacy" style="display:none;">
+                <h2 class="settings-section-title">Data Privacy & Account Controls</h2>
+                <p class="settings-section-desc">Manage public visibility, export your story archives, or permanently delete your account.</p>
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>Profile Visibility</h4>
+                        <p>Allow search engines and non-members to view your public profile and published stories.</p>
+                    </div>
+                    <label class="theme-switch">
+                        <input type="checkbox" checked id="privacy-visibility">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="settings-toggle-row">
+                    <div class="toggle-info">
+                        <h4>Export My Data</h4>
+                        <p>Download a complete JSON archive of your published posts, bookmarks, and account metadata.</p>
+                    </div>
+                    <a href="/api/profile/export" class="btn-profile-secondary" download>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span>Export Data (JSON)</span>
+                    </a>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="settings-danger-card">
+                    <h3 style="color:#ef4444;margin:0 0 6px 0;font-size:1.1rem;">Danger Zone</h3>
+                    <p style="font-size:0.86rem;color:rgba(255,255,255,0.6);margin:0 0 16px 0;">Once deleted, your account, published stories, bookmarks, and analytics cannot be recovered.</p>
+                    <button type="button" class="btn-danger" id="delete-account-btn">Delete Account Permanently</button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    // Settings Tabs Switcher
+    document.querySelectorAll('.settings-nav-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.getAttribute('data-tab');
+            document.querySelectorAll('.settings-nav-item').forEach(b => {
+                b.classList.remove('is-active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            document.querySelectorAll('.settings-tab-panel').forEach(p => p.style.display = 'none');
+
+            btn.classList.add('is-active');
+            btn.setAttribute('aria-selected', 'true');
+            const targetPanel = document.getElementById('settings-panel-' + target);
+            if (targetPanel) targetPanel.style.display = 'block';
+        });
+    });
+
+    // Bio Character Counter
+    const bioTextarea = document.getElementById('setting-bio');
+    const bioCount = document.getElementById('bio-char-count');
+    if (bioTextarea && bioCount) {
+        bioTextarea.addEventListener('input', () => {
+            const remaining = 250 - bioTextarea.value.length;
+            bioCount.textContent = `${remaining} characters remaining`;
+        });
+    }
+
+    // Save Profile Form
+    const profileForm = document.getElementById('profile-general-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('save-profile-btn');
+            submitBtn.textContent = 'Saving...';
+            submitBtn.disabled = true;
+
+            const formData = {
+                name: document.getElementById('setting-name').value,
+                username: document.getElementById('setting-username').value,
+                phone: document.getElementById('setting-phone').value,
+                bio: document.getElementById('setting-bio').value,
+                avatar: document.getElementById('setting-avatar').value,
+                cover: document.getElementById('setting-cover').value,
+                location: document.getElementById('setting-location').value,
+                website: document.getElementById('setting-website').value,
+                twitter: document.getElementById('setting-twitter').value,
+                github: document.getElementById('setting-github').value,
+            };
+
+            try {
+                const res = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                if (res.ok) {
+                    alert('Profile updated successfully!');
+                    window.location.href = '/profile';
+                } else {
+                    const data = await res.json();
+                    alert('Failed to update profile: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Network error updating profile.');
+            } finally {
+                submitBtn.textContent = 'Save Changes';
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // Delete Account
+    const deleteBtn = document.getElementById('delete-account-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to permanently delete your account? This action is irreversible.')) {
+                try {
+                    const res = await fetch('/api/profile/account', { method: 'DELETE' });
+                    if (res.ok) {
+                        alert('Your account has been deleted.');
+                        window.location.href = '/login';
+                    }
+                } catch (e) {
+                    alert('Error deleting account.');
+                }
+            }
+        });
+    }
+</script>
+
+<%- include("partials/footer.ejs") %>

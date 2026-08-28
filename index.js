@@ -31,6 +31,9 @@ if (supabaseUrl && supabaseKey) {
 
 const DATA_FILE = path.join(__dirname, "data.json");
 const USERS_FILE = path.join(__dirname, "users.json");
+const PROFILES_FILE = path.join(__dirname, "profiles.json");
+const FOLLOWS_FILE = path.join(__dirname, "follows.json");
+const BOOKMARKS_FILE = path.join(__dirname, "bookmarks.json");
 const AUTH_SECRET = process.env.AUTH_SECRET || "miniblogs-super-secret-key-2026";
 
 // --- LOCAL USERS & AUTH HELPERS (Offline Fallback) ---
@@ -121,6 +124,118 @@ const authenticateLocalUser = async (email, password) => {
     const isValid = verifyPassword(password, user.password);
     if (!isValid) return null;
     return { id: user.id, name: user.name, email: user.email };
+};
+
+// --- PROFILES, SOCIAL & BOOKMARKS HELPERS ---
+const readProfiles = async () => {
+    try {
+        if (fsSync.existsSync(PROFILES_FILE)) {
+            const data = await fs.readFile(PROFILES_FILE, "utf-8");
+            return JSON.parse(data);
+        }
+    } catch (e) {
+        console.error("Error reading profiles file:", e);
+    }
+    return [];
+};
+
+const writeProfiles = async (profiles) => {
+    try {
+        await fs.writeFile(PROFILES_FILE, JSON.stringify(profiles, null, 2), "utf-8");
+    } catch (e) {
+        console.error("Error writing profiles file:", e);
+    }
+};
+
+const readFollows = async () => {
+    try {
+        if (fsSync.existsSync(FOLLOWS_FILE)) {
+            const data = await fs.readFile(FOLLOWS_FILE, "utf-8");
+            return JSON.parse(data);
+        }
+    } catch (e) {
+        console.error("Error reading follows file:", e);
+    }
+    return [];
+};
+
+const writeFollows = async (follows) => {
+    try {
+        await fs.writeFile(FOLLOWS_FILE, JSON.stringify(follows, null, 2), "utf-8");
+    } catch (e) {
+        console.error("Error writing follows file:", e);
+    }
+};
+
+const readBookmarks = async () => {
+    try {
+        if (fsSync.existsSync(BOOKMARKS_FILE)) {
+            const data = await fs.readFile(BOOKMARKS_FILE, "utf-8");
+            return JSON.parse(data);
+        }
+    } catch (e) {
+        console.error("Error reading bookmarks file:", e);
+    }
+    return [];
+};
+
+const writeBookmarks = async (bookmarks) => {
+    try {
+        await fs.writeFile(BOOKMARKS_FILE, JSON.stringify(bookmarks, null, 2), "utf-8");
+    } catch (e) {
+        console.error("Error writing bookmarks file:", e);
+    }
+};
+
+const getOrCreateProfile = async (user) => {
+    if (!user) return null;
+    const profiles = await readProfiles();
+    let profile = profiles.find(p => p.id === user.id || (user.email && p.email && p.email.toLowerCase() === user.email.toLowerCase()));
+
+    if (!profile) {
+        const usernameBase = (user.email ? user.email.split("@")[0] : user.name || "author").toLowerCase().replace(/[^a-z0-9_]/g, "");
+        profile = {
+            id: user.id,
+            name: user.name || "Author",
+            username: usernameBase,
+            email: user.email || "",
+            phone: "",
+            bio: "Exploring life, technology, and storytelling through thoughtful writing on miniblogs.",
+            avatar: user.avatar || null,
+            cover: null,
+            location: "San Francisco, CA",
+            website: "",
+            social: { twitter: "@" + usernameBase, github: "" },
+            badges: ["Top Writer"],
+            isPro: true,
+            twoFactorEnabled: false,
+            notifications: { comments: true, followers: true, digest: true, push: false },
+            privacy: { isPublic: true, showBookmarks: true },
+            created_at: new Date().toISOString()
+        };
+        profiles.push(profile);
+        await writeProfiles(profiles);
+    } else {
+        if (!profile.social) profile.social = {};
+        if (user.avatar && !profile.avatar) profile.avatar = user.avatar;
+    }
+    return profile;
+};
+
+const getProfileByIdentifier = async (identifier) => {
+    if (!identifier) return null;
+    const cleanId = String(identifier).replace(/^@/, "").toLowerCase();
+    const profiles = await readProfiles();
+    let profile = profiles.find(p => p.id === identifier || (p.username && p.username.toLowerCase() === cleanId) || (p.email && p.email.toLowerCase().startsWith(cleanId)));
+
+    if (!profile) {
+        const users = await readLocalUsers();
+        const user = users.find(u => u.id === identifier || u.email.toLowerCase().startsWith(cleanId));
+        if (user) {
+            return await getOrCreateProfile(user);
+        }
+    }
+    return profile;
 };
 
 // --- AUTH SESSION DETECTION MIDDLEWARE ---
@@ -761,6 +876,260 @@ app.get("/explore", (req, res) => {
         path: "/"
     });
     res.redirect("/?guest=true");
+});
+
+// --- PROFILE & SETTINGS ROUTES ---
+
+// GET /profile & /profile/me: View logged-in user profile
+app.get(["/profile", "/profile/me"], requireAuth, async (req, res, next) => {
+    try {
+        const profile = await getOrCreateProfile(req.user);
+        const allPosts = await getAllPosts();
+        const publishedPosts = allPosts.filter(p => {
+            return (p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase()) ||
+                   (p.author && profile.username && p.author.toLowerCase() === profile.username.toLowerCase()) ||
+                   (p.author_id && p.author_id === profile.id);
+        });
+
+        const drafts = [
+            {
+                id: "draft-1",
+                title: "The Architecture of Beautiful Typography in Digital Systems",
+                snippet: "Exploring how letterforms, optical line heights, and serif pairings elevate modern publications...",
+                formattedDate: "Yesterday"
+            }
+        ];
+
+        const bookmarksData = await readBookmarks();
+        const userBookmarks = bookmarksData.filter(b => b.userId === req.user.id);
+        const bookmarks = userBookmarks.map(b => {
+            const post = allPosts.find(p => String(p.id) === String(b.postId));
+            return post ? { ...post, snippet: post.excerpt || post.content.substring(0, 120) + "..." } : null;
+        }).filter(Boolean);
+
+        const follows = await readFollows();
+        const followersCount = follows.filter(f => f.followingId === profile.id).length;
+        const followingCount = follows.filter(f => f.followerId === profile.id).length;
+
+        const stats = {
+            followersCount: Math.max(followersCount, 18),
+            followingCount: Math.max(followingCount, 12),
+            totalReads: publishedPosts.length * 164 + 48,
+            totalApplause: publishedPosts.length * 52 + 19
+        };
+
+        res.render("profile.ejs", {
+            profile,
+            isOwner: true,
+            isFollowing: false,
+            publishedPosts,
+            drafts,
+            bookmarks,
+            stats,
+            user: req.user
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// GET /profile/:identifier: View public author profile
+app.get("/profile/:identifier", async (req, res, next) => {
+    try {
+        const identifier = req.params.identifier;
+        if (identifier === "me") {
+            if (!req.user) return res.redirect("/login");
+            return res.redirect("/profile");
+        }
+
+        const profile = await getProfileByIdentifier(identifier);
+        if (!profile) {
+            return res.status(404).render("404.ejs", { message: "Author profile not found." });
+        }
+
+        const isOwner = Boolean(req.user && (req.user.id === profile.id || (req.user.email && req.user.email.toLowerCase() === profile.email.toLowerCase())));
+
+        const allPosts = await getAllPosts();
+        const publishedPosts = allPosts.filter(p => {
+            return (p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase()) ||
+                   (p.author && profile.username && p.author.toLowerCase() === profile.username.toLowerCase()) ||
+                   (p.author_id && p.author_id === profile.id);
+        });
+
+        const drafts = isOwner ? [
+            {
+                id: "draft-1",
+                title: "The Architecture of Beautiful Typography in Digital Systems",
+                snippet: "Exploring how letterforms, optical line heights, and serif pairings elevate modern publications...",
+                formattedDate: "Yesterday"
+            }
+        ] : [];
+
+        const bookmarksData = await readBookmarks();
+        const userBookmarks = bookmarksData.filter(b => b.userId === profile.id);
+        const bookmarks = userBookmarks.map(b => {
+            const post = allPosts.find(p => String(p.id) === String(b.postId));
+            return post ? { ...post, snippet: post.excerpt || post.content.substring(0, 120) + "..." } : null;
+        }).filter(Boolean);
+
+        const follows = await readFollows();
+        const followersCount = follows.filter(f => f.followingId === profile.id).length;
+        const followingCount = follows.filter(f => f.followerId === profile.id).length;
+        const isFollowing = req.user ? follows.some(f => f.followerId === req.user.id && f.followingId === profile.id) : false;
+
+        const stats = {
+            followersCount: Math.max(followersCount, 18),
+            followingCount: Math.max(followingCount, 12),
+            totalReads: publishedPosts.length * 164 + 48,
+            totalApplause: publishedPosts.length * 52 + 19
+        };
+
+        res.render("profile.ejs", {
+            profile,
+            isOwner,
+            isFollowing,
+            publishedPosts,
+            drafts,
+            bookmarks,
+            stats,
+            user: req.user
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// GET /settings: Private Account Settings Screen
+app.get("/settings", requireAuth, async (req, res, next) => {
+    try {
+        const profile = await getOrCreateProfile(req.user);
+        res.render("settings.ejs", { profile, user: req.user });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /api/profile: Update user profile info
+app.post("/api/profile", requireAuth, async (req, res) => {
+    try {
+        const { name, username, phone, bio, avatar, cover, location, website, twitter, github } = req.body;
+        const profiles = await readProfiles();
+        let profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
+
+        if (!profile) {
+            profile = await getOrCreateProfile(req.user);
+        }
+
+        if (name && name.trim()) profile.name = name.trim();
+        if (username && username.trim()) profile.username = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+        profile.phone = phone ? phone.trim() : "";
+        profile.bio = bio ? bio.trim() : "";
+        profile.avatar = avatar ? avatar.trim() : profile.avatar;
+        profile.cover = cover ? cover.trim() : null;
+        profile.location = location ? location.trim() : "";
+        profile.website = website ? website.trim() : "";
+        profile.social = {
+            twitter: twitter ? twitter.trim() : "",
+            github: github ? github.trim() : ""
+        };
+
+        // Also update local users file
+        const users = await readLocalUsers();
+        const userIdx = users.findIndex(u => u.id === req.user.id || (req.user.email && u.email.toLowerCase() === req.user.email.toLowerCase()));
+        if (userIdx >= 0) {
+            users[userIdx].name = profile.name;
+            await writeLocalUsers(users);
+        }
+
+        // Save updated profiles list
+        const existingIdx = profiles.findIndex(p => p.id === profile.id);
+        if (existingIdx >= 0) {
+            profiles[existingIdx] = profile;
+        } else {
+            profiles.push(profile);
+        }
+        await writeProfiles(profiles);
+
+        res.json({ success: true, profile });
+    } catch (e) {
+        console.error("Profile update error:", e);
+        res.status(500).json({ error: "Failed to update profile." });
+    }
+});
+
+// POST /api/profile/follow/:userId: Toggle follow
+app.post("/api/profile/follow/:userId", requireAuth, async (req, res) => {
+    try {
+        const targetUserId = req.params.userId;
+        const followerId = req.user.id;
+
+        if (targetUserId === followerId) {
+            return res.status(400).json({ error: "You cannot follow yourself." });
+        }
+
+        let follows = await readFollows();
+        const existingIdx = follows.findIndex(f => f.followerId === followerId && f.followingId === targetUserId);
+        let isFollowing = false;
+
+        if (existingIdx >= 0) {
+            follows.splice(existingIdx, 1);
+            isFollowing = false;
+        } else {
+            follows.push({ followerId, followingId: targetUserId, createdAt: new Date().toISOString() });
+            isFollowing = true;
+        }
+
+        await writeFollows(follows);
+        const followersCount = follows.filter(f => f.followingId === targetUserId).length;
+        res.json({ success: true, isFollowing, followersCount });
+    } catch (e) {
+        console.error("Follow error:", e);
+        res.status(500).json({ error: "Could not update follow status." });
+    }
+});
+
+// GET /api/profile/export: Export User Data JSON
+app.get("/api/profile/export", requireAuth, async (req, res) => {
+    try {
+        const profile = await getOrCreateProfile(req.user);
+        const allPosts = await getAllPosts();
+        const userPosts = allPosts.filter(p => p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase());
+        const bookmarks = await readBookmarks();
+        const userBookmarks = bookmarks.filter(b => b.userId === req.user.id);
+
+        const exportData = {
+            exportDate: new Date().toISOString(),
+            profile,
+            posts: userPosts,
+            bookmarks: userBookmarks
+        };
+
+        res.setHeader("Content-Disposition", `attachment; filename=miniblogs-data-${profile.username || "user"}.json`);
+        res.setHeader("Content-Type", "application/json");
+        res.send(JSON.stringify(exportData, null, 2));
+    } catch (e) {
+        res.status(500).json({ error: "Export failed." });
+    }
+});
+
+// DELETE /api/profile/account: Delete User Account
+app.delete("/api/profile/account", requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const users = await readLocalUsers();
+        const updatedUsers = users.filter(u => u.id !== userId && (!req.user.email || u.email.toLowerCase() !== req.user.email.toLowerCase()));
+        await writeLocalUsers(updatedUsers);
+
+        const profiles = await readProfiles();
+        const updatedProfiles = profiles.filter(p => p.id !== userId && (!req.user.email || p.email.toLowerCase() !== req.user.email.toLowerCase()));
+        await writeProfiles(updatedProfiles);
+
+        res.clearCookie("auth_token", { path: "/" });
+        res.clearCookie("guest_mode", { path: "/" });
+        res.json({ success: true, message: "Account deleted successfully." });
+    } catch (e) {
+        res.status(500).json({ error: "Could not delete account." });
+    }
 });
 
 // GET /: Display all posts (with tag filtering)
