@@ -1056,6 +1056,77 @@ app.post("/api/profile", requireAuth, async (req, res) => {
     }
 });
 
+// POST /api/profile/password: Change password requiring valid current password
+app.post("/api/profile/password", requireAuth, async (req, res) => {
+    try {
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+
+        if (!currentPassword || !currentPassword.trim()) {
+            return res.status(400).json({ error: "You must enter your current password." });
+        }
+
+        if (!newPassword || newPassword.length < 8) {
+            return res.status(400).json({ error: "New password must be at least 8 characters long." });
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ error: "New password and confirmation do not match." });
+        }
+
+        let passwordUpdated = false;
+
+        // If authenticated with Supabase
+        if (supabase && req.user && req.user.email) {
+            try {
+                // Verify existing password
+                const { error: verifyError } = await supabase.auth.signInWithPassword({
+                    email: req.user.email,
+                    password: currentPassword
+                });
+
+                if (verifyError) {
+                    return res.status(400).json({ error: "Current password is incorrect. Please enter your existing password." });
+                }
+
+                const { error: updateError } = await supabase.auth.updateUser({
+                    password: newPassword
+                });
+
+                if (updateError) {
+                    return res.status(400).json({ error: updateError.message || "Failed to update password." });
+                }
+                passwordUpdated = true;
+            } catch (err) {
+                // Check local user if Supabase is offline or user was locally created
+            }
+        }
+
+        if (!passwordUpdated) {
+            // Local user authentication & password update
+            const users = await readLocalUsers();
+            const userIndex = users.findIndex(u => u.id === req.user.id || (req.user.email && u.email.toLowerCase() === req.user.email.toLowerCase()));
+
+            if (userIndex === -1) {
+                return res.status(404).json({ error: "User account not found." });
+            }
+
+            const user = users[userIndex];
+            const isValid = verifyPassword(currentPassword, user.password);
+            if (!isValid) {
+                return res.status(400).json({ error: "Current password is incorrect. Please enter your existing password." });
+            }
+
+            users[userIndex].password = hashPassword(newPassword);
+            await writeLocalUsers(users);
+        }
+
+        res.json({ success: true, message: "Password updated successfully!" });
+    } catch (e) {
+        console.error("Password change error:", e);
+        res.status(500).json({ error: "An unexpected error occurred while changing your password." });
+    }
+});
+
 // POST /api/profile/follow/:userId: Toggle follow
 app.post("/api/profile/follow/:userId", requireAuth, async (req, res) => {
     try {

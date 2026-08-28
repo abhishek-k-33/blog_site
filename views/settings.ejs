@@ -162,20 +162,20 @@
                 <form id="password-change-form">
                     <div class="settings-form-grid">
                         <div class="form-full-width">
-                            <label class="settings-label" for="current-password">Current Password</label>
-                            <input type="password" id="current-password" name="currentPassword" class="settings-input" placeholder="••••••••">
+                            <label class="settings-label" for="current-password">Current Password <span style="color: #ef4444;">*</span></label>
+                            <input type="password" id="current-password" name="currentPassword" class="settings-input" placeholder="Enter existing password" required autocomplete="current-password">
                         </div>
                         <div>
-                            <label class="settings-label" for="new-password">New Password</label>
-                            <input type="password" id="new-password" name="newPassword" class="settings-input" placeholder="Min. 8 characters" minlength="8">
+                            <label class="settings-label" for="new-password">New Password <span style="color: #ef4444;">*</span></label>
+                            <input type="password" id="new-password" name="newPassword" class="settings-input" placeholder="Min. 8 characters" minlength="8" required autocomplete="new-password">
                         </div>
                         <div>
-                            <label class="settings-label" for="confirm-password">Confirm New Password</label>
-                            <input type="password" id="confirm-password" name="confirmPassword" class="settings-input" placeholder="Repeat new password" minlength="8">
+                            <label class="settings-label" for="confirm-password">Confirm New Password <span style="color: #ef4444;">*</span></label>
+                            <input type="password" id="confirm-password" name="confirmPassword" class="settings-input" placeholder="Repeat new password" minlength="8" required autocomplete="new-password">
                         </div>
                     </div>
-                    <div style="margin-top: 20px;">
-                        <button type="submit" class="btn-profile-secondary">Update Password</button>
+                    <div style="margin-top: 24px; display: flex; align-items: center; gap: 12px;">
+                        <button type="submit" class="btn-profile-primary" id="btn-update-password">Update Password</button>
                     </div>
                 </form>
 
@@ -514,6 +514,60 @@
             } finally {
                 submitBtn.textContent = 'Save Changes';
                 submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // Password Change Form
+    const passwordForm = document.getElementById('password-change-form');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const updateBtn = document.getElementById('btn-update-password');
+
+            if (!currentPassword) {
+                alert('Please enter your current password.');
+                document.getElementById('current-password').focus();
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                alert('New password must be at least 8 characters long.');
+                document.getElementById('new-password').focus();
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                alert('New password and confirmation password do not match.');
+                document.getElementById('confirm-password').focus();
+                return;
+            }
+
+            updateBtn.textContent = 'Verifying & Updating...';
+            updateBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/profile/password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('Password updated successfully!');
+                    passwordForm.reset();
+                } else {
+                    alert(data.error || 'Failed to update password. Current password may be incorrect.');
+                }
+            } catch (err) {
+                alert('Network error changing password. Please try again.');
+            } finally {
+                updateBtn.textContent = 'Update Password';
+                updateBtn.disabled = false;
             }
         });
     }
