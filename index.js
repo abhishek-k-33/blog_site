@@ -55,11 +55,43 @@ const verifyPassword = (password, stored) => {
     }
 };
 
+// Device & Browser Detection Helper
+const parseDeviceInfo = (userAgent, ip) => {
+    let os = "Unknown Device";
+    let browser = "Web Browser";
+
+    const ua = userAgent || "";
+    if (/Windows NT 10.0/i.test(ua)) os = "Windows 11/10";
+    else if (/Windows NT 6.3/i.test(ua)) os = "Windows 8.1";
+    else if (/Windows/i.test(ua)) os = "Windows PC";
+    else if (/iPhone/i.test(ua)) os = "iPhone";
+    else if (/iPad/i.test(ua)) os = "iPad";
+    else if (/Macintosh|Mac OS X/i.test(ua)) os = "macOS";
+    else if (/Android/i.test(ua)) os = "Android";
+    else if (/Linux/i.test(ua)) os = "Linux";
+
+    if (/Edg\//i.test(ua)) browser = "Edge";
+    else if (/Brave/i.test(ua)) browser = "Brave";
+    else if (/Chrome\//i.test(ua)) browser = "Chrome";
+    else if (/Firefox\//i.test(ua)) browser = "Firefox";
+    else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+
+    let cleanIp = (ip || "127.0.0.1").replace(/^::ffff:/, "");
+    if (cleanIp === "::1" || !cleanIp) cleanIp = "127.0.0.1";
+
+    return {
+        device: `${os} · ${browser}`,
+        ip: cleanIp
+    };
+};
+
 const generateLocalToken = (user) => {
     const payload = Buffer.from(JSON.stringify({
         id: user.id,
         email: user.email,
         name: user.name,
+        sessionVersion: user.sessionVersion || 1,
+        sessionId: user.sessionId || crypto.randomBytes(8).toString("hex"),
         exp: Date.now() + 30 * 24 * 60 * 60 * 1000
     })).toString("base64url");
     const signature = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
@@ -271,8 +303,12 @@ app.use(async (req, res, next) => {
         if (!req.user) {
             const localUser = verifyLocalToken(token);
             if (localUser) {
-                req.user = localUser;
-                res.locals.user = localUser;
+                const users = await readLocalUsers();
+                const storedUser = users.find(u => u.id === localUser.id || (u.email && localUser.email && u.email.toLowerCase() === localUser.email.toLowerCase()));
+                if (!storedUser || !storedUser.sessionVersion || (localUser.sessionVersion || 1) >= (storedUser.sessionVersion || 1)) {
+                    req.user = localUser;
+                    res.locals.user = localUser;
+                }
             }
         }
     }
@@ -1017,9 +1053,58 @@ app.get("/settings", requireAuth, async (req, res, next) => {
             req.user?.avatar?.includes("googleusercontent.com") || 
             profile.avatar?.includes("googleusercontent.com")
         );
-        res.render("settings.ejs", { profile, user: req.user, isGoogleUser });
+        const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || req.ip;
+        const currentSessionInfo = parseDeviceInfo(req.headers["user-agent"], clientIp);
+        res.render("settings.ejs", { profile, user: req.user, isGoogleUser, currentSessionInfo });
     } catch (err) {
         next(err);
+    }
+});
+
+// POST /api/profile/sessions/revoke-others: Revoke all other device sessions
+app.post("/api/profile/sessions/revoke-others", requireAuth, async (req, res) => {
+    try {
+        const users = await readLocalUsers();
+        const userIdx = users.findIndex(u => u.id === req.user.id || (req.user.email && u.email && u.email.toLowerCase() === req.user.email.toLowerCase()));
+
+        let newVersion = 2;
+        if (userIdx !== -1) {
+            users[userIdx].sessionVersion = (users[userIdx].sessionVersion || 1) + 1;
+            newVersion = users[userIdx].sessionVersion;
+            await writeLocalUsers(users);
+        }
+
+        // Also sync version in profiles
+        const profiles = await readProfiles();
+        const profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
+        if (profile) {
+            profile.sessionVersion = newVersion;
+            await writeProfiles(profiles);
+        }
+
+        // Re-issue a fresh token cookie for the current device so it stays authenticated
+        const refreshedUser = {
+            id: req.user.id,
+            email: req.user.email,
+            name: req.user.name,
+            sessionVersion: newVersion,
+            sessionId: crypto.randomBytes(8).toString("hex")
+        };
+        const newToken = generateLocalToken(refreshedUser);
+        res.cookie("auth_token", newToken, {
+            httpOnly: true,
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production"
+        });
+
+        return res.json({
+            success: true,
+            message: "All other device sessions have been logged out. Your current session remains active!"
+        });
+    } catch (err) {
+        console.error("Revoke sessions error:", err);
+        return res.status(500).json({ error: "Failed to revoke other device sessions." });
     }
 });
 

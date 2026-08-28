@@ -213,9 +213,9 @@
                 <div class="settings-toggle-row">
                     <div class="toggle-info">
                         <h4>Active Login Sessions</h4>
-                        <p>Currently logged in on Linux Chrome (Current Device) · IP 127.0.0.1</p>
+                        <p>Currently logged in on <strong style="color:var(--text-color);"><%= typeof currentSessionInfo !== 'undefined' ? currentSessionInfo.device : 'This Device' %></strong> (Current Device) · IP <%= typeof currentSessionInfo !== 'undefined' ? currentSessionInfo.ip : '127.0.0.1' %></p>
                     </div>
-                    <button type="button" class="btn-profile-secondary" style="font-size:0.84rem;padding:8px 20px;" onclick="alert('All other device sessions have been revoked.')">Log Out Other Devices</button>
+                    <button type="button" class="btn-profile-secondary" id="btn-revoke-other-sessions" style="font-size:0.84rem;padding:8px 20px;">Log Out Other Devices</button>
                 </div>
             </div>
 
@@ -593,6 +593,36 @@
     }
 
 
+
+    // Real Revoke Other Sessions Handler
+    const btnRevokeSessions = document.getElementById('btn-revoke-other-sessions');
+    if (btnRevokeSessions) {
+        btnRevokeSessions.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to log out all other devices and browser sessions? Your current session will remain active.')) {
+                btnRevokeSessions.textContent = 'Revoking...';
+                btnRevokeSessions.disabled = true;
+
+                try {
+                    const res = await fetch('/api/profile/sessions/revoke-others', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+
+                    if (res.ok && data.success) {
+                        alert(data.message || 'All other device sessions have been logged out successfully.');
+                    } else {
+                        alert(data.error || 'Failed to revoke sessions.');
+                    }
+                } catch (err) {
+                    alert('Network error revoking other device sessions.');
+                } finally {
+                    btnRevokeSessions.textContent = 'Log Out Other Devices';
+                    btnRevokeSessions.disabled = false;
+                }
+            }
+        });
+    }
 
     // Delete Account
     const deleteBtn = document.getElementById('delete-account-btn');
