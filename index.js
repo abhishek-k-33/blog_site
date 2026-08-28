@@ -249,11 +249,17 @@ app.use(async (req, res, next) => {
             try {
                 const { data: { user }, error } = await supabase.auth.getUser(token);
                 if (user && !error) {
+                    const isGoogle = user.app_metadata?.provider === "google" ||
+                                     (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
+                                     Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
+
                     req.user = {
                         id: user.id,
                         email: user.email,
                         name: user.user_metadata?.display_name || user.user_metadata?.full_name || user.user_metadata?.name || (user.email ? user.email.split("@")[0] : "Author"),
                         avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                        isGoogleUser: isGoogle,
+                        provider: isGoogle ? "google" : (user.app_metadata?.provider || "email")
                     };
                     res.locals.user = req.user;
                 }
@@ -1003,7 +1009,13 @@ app.get("/profile/:identifier", async (req, res, next) => {
 app.get("/settings", requireAuth, async (req, res, next) => {
     try {
         const profile = await getOrCreateProfile(req.user);
-        res.render("settings.ejs", { profile, user: req.user });
+        const isGoogleUser = Boolean(
+            req.user?.isGoogleUser || 
+            req.user?.provider === "google" || 
+            req.user?.avatar?.includes("googleusercontent.com") || 
+            profile.avatar?.includes("googleusercontent.com")
+        );
+        res.render("settings.ejs", { profile, user: req.user, isGoogleUser });
     } catch (err) {
         next(err);
     }

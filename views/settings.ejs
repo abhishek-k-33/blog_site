@@ -156,28 +156,59 @@
 
             <!-- ========== TAB 2: SECURITY & SESSIONS ========== -->
             <div class="settings-tab-panel" id="settings-panel-security" style="display:none;">
-                <h2 class="settings-section-title">Security & Active Sessions</h2>
-                <p class="settings-section-desc">Manage account password, two-factor authentication, and signed-in devices.</p>
+                <h2 class="settings-section-title">Security & Credentials</h2>
+                <p class="settings-section-desc">Manage account credentials, authentication methods, and active sessions.</p>
 
-                <form id="password-change-form">
-                    <div class="settings-form-grid">
-                        <div class="form-full-width">
-                            <label class="settings-label" for="current-password">Current Password <span style="color: #ef4444;">*</span></label>
-                            <input type="password" id="current-password" name="currentPassword" class="settings-input" placeholder="Enter existing password" required autocomplete="current-password">
+                <% if (typeof isGoogleUser !== 'undefined' && isGoogleUser) { %>
+                    <!-- Google OAuth Account Status Card -->
+                    <div class="google-security-card">
+                        <div class="google-security-header">
+                            <div class="google-icon-box">
+                                <svg width="22" height="22" viewBox="0 0 24 24">
+                                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                                </svg>
+                            </div>
+                            <div class="google-security-text">
+                                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                                    <h3 style="margin:0;font-size:1.15rem;font-weight:700;">Signed in through Google</h3>
+                                    <span class="email-verified-chip">✓ Google OAuth Active</span>
+                                </div>
+                                <p style="margin:6px 0 0 0;font-size:0.88rem;color:rgba(255,255,255,0.6);line-height:1.5;">
+                                    Your account is authenticated directly via Google (<strong style="color:var(--text-color);"><%= profile.email %></strong>). Password management and multi-factor authentication are handled securely through your Google Account.
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <label class="settings-label" for="new-password">New Password <span style="color: #ef4444;">*</span></label>
-                            <input type="password" id="new-password" name="newPassword" class="settings-input" placeholder="Min. 8 characters" minlength="8" required autocomplete="new-password">
-                        </div>
-                        <div>
-                            <label class="settings-label" for="confirm-password">Confirm New Password <span style="color: #ef4444;">*</span></label>
-                            <input type="password" id="confirm-password" name="confirmPassword" class="settings-input" placeholder="Repeat new password" minlength="8" required autocomplete="new-password">
+                        <div style="margin-top:18px;display:flex;align-items:center;gap:12px;">
+                            <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" class="btn-profile-secondary" style="font-size:0.84rem;padding:7px 18px;">
+                                <span>Manage Google Account Security ↗</span>
+                            </a>
                         </div>
                     </div>
-                    <div style="margin-top: 24px; display: flex; align-items: center; gap: 12px;">
-                        <button type="submit" class="btn-profile-primary" id="btn-update-password">Update Password</button>
-                    </div>
-                </form>
+                <% } else { %>
+                    <!-- Standard Password Change Form for Email/Password Users -->
+                    <form id="password-change-form">
+                        <div class="settings-form-grid">
+                            <div class="form-full-width">
+                                <label class="settings-label" for="current-password">Current Password <span style="color: #ef4444;">*</span></label>
+                                <input type="password" id="current-password" name="currentPassword" class="settings-input" placeholder="Enter existing password" required autocomplete="current-password">
+                            </div>
+                            <div>
+                                <label class="settings-label" for="new-password">New Password <span style="color: #ef4444;">*</span></label>
+                                <input type="password" id="new-password" name="newPassword" class="settings-input" placeholder="Min. 8 characters" minlength="8" required autocomplete="new-password">
+                            </div>
+                            <div>
+                                <label class="settings-label" for="confirm-password">Confirm New Password <span style="color: #ef4444;">*</span></label>
+                                <input type="password" id="confirm-password" name="confirmPassword" class="settings-input" placeholder="Repeat new password" minlength="8" required autocomplete="new-password">
+                            </div>
+                        </div>
+                        <div style="margin-top: 24px; display: flex; align-items: center; gap: 12px;">
+                            <button type="submit" class="btn-profile-primary" id="btn-update-password">Update Password</button>
+                        </div>
+                    </form>
+                <% } %>
 
                 <hr style="border:0;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0;">
 
