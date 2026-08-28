@@ -113,6 +113,8 @@
     border-radius: 9999px;
     font-size: 0.9rem;
     font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
     background: #18181B;
     color: #ffffff !important;
     border: 1px solid #18181B;
@@ -162,6 +164,8 @@ body.dark-mode .btn-profile-primary:hover {
     border-radius: 9999px;
     font-size: 0.9rem;
     font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
     background: rgba(255, 255, 255, 0.08);
     color: var(--text-color, #ffffff) !important;
     border: 1px solid var(--border-color, rgba(255, 255, 255, 0.14));
@@ -914,24 +918,31 @@ body:not(.dark-mode) .settings-select:focus {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 0;
+    gap: 24px;
+    padding: 20px 0;
     border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
 }
 
+.toggle-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .toggle-info h4 {
-    margin: 0 0 4px 0;
-    font-size: 0.96rem;
+    margin: 0 0 6px 0;
+    font-size: 0.98rem;
     font-weight: 700;
 }
 
 .toggle-info p {
     margin: 0;
-    font-size: 0.84rem;
-    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 body:not(.dark-mode) .toggle-info p {
-    color: rgba(0, 0, 0, 0.55);
+    color: rgba(0, 0, 0, 0.6);
 }
 
 /* Danger Zone */
