@@ -68,23 +68,63 @@
                             <span style="font-size:0.78rem;color:rgba(255,255,255,0.45);display:block;margin-top:4px;" id="bio-char-count">250 characters remaining</span>
                         </div>
 
+                        <!-- Profile Picture Media Picker -->
                         <div class="form-full-width">
-                            <label class="settings-label" for="setting-avatar">Profile Picture URL</label>
-                            <div class="avatar-input-row">
-                                <div class="avatar-preview-box" id="avatar-preview-box">
-                                    <% if (profile.avatar) { %>
-                                        <img src="<%= profile.avatar %>" alt="<%= profile.name %>" id="avatar-preview-img" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
-                                    <% } else { %>
-                                        <span id="avatar-preview-text" style="font-size:1.2rem;font-weight:700;"><%= (profile.name || 'U').charAt(0).toUpperCase() %></span>
-                                    <% } %>
+                            <label class="settings-label">Profile Picture / Avatar</label>
+                            <div class="media-picker-card">
+                                <div class="media-avatar-container">
+                                    <div class="media-avatar-preview" id="media-avatar-preview">
+                                        <% if (profile.avatar) { %>
+                                            <img src="<%= profile.avatar %>" alt="<%= profile.name %>" id="avatar-img-element" class="media-preview-img-round">
+                                        <% } else { %>
+                                            <div class="media-avatar-initial" id="avatar-initial-element"><%= (profile.name || 'U').charAt(0).toUpperCase() %></div>
+                                        <% } %>
+                                    </div>
+                                    <button type="button" class="btn-avatar-camera-badge" id="btn-trigger-avatar-picker" title="Change Photo" aria-label="Change Photo">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                    </button>
                                 </div>
-                                <input type="url" id="setting-avatar" name="avatar" class="settings-input" placeholder="https://lh3.googleusercontent.com/... or image link" value="<%= profile.avatar || '' %>">
+                                <div class="media-picker-info">
+                                    <div class="media-picker-actions">
+                                        <input type="file" id="avatar-file-input" accept="image/png, image/jpeg, image/webp, image/gif" style="display: none;">
+                                        <input type="hidden" id="setting-avatar" name="avatar" value="<%= profile.avatar || '' %>">
+                                        <button type="button" class="btn-profile-primary" id="btn-upload-avatar">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                            <span>Upload from Device</span>
+                                        </button>
+                                        <button type="button" class="btn-profile-secondary" id="btn-remove-avatar" style="<%= profile.avatar ? '' : 'display: none;' %>">
+                                            <span>Remove</span>
+                                        </button>
+                                    </div>
+                                    <p class="media-picker-hint">Choose a photo from your computer or phone. JPG, PNG, GIF or WebP (max 5MB).</p>
+                                </div>
                             </div>
                         </div>
 
+                        <!-- Cover Banner Media Picker -->
                         <div class="form-full-width">
-                            <label class="settings-label" for="setting-cover">Cover Banner Image URL</label>
-                            <input type="url" id="setting-cover" name="cover" class="settings-input" placeholder="https://images.unsplash.com/... or banner link" value="<%= profile.cover || '' %>">
+                            <label class="settings-label">Cover Banner Image</label>
+                            <div class="media-cover-card" id="media-cover-dropzone">
+                                <div class="media-cover-preview-wrapper">
+                                    <% if (profile.cover) { %>
+                                        <img src="<%= profile.cover %>" alt="Cover Banner" id="cover-img-element" class="media-cover-img">
+                                    <% } else { %>
+                                        <div class="media-cover-placeholder" id="cover-placeholder-element"></div>
+                                    <% } %>
+                                    <div class="media-cover-overlay">
+                                        <input type="file" id="cover-file-input" accept="image/png, image/jpeg, image/webp, image/gif" style="display: none;">
+                                        <input type="hidden" id="setting-cover" name="cover" value="<%= profile.cover || '' %>">
+                                        <button type="button" class="btn-profile-primary" id="btn-upload-cover">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                            <span>Upload Banner from Device</span>
+                                        </button>
+                                        <button type="button" class="btn-profile-secondary" id="btn-remove-cover" style="<%= profile.cover ? '' : 'display: none;' %>">
+                                            <span>Reset to Default</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="media-picker-hint" style="margin-top: 10px;">Recommended dimensions 1500 × 500 px. Supports PNG, JPG, WebP.</p>
+                            </div>
                         </div>
 
                         <div class="form-full-width">
@@ -309,16 +349,135 @@
         });
     }
 
-    // Live Avatar Preview
-    const avatarInput = document.getElementById('setting-avatar');
-    const avatarPreviewBox = document.getElementById('avatar-preview-box');
-    if (avatarInput && avatarPreviewBox) {
-        avatarInput.addEventListener('input', () => {
-            const url = avatarInput.value.trim();
-            if (url) {
-                avatarPreviewBox.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.onerror=null; this.parentElement.innerHTML='<span style=\\'font-size:1.2rem;font-weight:700;\\'>?</span>'">`;
+    // =========================================
+    // Device Media Picker: Avatar & Cover Banner
+    // =========================================
+    const avatarFileInput = document.getElementById('avatar-file-input');
+    const avatarHiddenInput = document.getElementById('setting-avatar');
+    const avatarPreviewContainer = document.getElementById('media-avatar-preview');
+    const btnUploadAvatar = document.getElementById('btn-upload-avatar');
+    const btnTriggerAvatarPicker = document.getElementById('btn-trigger-avatar-picker');
+    const btnRemoveAvatar = document.getElementById('btn-remove-avatar');
+
+    const coverFileInput = document.getElementById('cover-file-input');
+    const coverHiddenInput = document.getElementById('setting-cover');
+    const coverDropzone = document.getElementById('media-cover-dropzone');
+    const btnUploadCover = document.getElementById('btn-upload-cover');
+    const btnRemoveCover = document.getElementById('btn-remove-cover');
+
+    function handleAvatarFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            alert('Please select a valid image file (JPG, PNG, GIF, or WebP).');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size exceeds 5MB. Please choose a smaller photo.');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const dataUrl = e.target.result;
+            avatarHiddenInput.value = dataUrl;
+            avatarPreviewContainer.innerHTML = `<img src="${dataUrl}" alt="Avatar Preview" class="media-preview-img-round">`;
+            if (btnRemoveAvatar) btnRemoveAvatar.style.display = 'inline-flex';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    if (btnUploadAvatar && avatarFileInput) {
+        btnUploadAvatar.addEventListener('click', () => avatarFileInput.click());
+    }
+    if (btnTriggerAvatarPicker && avatarFileInput) {
+        btnTriggerAvatarPicker.addEventListener('click', () => avatarFileInput.click());
+    }
+    if (avatarFileInput) {
+        avatarFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleAvatarFile(e.target.files[0]);
             }
         });
+    }
+    if (btnRemoveAvatar) {
+        btnRemoveAvatar.addEventListener('click', () => {
+            avatarHiddenInput.value = '';
+            const initial = (document.getElementById('setting-name')?.value || 'U').charAt(0).toUpperCase();
+            avatarPreviewContainer.innerHTML = `<div class="media-avatar-initial">${initial}</div>`;
+            btnRemoveAvatar.style.display = 'none';
+        });
+    }
+
+    function handleCoverFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            alert('Please select a valid image file (JPG, PNG, or WebP).');
+            return;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+            alert('Cover image size exceeds 8MB. Please choose a smaller image.');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const dataUrl = e.target.result;
+            coverHiddenInput.value = dataUrl;
+            const previewWrapper = coverDropzone.querySelector('.media-cover-preview-wrapper');
+            let img = document.getElementById('cover-img-element');
+            const placeholder = document.getElementById('cover-placeholder-element');
+            if (placeholder) placeholder.style.display = 'none';
+            if (img) {
+                img.src = dataUrl;
+                img.style.display = 'block';
+            } else if (previewWrapper) {
+                img = document.createElement('img');
+                img.id = 'cover-img-element';
+                img.src = dataUrl;
+                img.className = 'media-cover-img';
+                previewWrapper.prepend(img);
+            }
+            if (btnRemoveCover) btnRemoveCover.style.display = 'inline-flex';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    if (btnUploadCover && coverFileInput) {
+        btnUploadCover.addEventListener('click', () => coverFileInput.click());
+    }
+    if (coverFileInput) {
+        coverFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleCoverFile(e.target.files[0]);
+            }
+        });
+    }
+    if (btnRemoveCover) {
+        btnRemoveCover.addEventListener('click', () => {
+            coverHiddenInput.value = '';
+            const img = document.getElementById('cover-img-element');
+            if (img) img.style.display = 'none';
+            const placeholder = document.getElementById('cover-placeholder-element');
+            if (placeholder) placeholder.style.display = 'block';
+            btnRemoveCover.style.display = 'none';
+        });
+    }
+
+    // Drag and Drop for Cover Banner
+    if (coverDropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            coverDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                coverDropzone.classList.add('is-dragover');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            coverDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                coverDropzone.classList.remove('is-dragover');
+            }, false);
+        });
+        coverDropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleCoverFile(e.dataTransfer.files[0]);
+            }
+        }, false);
     }
 
     // Save Profile Form
