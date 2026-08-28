@@ -422,27 +422,6 @@
                 }
             });
         }
-        // =========================================
-        // User Account Dropdown Menu Toggle
-        // =========================================
-        const userMenuTrigger = document.getElementById('user-menu-trigger');
-        const userMenuContainer = document.querySelector('.user-header-dropdown-container');
-
-        if (userMenuTrigger && userMenuContainer) {
-            userMenuTrigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                userMenuContainer.classList.toggle('is-open');
-                const isOpen = userMenuContainer.classList.contains('is-open');
-                userMenuTrigger.setAttribute('aria-expanded', String(isOpen));
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!userMenuContainer.contains(e.target)) {
-                    userMenuContainer.classList.remove('is-open');
-                    userMenuTrigger.setAttribute('aria-expanded', 'false');
-                }
-            });
-        }
     </script>
 </body>
 </html>
