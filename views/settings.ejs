@@ -212,15 +212,25 @@
 
                 <hr style="border:0;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0;">
 
-                <div class="settings-toggle-row">
+                <div class="settings-toggle-row" id="2fa-settings-row">
                     <div class="toggle-info">
-                        <h4>Two-Factor Authentication (2FA)</h4>
-                        <p>Add an extra layer of security using an authenticator app (Google Authenticator, Authy).</p>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <h4 style="margin:0;">Two-Factor Authentication (2FA)</h4>
+                            <% if (profile.twoFactorEnabled) { %>
+                                <span class="email-verified-chip" id="2fa-active-badge">✓ Active & Protected</span>
+                            <% } else { %>
+                                <span style="font-size:0.75rem;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);">Disabled</span>
+                            <% } %>
+                        </div>
+                        <p style="margin-top:4px;">Protect your account with standard TOTP 6-digit verification using Google Authenticator, Authy, or 1Password.</p>
                     </div>
-                    <label class="theme-switch">
-                        <input type="checkbox" id="toggle-2fa" <%= profile.twoFactorEnabled ? 'checked' : '' %>>
-                        <span class="slider round"></span>
-                    </label>
+                    <div>
+                        <% if (profile.twoFactorEnabled) { %>
+                            <button type="button" class="btn-danger" id="btn-open-disable-2fa" style="font-size:0.82rem;padding:7px 16px;">Disable 2FA</button>
+                        <% } else { %>
+                            <button type="button" class="btn-profile-primary" id="btn-open-setup-2fa" style="font-size:0.84rem;padding:7px 18px;">Set Up 2FA</button>
+                        <% } %>
+                    </div>
                 </div>
 
                 <div class="settings-toggle-row">
@@ -344,6 +354,89 @@
                 </div>
             </div>
         </main>
+    </div>
+</div>
+
+<!-- =========================================
+     2FA SETUP MODAL
+     ========================================= -->
+<div class="auth-modal-backdrop" id="modal-2fa-backdrop"></div>
+<div class="auth-modal modal-2fa-container" id="modal-2fa-setup" role="dialog" aria-labelledby="modal-2fa-title" aria-modal="true">
+    <div class="auth-modal-header">
+        <h2 id="modal-2fa-title" class="auth-modal-title" style="display:flex;align-items:center;gap:10px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF8A00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span>Set Up Two-Factor Authentication</span>
+        </h2>
+        <button type="button" class="auth-modal-close" id="btn-close-2fa-modal" aria-label="Close modal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+    <div class="auth-modal-body">
+        <p class="auth-modal-desc">Scan the QR code below with <strong>Google Authenticator</strong>, <strong>Authy</strong>, or <strong>1Password</strong>, then enter the 6-digit confirmation code.</p>
+
+        <!-- Step 1: QR Code Box -->
+        <div class="twofa-qr-wrapper">
+            <div class="twofa-qr-box" id="twofa-qr-container">
+                <div class="twofa-qr-spinner" id="twofa-qr-loading">Generating secure QR code...</div>
+                <img src="" alt="2FA QR Code" id="twofa-qr-img" class="twofa-qr-image" style="display:none;">
+            </div>
+            <div class="twofa-secret-group">
+                <span style="font-size:0.75rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Manual Entry Key</span>
+                <div class="twofa-secret-row">
+                    <code id="twofa-secret-text" class="twofa-secret-code">Loading...</code>
+                    <button type="button" class="btn-copy-secret" id="btn-copy-secret" title="Copy Secret Key">Copy</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Backup Recovery Codes -->
+        <div class="twofa-backup-box">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:0.8rem;font-weight:700;color:#facc15;">⚠️ Save Your Backup Recovery Codes</span>
+                <button type="button" id="btn-copy-backup-codes" class="btn-copy-secret" style="padding:2px 8px;font-size:0.75rem;">Copy All</button>
+            </div>
+            <p style="font-size:0.76rem;color:rgba(255,255,255,0.55);margin:0 0 8px 0;">If you ever lose access to your phone or authenticator app, these one-time codes can be used to sign in.</p>
+            <div class="twofa-backup-grid" id="twofa-backup-grid">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- Step 3: Enter 6-Digit Code -->
+        <form id="form-2fa-verify-setup" style="margin-top:18px;">
+            <label class="settings-label" for="input-2fa-confirm-code" style="text-align:center;">Enter 6-Digit Code from Authenticator App</label>
+            <div style="display:flex;justify-content:center;margin-bottom:14px;">
+                <input type="text" id="input-2fa-confirm-code" class="settings-input twofa-code-input" placeholder="000 000" maxlength="6" pattern="[0-9]*" inputmode="numeric" required autocomplete="one-time-code">
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="button" class="btn-profile-secondary" id="btn-cancel-2fa-setup" style="flex:1;">Cancel</button>
+                <button type="submit" class="btn-profile-primary" id="btn-submit-2fa-activate" style="flex:2;">Verify & Enable 2FA</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =========================================
+     2FA DISABLE CONFIRMATION MODAL
+     ========================================= -->
+<div class="auth-modal modal-2fa-container" id="modal-2fa-disable" role="dialog" aria-labelledby="modal-disable-title" aria-modal="true">
+    <div class="auth-modal-header">
+        <h2 id="modal-disable-title" class="auth-modal-title" style="color:#ef4444;">Disable Two-Factor Authentication</h2>
+        <button type="button" class="auth-modal-close" id="btn-close-disable-modal" aria-label="Close modal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+    <div class="auth-modal-body">
+        <p class="auth-modal-desc">Disabling 2FA reduces your account security. Please verify your identity with your password or 6-digit authenticator code.</p>
+        <form id="form-2fa-disable">
+            <div style="margin-bottom:16px;">
+                <label class="settings-label" for="disable-2fa-password">Account Password or 6-Digit Code</label>
+                <input type="password" id="disable-2fa-password" class="settings-input" placeholder="Password or 6-digit code" required>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="button" class="btn-profile-secondary" id="btn-cancel-disable" style="flex:1;">Keep 2FA Enabled</button>
+                <button type="submit" class="btn-danger" id="btn-confirm-disable-2fa" style="flex:1;">Disable 2FA</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -599,6 +692,196 @@
             } finally {
                 updateBtn.textContent = 'Update Password';
                 updateBtn.disabled = false;
+            }
+        });
+    }
+
+    // =========================================
+    // Real Two-Factor Authentication (2FA) Modal Handlers
+    // =========================================
+    const btnOpenSetup2FA = document.getElementById('btn-open-setup-2fa');
+    const btnOpenDisable2FA = document.getElementById('btn-open-disable-2fa');
+    const modal2FABackdrop = document.getElementById('modal-2fa-backdrop');
+    const modal2FASetup = document.getElementById('modal-2fa-setup');
+    const modal2FADisable = document.getElementById('modal-2fa-disable');
+    const btnClose2FAModal = document.getElementById('btn-close-2fa-modal');
+    const btnCancel2FASetup = document.getElementById('btn-cancel-2fa-setup');
+    const btnCloseDisableModal = document.getElementById('btn-close-disable-modal');
+    const btnCancelDisable = document.getElementById('btn-cancel-disable');
+    const form2FAVerifySetup = document.getElementById('form-2fa-verify-setup');
+    const form2FADisable = document.getElementById('form-2fa-disable');
+
+    let active2FASetupData = null;
+
+    function closeAll2FAModals() {
+        if (modal2FABackdrop) modal2FABackdrop.classList.remove('auth-modal-backdrop--visible');
+        if (modal2FASetup) modal2FASetup.classList.remove('auth-modal--visible');
+        if (modal2FADisable) modal2FADisable.classList.remove('auth-modal--visible');
+    }
+
+    if (btnClose2FAModal) btnClose2FAModal.addEventListener('click', closeAll2FAModals);
+    if (btnCancel2FASetup) btnCancel2FASetup.addEventListener('click', closeAll2FAModals);
+    if (btnCloseDisableModal) btnCloseDisableModal.addEventListener('click', closeAll2FAModals);
+    if (btnCancelDisable) btnCancelDisable.addEventListener('click', closeAll2FAModals);
+    if (modal2FABackdrop) modal2FABackdrop.addEventListener('click', closeAll2FAModals);
+
+    // Open Setup Modal
+    if (btnOpenSetup2FA) {
+        btnOpenSetup2FA.addEventListener('click', async () => {
+            modal2FABackdrop.classList.add('auth-modal-backdrop--visible');
+            modal2FASetup.classList.add('auth-modal--visible');
+            document.getElementById('twofa-qr-loading').style.display = 'block';
+            document.getElementById('twofa-qr-img').style.display = 'none';
+            document.getElementById('twofa-secret-text').textContent = 'Generating...';
+
+            try {
+                const res = await fetch('/api/2fa/setup', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.success) {
+                    active2FASetupData = data;
+                    const qrImg = document.getElementById('twofa-qr-img');
+                    qrImg.src = data.qrCode;
+                    qrImg.style.display = 'block';
+                    document.getElementById('twofa-qr-loading').style.display = 'none';
+                    document.getElementById('twofa-secret-text').textContent = data.secret;
+
+                    // Render Backup Codes
+                    const grid = document.getElementById('twofa-backup-grid');
+                    grid.innerHTML = '';
+                    (data.backupCodes || []).forEach(code => {
+                        const codeEl = document.createElement('div');
+                        codeEl.className = 'twofa-backup-code-item';
+                        codeEl.textContent = code;
+                        grid.appendChild(codeEl);
+                    });
+
+                    document.getElementById('input-2fa-confirm-code').focus();
+                } else {
+                    alert(data.error || 'Failed to initialize 2FA setup.');
+                    closeAll2FAModals();
+                }
+            } catch (err) {
+                alert('Network error initializing 2FA.');
+                closeAll2FAModals();
+            }
+        });
+    }
+
+    // Copy Manual Secret
+    const btnCopySecret = document.getElementById('btn-copy-secret');
+    if (btnCopySecret) {
+        btnCopySecret.addEventListener('click', () => {
+            const secret = document.getElementById('twofa-secret-text').textContent;
+            navigator.clipboard.writeText(secret).then(() => {
+                btnCopySecret.textContent = 'Copied!';
+                setTimeout(() => { btnCopySecret.textContent = 'Copy'; }, 2000);
+            });
+        });
+    }
+
+    // Copy Backup Codes
+    const btnCopyBackupCodes = document.getElementById('btn-copy-backup-codes');
+    if (btnCopyBackupCodes) {
+        btnCopyBackupCodes.addEventListener('click', () => {
+            if (active2FASetupData && active2FASetupData.backupCodes) {
+                const text = active2FASetupData.backupCodes.join('\n');
+                navigator.clipboard.writeText(text).then(() => {
+                    btnCopyBackupCodes.textContent = 'Copied All!';
+                    setTimeout(() => { btnCopyBackupCodes.textContent = 'Copy All'; }, 2000);
+                });
+            }
+        });
+    }
+
+    // Submit 2FA Verification & Activation
+    if (form2FAVerifySetup) {
+        form2FAVerifySetup.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('input-2fa-confirm-code').value.trim();
+            const submitBtn = document.getElementById('btn-submit-2fa-activate');
+
+            if (!code || code.length < 6) {
+                alert('Please enter a 6-digit confirmation code from your authenticator app.');
+                return;
+            }
+
+            submitBtn.textContent = 'Verifying...';
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/2fa/enable', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        secret: active2FASetupData?.secret,
+                        code: code,
+                        backupCodes: active2FASetupData?.backupCodes
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('Two-Factor Authentication (2FA) is now active! Your account is protected.');
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Invalid 6-digit code. Please verify the code in Google Authenticator / Authy.');
+                }
+            } catch (err) {
+                alert('Network error verifying 2FA code.');
+            } finally {
+                submitBtn.textContent = 'Verify & Enable 2FA';
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // Open Disable Modal
+    if (btnOpenDisable2FA) {
+        btnOpenDisable2FA.addEventListener('click', () => {
+            modal2FABackdrop.classList.add('auth-modal-backdrop--visible');
+            modal2FADisable.classList.add('auth-modal--visible');
+            document.getElementById('disable-2fa-password').focus();
+        });
+    }
+
+    // Submit Disable Form
+    if (form2FADisable) {
+        form2FADisable.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const val = document.getElementById('disable-2fa-password').value.trim();
+            const submitBtn = document.getElementById('btn-confirm-disable-2fa');
+
+            if (!val) {
+                alert('Please enter your password or a 6-digit code to confirm disabling 2FA.');
+                return;
+            }
+
+            submitBtn.textContent = 'Disabling...';
+            submitBtn.disabled = true;
+
+            try {
+                const isCode = /^[0-9]{6}$/.test(val);
+                const payload = isCode ? { code: val } : { password: val };
+
+                const res = await fetch('/api/2fa/disable', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('Two-Factor Authentication has been disabled.');
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Could not disable 2FA. Credentials incorrect.');
+                }
+            } catch (err) {
+                alert('Network error disabling 2FA.');
+            } finally {
+                submitBtn.textContent = 'Disable 2FA';
+                submitBtn.disabled = false;
             }
         });
     }

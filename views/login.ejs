@@ -187,6 +187,35 @@
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                         </a>
                     </div>
+                <!-- ===== 2FA SECURITY VERIFICATION PANEL ===== -->
+                <div class="auth-panel-exact" id="panel-2fa" role="tabpanel">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <button type="button" class="auth-back-btn" id="btn-2fa-back-to-login" title="Back to Sign In">← Back</button>
+                        <span style="font-size:0.75rem;font-weight:700;color:#FF8A00;text-transform:uppercase;letter-spacing:1px;background:rgba(255,138,0,0.12);padding:3px 10px;border-radius:9999px;">2FA Required</span>
+                    </div>
+                    <h1 class="auth-title-exact">Security Check</h1>
+                    <p class="auth-subtitle-exact">Enter the 6-digit code from Google Authenticator, Authy, or your backup code.</p>
+
+                    <form class="auth-form-exact" id="twofa-login-form" novalidate>
+                        <input type="hidden" id="twofa-temp-token" value="">
+                        
+                        <div class="auth-field-exact" id="twofa-code-group">
+                            <label class="auth-field-label" for="twofa-login-code" id="twofa-code-label">6-Digit Authenticator Code</label>
+                            <div class="auth-input-container">
+                                <input type="text" id="twofa-login-code" class="auth-input-exact" placeholder="000 000" maxlength="9" pattern="[0-9A-Za-z-]*" required autocomplete="one-time-code" style="text-align:center;font-size:1.3rem;letter-spacing:4px;font-weight:700;">
+                            </div>
+                            <span class="auth-error-msg" id="twofa-code-error"></span>
+                        </div>
+
+                        <div style="display:flex;justify-content:flex-end;margin-top:2px;">
+                            <button type="button" class="auth-forgot-link" id="btn-toggle-backup-mode">Use a backup recovery code</button>
+                        </div>
+
+                        <button type="submit" class="auth-cta-btn" id="twofa-submit-btn">
+                            <span class="auth-cta-text">Verify & Sign In</span>
+                            <span class="auth-cta-spinner" style="display:none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg></span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -462,6 +491,22 @@
                     return;
                 }
 
+                // If user has Two-Factor Authentication enabled
+                if (data.requires2FA) {
+                    document.querySelector('.auth-tabs-exact').style.display = 'none';
+                    panels.forEach(p => p.classList.remove('auth-panel-exact--active'));
+                    const panel2FA = document.getElementById('panel-2fa');
+                    panel2FA.classList.add('auth-panel-exact--active');
+                    document.getElementById('twofa-temp-token').value = data.tempToken;
+                    const codeInput = document.getElementById('twofa-login-code');
+                    codeInput.value = '';
+                    codeInput.focus();
+                    btn.querySelector('.auth-cta-text').style.display = '';
+                    btn.querySelector('.auth-cta-spinner').style.display = 'none';
+                    btn.disabled = false;
+                    return;
+                }
+
                 showToast('Signed in successfully! Redirecting...', 'success');
                 const redirectTarget = new URLSearchParams(window.location.search).get('redirect') || '/';
                 setTimeout(() => { window.location.href = redirectTarget; }, 800);
@@ -474,6 +519,92 @@
                 btn.disabled = false;
             }
         });
+
+        // 2FA Back Button
+        const btn2FABack = document.getElementById('btn-2fa-back-to-login');
+        if (btn2FABack) {
+            btn2FABack.addEventListener('click', () => {
+                document.querySelector('.auth-tabs-exact').style.display = 'flex';
+                panels.forEach(p => p.classList.remove('auth-panel-exact--active'));
+                document.getElementById('panel-signin').classList.add('auth-panel-exact--active');
+                clearAllErrors('twofa');
+            });
+        }
+
+        // 2FA Backup Mode Toggle
+        let isBackupMode = false;
+        const btnToggleBackup = document.getElementById('btn-toggle-backup-mode');
+        const codeInput = document.getElementById('twofa-login-code');
+        const codeLabel = document.getElementById('twofa-code-label');
+        if (btnToggleBackup && codeInput && codeLabel) {
+            btnToggleBackup.addEventListener('click', () => {
+                isBackupMode = !isBackupMode;
+                if (isBackupMode) {
+                    codeLabel.textContent = '8-Character Backup Recovery Code';
+                    codeInput.placeholder = 'ABCD-1234';
+                    codeInput.maxLength = 10;
+                    btnToggleBackup.textContent = 'Use 6-digit authenticator code instead';
+                } else {
+                    codeLabel.textContent = '6-Digit Authenticator Code';
+                    codeInput.placeholder = '000 000';
+                    codeInput.maxLength = 9;
+                    btnToggleBackup.textContent = 'Use a backup recovery code';
+                }
+                codeInput.value = '';
+                codeInput.focus();
+                clearAllErrors('twofa');
+            });
+        }
+
+        // 2FA Submit Form
+        const twofaForm = document.getElementById('twofa-login-form');
+        if (twofaForm) {
+            twofaForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                clearAllErrors('twofa');
+                const tempToken = document.getElementById('twofa-temp-token').value;
+                const code = document.getElementById('twofa-login-code').value.trim();
+
+                if (!code) {
+                    showError('twofa-code-group', 'twofa-code-error', 'Please enter your verification code.');
+                    shakeCard();
+                    return;
+                }
+
+                const btn = document.getElementById('twofa-submit-btn');
+                btn.querySelector('.auth-cta-text').style.display = 'none';
+                btn.querySelector('.auth-cta-spinner').style.display = 'inline-flex';
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch('/api/auth/2fa-verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ tempToken, code })
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok || data.error) {
+                        showError('twofa-code-group', 'twofa-code-error', data.error || 'Invalid 2FA code.');
+                        shakeCard();
+                        btn.querySelector('.auth-cta-text').style.display = '';
+                        btn.querySelector('.auth-cta-spinner').style.display = 'none';
+                        btn.disabled = false;
+                        return;
+                    }
+
+                    showToast('Two-Factor Authentication verified! Redirecting...', 'success');
+                    const redirectTarget = new URLSearchParams(window.location.search).get('redirect') || '/';
+                    setTimeout(() => { window.location.href = redirectTarget; }, 800);
+                } catch (err) {
+                    showError('twofa-code-group', 'twofa-code-error', 'Connection error verifying 2FA.');
+                    shakeCard();
+                    btn.querySelector('.auth-cta-text').style.display = '';
+                    btn.querySelector('.auth-cta-spinner').style.display = 'none';
+                    btn.disabled = false;
+                }
+            });
+        }
 
         // Sign Up Submit
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
