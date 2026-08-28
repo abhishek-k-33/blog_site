@@ -401,11 +401,17 @@
             </div>
         </div>
 
-        <!-- Step 3: Enter 6-Digit Code -->
+        <!-- Step 3: Enter 6-Digit Code (GitHub Style) -->
         <form id="form-2fa-verify-setup" style="margin-top:18px;">
-            <label class="settings-label" for="input-2fa-confirm-code" style="text-align:center;">Enter 6-Digit Code from Authenticator App</label>
-            <div style="display:flex;justify-content:center;margin-bottom:14px;">
-                <input type="text" id="input-2fa-confirm-code" class="settings-input twofa-code-input" placeholder="000 000" maxlength="6" pattern="[0-9]*" inputmode="numeric" required autocomplete="one-time-code">
+            <label class="settings-label" style="text-align:center;display:block;margin-bottom:10px;">Enter 6-Digit Code from Authenticator App</label>
+            <div class="github-otp-box-group" id="setup-otp-boxes" style="margin-bottom:14px;">
+                <input type="text" class="github-otp-digit setup-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="0">
+                <input type="text" class="github-otp-digit setup-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="1">
+                <input type="text" class="github-otp-digit setup-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="2">
+                <span class="github-otp-divider">-</span>
+                <input type="text" class="github-otp-digit setup-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="3">
+                <input type="text" class="github-otp-digit setup-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="4">
+                <input type="text" class="github-otp-digit setup-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="5">
             </div>
             <div style="display:flex;gap:10px;">
                 <button type="button" class="btn-profile-secondary" id="btn-cancel-2fa-setup" style="flex:1;">Cancel</button>
@@ -794,45 +800,104 @@
         });
     }
 
-    // Submit 2FA Verification & Activation
-    if (form2FAVerifySetup) {
-        form2FAVerifySetup.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const code = document.getElementById('input-2fa-confirm-code').value.trim();
-            const submitBtn = document.getElementById('btn-submit-2fa-activate');
+    // GitHub 6-Digit Segmented Box Logic for Setup
+    const setupOtpDigits = Array.from(document.querySelectorAll('.setup-otp-digit'));
+    function getSetupOTPCode() {
+        return setupOtpDigits.map(d => d.value).join('');
+    }
 
-            if (!code || code.length < 6) {
-                alert('Please enter a 6-digit confirmation code from your authenticator app.');
-                return;
+    setupOtpDigits.forEach((digit, idx) => {
+        digit.addEventListener('input', (e) => {
+            const val = digit.value.replace(/[^0-9]/g, '');
+            digit.value = val ? val.slice(-1) : '';
+
+            if (digit.value && idx < setupOtpDigits.length - 1) {
+                setupOtpDigits[idx + 1].focus();
+                setupOtpDigits[idx + 1].select();
             }
 
-            submitBtn.textContent = 'Verifying...';
-            submitBtn.disabled = true;
+            if (getSetupOTPCode().length === 6) {
+                submitSetup2FAVerification();
+            }
+        });
 
-            try {
-                const res = await fetch('/api/2fa/enable', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        secret: active2FASetupData?.secret,
-                        code: code,
-                        backupCodes: active2FASetupData?.backupCodes
-                    })
-                });
-
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    alert('Two-Factor Authentication (2FA) is now active! Your account is protected.');
-                    window.location.reload();
+        digit.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace') {
+                if (!digit.value && idx > 0) {
+                    setupOtpDigits[idx - 1].focus();
+                    setupOtpDigits[idx - 1].value = '';
                 } else {
-                    alert(data.error || 'Invalid 6-digit code. Please verify the code in Google Authenticator / Authy.');
+                    digit.value = '';
                 }
-            } catch (err) {
-                alert('Network error verifying 2FA code.');
-            } finally {
-                submitBtn.textContent = 'Verify & Enable 2FA';
-                submitBtn.disabled = false;
+            } else if (e.key === 'ArrowLeft' && idx > 0) {
+                setupOtpDigits[idx - 1].focus();
+            } else if (e.key === 'ArrowRight' && idx < setupOtpDigits.length - 1) {
+                setupOtpDigits[idx + 1].focus();
             }
+        });
+
+        digit.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+            const cleanDigits = pasteData.replace(/[^0-9]/g, '').slice(0, 6);
+            if (cleanDigits) {
+                cleanDigits.split('').forEach((char, i) => {
+                    if (setupOtpDigits[i]) setupOtpDigits[i].value = char;
+                });
+                if (cleanDigits.length === 6) {
+                    submitSetup2FAVerification();
+                } else if (setupOtpDigits[cleanDigits.length]) {
+                    setupOtpDigits[cleanDigits.length].focus();
+                }
+            }
+        });
+    });
+
+    async function submitSetup2FAVerification() {
+        const code = getSetupOTPCode().trim();
+        const submitBtn = document.getElementById('btn-submit-2fa-activate');
+
+        if (!code || code.length < 6) {
+            alert('Please enter all 6 digits from your authenticator app.');
+            return;
+        }
+
+        submitBtn.textContent = 'Verifying...';
+        submitBtn.disabled = true;
+
+        try {
+            const res = await fetch('/api/2fa/enable', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    secret: active2FASetupData?.secret,
+                    code: code,
+                    backupCodes: active2FASetupData?.backupCodes
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert('Two-Factor Authentication (2FA) is now active! Your account is protected.');
+                window.location.reload();
+            } else {
+                alert(data.error || 'Invalid 6-digit code. Please check Google Authenticator / Authy.');
+                setupOtpDigits.forEach(d => d.value = '');
+                setupOtpDigits[0].focus();
+            }
+        } catch (err) {
+            alert('Network error verifying 2FA code.');
+        } finally {
+            submitBtn.textContent = 'Verify & Enable 2FA';
+            submitBtn.disabled = false;
+        }
+    }
+
+    // Submit 2FA Verification & Activation button handler
+    if (form2FAVerifySetup) {
+        form2FAVerifySetup.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitSetup2FAVerification();
         });
     }
 

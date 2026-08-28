@@ -187,35 +187,53 @@
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                         </a>
                     </div>
-                <!-- ===== 2FA SECURITY VERIFICATION PANEL ===== -->
+                <!-- ===== GITHUB-STYLE 2FA SECURITY VERIFICATION PANEL ===== -->
                 <div class="auth-panel-exact" id="panel-2fa" role="tabpanel">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                        <button type="button" class="auth-back-btn" id="btn-2fa-back-to-login" title="Back to Sign In">← Back</button>
-                        <span style="font-size:0.75rem;font-weight:700;color:#FF8A00;text-transform:uppercase;letter-spacing:1px;background:rgba(255,138,0,0.12);padding:3px 10px;border-radius:9999px;">2FA Required</span>
+                    <div class="github-2fa-header">
+                        <div class="github-shield-icon">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FF8A00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </div>
+                        <h1 class="auth-title-exact" style="margin-top:10px;font-size:1.45rem;text-align:center;">Two-factor authentication</h1>
+                        <p class="auth-subtitle-exact" id="twofa-instruction-text" style="margin-bottom:18px;text-align:center;font-size:0.86rem;line-height:1.45;">Open your two-factor authenticator (TOTP) app or browser extension to view your authentication code.</p>
                     </div>
-                    <h1 class="auth-title-exact">Security Check</h1>
-                    <p class="auth-subtitle-exact">Enter the 6-digit code from Google Authenticator, Authy, or your backup code.</p>
 
                     <form class="auth-form-exact" id="twofa-login-form" novalidate>
                         <input type="hidden" id="twofa-temp-token" value="">
                         
-                        <div class="auth-field-exact" id="twofa-code-group">
-                            <label class="auth-field-label" for="twofa-login-code" id="twofa-code-label">6-Digit Authenticator Code</label>
-                            <div class="auth-input-container">
-                                <input type="text" id="twofa-login-code" class="auth-input-exact" placeholder="000 000" maxlength="9" pattern="[0-9A-Za-z-]*" required autocomplete="one-time-code" style="text-align:center;font-size:1.3rem;letter-spacing:4px;font-weight:700;">
+                        <!-- Segmented 6-Digit Code Boxes (GitHub Style) -->
+                        <div id="twofa-totp-container">
+                            <label class="auth-field-label" style="text-align:center;display:block;margin-bottom:12px;font-size:0.84rem;font-weight:600;color:rgba(255,255,255,0.85);">Authentication code</label>
+                            <div class="github-otp-box-group" id="github-otp-boxes">
+                                <input type="text" class="github-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="0">
+                                <input type="text" class="github-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="1">
+                                <input type="text" class="github-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="2">
+                                <span class="github-otp-divider">-</span>
+                                <input type="text" class="github-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="3">
+                                <input type="text" class="github-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="4">
+                                <input type="text" class="github-otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" data-index="5">
                             </div>
-                            <span class="auth-error-msg" id="twofa-code-error"></span>
                         </div>
 
-                        <div style="display:flex;justify-content:flex-end;margin-top:2px;">
-                            <button type="button" class="auth-forgot-link" id="btn-toggle-backup-mode">Use a backup recovery code</button>
+                        <!-- Recovery Code Mode (Hidden by default) -->
+                        <div id="twofa-recovery-container" style="display:none;">
+                            <label class="auth-field-label" for="twofa-recovery-code" style="text-align:center;display:block;margin-bottom:8px;font-size:0.84rem;font-weight:600;">Two-factor recovery code</label>
+                            <div class="auth-input-container">
+                                <input type="text" id="twofa-recovery-code" class="auth-input-exact" placeholder="XXXX-XXXX" maxlength="12" style="text-align:center;font-family:monospace;font-size:1.15rem;letter-spacing:2px;font-weight:700;">
+                            </div>
                         </div>
 
-                        <button type="submit" class="auth-cta-btn" id="twofa-submit-btn">
-                            <span class="auth-cta-text">Verify & Sign In</span>
+                        <span class="auth-error-msg" id="twofa-code-error" style="text-align:center;display:block;margin-top:8px;"></span>
+
+                        <button type="submit" class="auth-cta-btn" id="twofa-submit-btn" style="margin-top:14px;">
+                            <span class="auth-cta-text">Verify</span>
                             <span class="auth-cta-spinner" style="display:none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg></span>
                         </button>
                     </form>
+
+                    <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);text-align:center;display:flex;flex-direction:column;gap:10px;">
+                        <button type="button" class="auth-forgot-link" id="btn-toggle-backup-mode" style="font-size:0.84rem;font-weight:600;">Enter a two-factor recovery code</button>
+                        <button type="button" class="auth-forgot-link" id="btn-2fa-back-to-login" style="font-size:0.8rem;color:rgba(255,255,255,0.45);">← Re-enter password or switch account</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -498,9 +516,12 @@
                     const panel2FA = document.getElementById('panel-2fa');
                     panel2FA.classList.add('auth-panel-exact--active');
                     document.getElementById('twofa-temp-token').value = data.tempToken;
-                    const codeInput = document.getElementById('twofa-login-code');
-                    codeInput.value = '';
-                    codeInput.focus();
+                    
+                    // Reset and focus first box
+                    otpDigits.forEach(d => d.value = '');
+                    document.getElementById('twofa-code-error').textContent = '';
+                    setTimeout(() => { if (otpDigits[0]) otpDigits[0].focus(); }, 100);
+
                     btn.querySelector('.auth-cta-text').style.display = '';
                     btn.querySelector('.auth-cta-spinner').style.display = 'none';
                     btn.disabled = false;
@@ -527,82 +548,157 @@
                 document.querySelector('.auth-tabs-exact').style.display = 'flex';
                 panels.forEach(p => p.classList.remove('auth-panel-exact--active'));
                 document.getElementById('panel-signin').classList.add('auth-panel-exact--active');
-                clearAllErrors('twofa');
+                document.getElementById('twofa-code-error').textContent = '';
             });
         }
 
-        // 2FA Backup Mode Toggle
+        // GitHub 6-Digit Segmented Box Logic
+        const otpDigits = Array.from(document.querySelectorAll('.github-otp-digit'));
+        const twofaForm = document.getElementById('twofa-login-form');
+
+        function getFullOTPCode() {
+            return otpDigits.map(d => d.value).join('');
+        }
+
+        otpDigits.forEach((digit, idx) => {
+            digit.addEventListener('input', (e) => {
+                const val = digit.value.replace(/[^0-9]/g, '');
+                digit.value = val ? val.slice(-1) : '';
+
+                if (digit.value && idx < otpDigits.length - 1) {
+                    otpDigits[idx + 1].focus();
+                    otpDigits[idx + 1].select();
+                }
+
+                document.getElementById('twofa-code-error').textContent = '';
+
+                // Auto-submit when all 6 digits are filled
+                if (getFullOTPCode().length === 6) {
+                    submit2FAVerification();
+                }
+            });
+
+            digit.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace') {
+                    if (!digit.value && idx > 0) {
+                        otpDigits[idx - 1].focus();
+                        otpDigits[idx - 1].value = '';
+                    } else {
+                        digit.value = '';
+                    }
+                } else if (e.key === 'ArrowLeft' && idx > 0) {
+                    otpDigits[idx - 1].focus();
+                } else if (e.key === 'ArrowRight' && idx < otpDigits.length - 1) {
+                    otpDigits[idx + 1].focus();
+                }
+            });
+
+            digit.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+                const cleanDigits = pasteData.replace(/[^0-9]/g, '').slice(0, 6);
+                if (cleanDigits) {
+                    cleanDigits.split('').forEach((char, i) => {
+                        if (otpDigits[i]) otpDigits[i].value = char;
+                    });
+                    if (cleanDigits.length < 6 && otpDigits[cleanDigits.length]) {
+                        otpDigits[cleanDigits.length].focus();
+                    } else if (cleanDigits.length === 6) {
+                        otpDigits[5].focus();
+                        submit2FAVerification();
+                    }
+                }
+            });
+
+            digit.addEventListener('focus', () => {
+                digit.select();
+            });
+        });
+
+        // 2FA Backup Recovery Code Mode Toggle
         let isBackupMode = false;
         const btnToggleBackup = document.getElementById('btn-toggle-backup-mode');
-        const codeInput = document.getElementById('twofa-login-code');
-        const codeLabel = document.getElementById('twofa-code-label');
-        if (btnToggleBackup && codeInput && codeLabel) {
+        const totpContainer = document.getElementById('twofa-totp-container');
+        const recoveryContainer = document.getElementById('twofa-recovery-container');
+        const recoveryInput = document.getElementById('twofa-recovery-code');
+        const instructionText = document.getElementById('twofa-instruction-text');
+
+        if (btnToggleBackup && totpContainer && recoveryContainer) {
             btnToggleBackup.addEventListener('click', () => {
                 isBackupMode = !isBackupMode;
+                document.getElementById('twofa-code-error').textContent = '';
                 if (isBackupMode) {
-                    codeLabel.textContent = '8-Character Backup Recovery Code';
-                    codeInput.placeholder = 'ABCD-1234';
-                    codeInput.maxLength = 10;
-                    btnToggleBackup.textContent = 'Use 6-digit authenticator code instead';
+                    totpContainer.style.display = 'none';
+                    recoveryContainer.style.display = 'block';
+                    instructionText.textContent = 'Enter one of the 8-character recovery codes you saved during 2FA setup.';
+                    btnToggleBackup.textContent = 'Re-authenticate with two-factor authenticator app';
+                    recoveryInput.value = '';
+                    recoveryInput.focus();
                 } else {
-                    codeLabel.textContent = '6-Digit Authenticator Code';
-                    codeInput.placeholder = '000 000';
-                    codeInput.maxLength = 9;
-                    btnToggleBackup.textContent = 'Use a backup recovery code';
+                    totpContainer.style.display = 'block';
+                    recoveryContainer.style.display = 'none';
+                    instructionText.textContent = 'Open your two-factor authenticator (TOTP) app or browser extension to view your authentication code.';
+                    btnToggleBackup.textContent = 'Enter a two-factor recovery code';
+                    otpDigits.forEach(d => d.value = '');
+                    if (otpDigits[0]) otpDigits[0].focus();
                 }
-                codeInput.value = '';
-                codeInput.focus();
-                clearAllErrors('twofa');
             });
         }
 
-        // 2FA Submit Form
-        const twofaForm = document.getElementById('twofa-login-form');
-        if (twofaForm) {
-            twofaForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                clearAllErrors('twofa');
-                const tempToken = document.getElementById('twofa-temp-token').value;
-                const code = document.getElementById('twofa-login-code').value.trim();
+        async function submit2FAVerification() {
+            const tempToken = document.getElementById('twofa-temp-token').value;
+            const code = isBackupMode ? recoveryInput.value.trim() : getFullOTPCode().trim();
+            const errEl = document.getElementById('twofa-code-error');
+            errEl.textContent = '';
 
-                if (!code) {
-                    showError('twofa-code-group', 'twofa-code-error', 'Please enter your verification code.');
-                    shakeCard();
-                    return;
-                }
+            if (!code || (!isBackupMode && code.length < 6)) {
+                errEl.textContent = isBackupMode ? 'Please enter a recovery code.' : 'Please enter all 6 digits.';
+                shakeCard();
+                return;
+            }
 
-                const btn = document.getElementById('twofa-submit-btn');
-                btn.querySelector('.auth-cta-text').style.display = 'none';
-                btn.querySelector('.auth-cta-spinner').style.display = 'inline-flex';
-                btn.disabled = true;
+            const btn = document.getElementById('twofa-submit-btn');
+            btn.querySelector('.auth-cta-text').style.display = 'none';
+            btn.querySelector('.auth-cta-spinner').style.display = 'inline-flex';
+            btn.disabled = true;
 
-                try {
-                    const res = await fetch('/api/auth/2fa-verify', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                        body: JSON.stringify({ tempToken, code })
-                    });
-                    const data = await res.json();
+            try {
+                const res = await fetch('/api/auth/2fa-verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ tempToken, code })
+                });
+                const data = await res.json();
 
-                    if (!res.ok || data.error) {
-                        showError('twofa-code-group', 'twofa-code-error', data.error || 'Invalid 2FA code.');
-                        shakeCard();
-                        btn.querySelector('.auth-cta-text').style.display = '';
-                        btn.querySelector('.auth-cta-spinner').style.display = 'none';
-                        btn.disabled = false;
-                        return;
-                    }
-
-                    showToast('Two-Factor Authentication verified! Redirecting...', 'success');
-                    const redirectTarget = new URLSearchParams(window.location.search).get('redirect') || '/';
-                    setTimeout(() => { window.location.href = redirectTarget; }, 800);
-                } catch (err) {
-                    showError('twofa-code-group', 'twofa-code-error', 'Connection error verifying 2FA.');
+                if (!res.ok || data.error) {
+                    errEl.textContent = data.error || 'Invalid authentication code. Please try again.';
                     shakeCard();
                     btn.querySelector('.auth-cta-text').style.display = '';
                     btn.querySelector('.auth-cta-spinner').style.display = 'none';
                     btn.disabled = false;
+                    if (!isBackupMode) {
+                        otpDigits.forEach(d => d.value = '');
+                        otpDigits[0].focus();
+                    }
+                    return;
                 }
+
+                showToast('Authentication successful! Redirecting...', 'success');
+                const redirectTarget = new URLSearchParams(window.location.search).get('redirect') || '/';
+                setTimeout(() => { window.location.href = redirectTarget; }, 750);
+            } catch (err) {
+                errEl.textContent = 'Connection error verifying 2FA.';
+                shakeCard();
+                btn.querySelector('.auth-cta-text').style.display = '';
+                btn.querySelector('.auth-cta-spinner').style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        if (twofaForm) {
+            twofaForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                submit2FAVerification();
             });
         }
 
