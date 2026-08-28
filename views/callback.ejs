@@ -3,93 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signing you in... — miniblogs</title>
+    <title>Authenticating — miniblogs</title>
     <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
     <link rel="stylesheet" href="/styles/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             background: #0c0d10;
             color: #ffffff;
-            font-family: var(--font-ui, sans-serif);
+            font-family: var(--font-ui, system-ui, -apple-system, sans-serif);
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
         .callback-box {
             text-align: center;
-            background: rgba(23, 24, 29, 0.85);
-            padding: 40px 32px;
+            background: rgba(23, 24, 29, 0.9);
+            padding: 44px 32px;
             border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-            max-width: 380px;
-            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+            max-width: 420px;
+            width: 100%;
+            backdrop-filter: blur(16px);
         }
         .spinner {
-            width: 36px;
-            height: 36px;
+            width: 42px;
+            height: 42px;
             border: 3px solid rgba(255, 138, 0, 0.2);
             border-top-color: #FF8A00;
             border-radius: 50%;
-            animation: spin 0.9s linear infinite;
+            animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            margin: 0 auto 24px;
+        }
+        .error-icon {
+            width: 48px;
+            height: 48px;
             margin: 0 auto 20px;
+            color: #ef4444;
+            display: none;
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
         h2 {
-            font-family: var(--font-story, serif);
-            font-size: 1.35rem;
-            margin-bottom: 8px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.02em;
         }
         p {
-            font-size: 0.88rem;
-            color: rgba(255, 255, 255, 0.55);
+            font-size: 0.92rem;
+            color: rgba(255, 255, 255, 0.65);
+            line-height: 1.5;
+            margin: 0 0 20px 0;
+        }
+        .error-details {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: #fca5a5;
+            margin-bottom: 24px;
+            text-align: left;
+            word-break: break-word;
+            display: none;
+        }
+        .btn-return {
+            display: inline-block;
+            background: #FF8A00;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 0.92rem;
+            transition: all 0.2s ease;
+        }
+        .btn-return:hover {
+            background: #ff9d26;
+            transform: translateY(-1px);
         }
     </style>
 </head>
 <body>
     <div class="callback-box">
-        <div class="spinner"></div>
-        <h2>Authenticating...</h2>
-        <p>Please wait while we log you into miniblogs.</p>
+        <div class="spinner" id="loading-spinner"></div>
+        <svg class="error-icon" id="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <h2 id="status-title">Authenticating...</h2>
+        <p id="status-msg">Please wait while we log you into miniblogs.</p>
+        <div class="error-details" id="error-box"></div>
+        <a href="/login" class="btn-return" id="return-btn" style="display:none;">Return to Sign In</a>
     </div>
 
     <script>
-        (async function() {
-            // 1. Check if token exists in hash fragment (#access_token=...)
-            const hash = window.location.hash.substring(1);
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
+        const SUPABASE_URL = "<%= typeof supabaseUrl !== 'undefined' ? supabaseUrl : '' %>";
+        const SUPABASE_ANON_KEY = "<%= typeof supabaseAnonKey !== 'undefined' ? supabaseAnonKey : '' %>";
 
-            if (accessToken) {
-                try {
-                    await fetch('/api/auth/session', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: accessToken })
-                    });
-                    window.location.href = '/';
-                    return;
-                } catch (e) {
-                    console.error('Session setting error:', e);
-                }
+        function showError(message, description) {
+            document.getElementById('loading-spinner').style.display = 'none';
+            document.getElementById('error-icon').style.display = 'block';
+            document.getElementById('status-title').textContent = 'Sign In Failed';
+            document.getElementById('status-msg').textContent = message || 'We could not complete your sign-in request.';
+            
+            if (description) {
+                const errorBox = document.getElementById('error-box');
+                errorBox.textContent = description;
+                errorBox.style.display = 'block';
             }
+            document.getElementById('return-btn').style.display = 'inline-block';
+        }
 
-            // If query params code or error
-            const queryParams = new URLSearchParams(window.location.search);
-            const error = queryParams.get('error_description') || queryParams.get('error');
-            if (error) {
-                alert('Authentication failed: ' + error);
-                window.location.href = '/login';
+        async function createServerSession(accessToken) {
+            try {
+                const response = await fetch('/api/auth/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: accessToken })
+                });
+
+                if (response.ok) {
+                    window.location.replace('/');
+                    return true;
+                } else {
+                    const data = await response.json().catch(() => ({}));
+                    showError('Failed to establish session on server.', data.error || response.statusText);
+                    return false;
+                }
+            } catch (err) {
+                showError('Network error while establishing session.', err.message);
+                return false;
+            }
+        }
+
+        (async function handleAuthCallback() {
+            // 1. Check for error parameters in hash or search
+            const hash = window.location.hash.substring(1);
+            const hashParams = new URLSearchParams(hash);
+            const searchParams = new URLSearchParams(window.location.search);
+
+            const errorParam = hashParams.get('error') || searchParams.get('error');
+            const errorDesc = hashParams.get('error_description') || searchParams.get('error_description') || hashParams.get('error_code');
+
+            if (errorParam || errorDesc) {
+                const readableMsg = (errorDesc || errorParam || 'Authentication was denied or cancelled.').replace(/\+/g, ' ');
+                showError('Authentication failed.', readableMsg);
                 return;
             }
 
+            // 2. Check if accessToken is directly in hash fragment (#access_token=...)
+            const accessToken = hashParams.get('access_token');
+            if (accessToken) {
+                await createServerSession(accessToken);
+                return;
+            }
+
+            // 3. Check if accessToken is in search query (?access_token=...)
+            const searchAccessToken = searchParams.get('access_token');
+            if (searchAccessToken) {
+                await createServerSession(searchAccessToken);
+                return;
+            }
+
+            // 4. If Supabase client SDK is available, check for session or exchange code
+            if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+                try {
+                    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    const { data: { session }, error } = await client.auth.getSession();
+                    if (session?.access_token) {
+                        await createServerSession(session.access_token);
+                        return;
+                    }
+                    if (error) {
+                        showError('Supabase authentication error.', error.message);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('Client SDK session lookup failed:', e);
+                }
+            }
+
+            // 5. Fallback: If no tokens found after a moment, inform user
             setTimeout(() => {
-                window.location.href = '/';
-            }, 1200);
+                showError('No authentication token received.', 'Please try signing in again.');
+            }, 3000);
         })();
     </script>
 </body>

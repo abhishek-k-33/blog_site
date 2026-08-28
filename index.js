@@ -137,8 +137,8 @@ app.use(async (req, res, next) => {
                     req.user = {
                         id: user.id,
                         email: user.email,
-                        name: user.user_metadata?.display_name || user.user_metadata?.name || user.email.split("@")[0],
-                        avatar: user.user_metadata?.avatar_url || null,
+                        name: user.user_metadata?.display_name || user.user_metadata?.full_name || user.user_metadata?.name || (user.email ? user.email.split("@")[0] : "Author"),
+                        avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
                     };
                     res.locals.user = req.user;
                 }
@@ -150,7 +150,7 @@ app.use(async (req, res, next) => {
             const localUser = verifyLocalToken(token);
             if (localUser) {
                 req.user = localUser;
-                res.locals.user = req.user;
+                res.locals.user = localUser;
             }
         }
     }
@@ -700,16 +700,20 @@ app.get("/auth/callback", async (req, res) => {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === "production",
                     maxAge: 30 * 24 * 60 * 60 * 1000,
-                    sameSite: "lax"
+                    sameSite: "lax",
+                    path: "/"
                 });
                 return res.redirect("/");
             }
         } catch (e) {
-            console.error("OAuth code exchange error:", e);
+            console.error("OAuth code exchange error on server:", e?.message || e);
         }
     }
-    // Fallback template to handle client-side hash tokens (#access_token=...)
-    res.render("callback.ejs");
+    // Render callback template to handle client-side hash/code tokens
+    res.render("callback.ejs", {
+        supabaseUrl: supabaseUrl || "",
+        supabaseAnonKey: supabaseKey || ""
+    });
 });
 
 // POST /api/auth/session: Set auth cookie from client-side token
@@ -720,7 +724,8 @@ app.post("/api/auth/session", (req, res) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             maxAge: 30 * 24 * 60 * 60 * 1000,
-            sameSite: "lax"
+            sameSite: "lax",
+            path: "/"
         });
         return res.json({ success: true });
     }
