@@ -51,14 +51,15 @@
                             <input type="text" id="setting-username" name="username" class="settings-input" value="<%= profile.username || (profile.email ? profile.email.split('@')[0] : '') %>" required>
                         </div>
 
-                        <div>
-                            <label class="settings-label" for="setting-email">Email Address</label>
-                            <input type="email" id="setting-email" name="email" class="settings-input" value="<%= profile.email %>" readonly title="Email cannot be changed directly">
-                        </div>
-
-                        <div>
-                            <label class="settings-label" for="setting-phone">Phone Number</label>
-                            <input type="tel" id="setting-phone" name="phone" class="settings-input" placeholder="+1 (555) 000-0000" value="<%= profile.phone || '' %>">
+                        <div class="form-full-width">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                <label class="settings-label" for="setting-email" style="margin-bottom:0;">Email Address</label>
+                                <span class="email-verified-chip">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    <span>Verified Account Email</span>
+                                </span>
+                            </div>
+                            <input type="email" id="setting-email" name="email" class="settings-input" value="<%= profile.email %>" readonly title="Primary account email">
                         </div>
 
                         <div class="form-full-width">
@@ -67,14 +68,28 @@
                             <span style="font-size:0.78rem;color:rgba(255,255,255,0.45);display:block;margin-top:4px;" id="bio-char-count">250 characters remaining</span>
                         </div>
 
-                        <div>
+                        <div class="form-full-width">
                             <label class="settings-label" for="setting-avatar">Profile Picture URL</label>
-                            <input type="url" id="setting-avatar" name="avatar" class="settings-input" placeholder="https://..." value="<%= profile.avatar || '' %>">
+                            <div class="avatar-input-row">
+                                <div class="avatar-preview-box" id="avatar-preview-box">
+                                    <% if (profile.avatar) { %>
+                                        <img src="<%= profile.avatar %>" alt="<%= profile.name %>" id="avatar-preview-img" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                                    <% } else { %>
+                                        <span id="avatar-preview-text" style="font-size:1.2rem;font-weight:700;"><%= (profile.name || 'U').charAt(0).toUpperCase() %></span>
+                                    <% } %>
+                                </div>
+                                <input type="url" id="setting-avatar" name="avatar" class="settings-input" placeholder="https://lh3.googleusercontent.com/... or image link" value="<%= profile.avatar || '' %>">
+                            </div>
                         </div>
 
-                        <div>
+                        <div class="form-full-width">
                             <label class="settings-label" for="setting-cover">Cover Banner Image URL</label>
-                            <input type="url" id="setting-cover" name="cover" class="settings-input" placeholder="https://..." value="<%= profile.cover || '' %>">
+                            <input type="url" id="setting-cover" name="cover" class="settings-input" placeholder="https://images.unsplash.com/... or banner link" value="<%= profile.cover || '' %>">
+                        </div>
+
+                        <div class="form-full-width">
+                            <label class="settings-label" for="setting-website">Personal Website / Portfolio</label>
+                            <input type="url" id="setting-website" name="website" class="settings-input" placeholder="https://yourportfolio.dev" value="<%= profile.website || '' %>">
                         </div>
 
                         <div>
@@ -83,8 +98,8 @@
                         </div>
 
                         <div>
-                            <label class="settings-label" for="setting-website">Personal Website / Portfolio</label>
-                            <input type="url" id="setting-website" name="website" class="settings-input" placeholder="https://mywebsite.com" value="<%= profile.website || '' %>">
+                            <label class="settings-label" for="setting-phone">Phone Number</label>
+                            <input type="tel" id="setting-phone" name="phone" class="settings-input" placeholder="+1 (555) 000-0000" value="<%= profile.phone || '' %>">
                         </div>
 
                         <div>
@@ -291,6 +306,18 @@
         bioTextarea.addEventListener('input', () => {
             const remaining = 250 - bioTextarea.value.length;
             bioCount.textContent = `${remaining} characters remaining`;
+        });
+    }
+
+    // Live Avatar Preview
+    const avatarInput = document.getElementById('setting-avatar');
+    const avatarPreviewBox = document.getElementById('avatar-preview-box');
+    if (avatarInput && avatarPreviewBox) {
+        avatarInput.addEventListener('input', () => {
+            const url = avatarInput.value.trim();
+            if (url) {
+                avatarPreviewBox.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.onerror=null; this.parentElement.innerHTML='<span style=\\'font-size:1.2rem;font-weight:700;\\'>?</span>'">`;
+            }
         });
     }
 
