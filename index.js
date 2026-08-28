@@ -5,8 +5,6 @@ const fs = require("fs").promises;
 const fsSync = require("fs");
 const crypto = require("crypto");
 const cookieParser = require("cookie-parser");
-const speakeasy = require("speakeasy");
-const QRCode = require("qrcode");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -39,9 +37,7 @@ const BOOKMARKS_FILE = path.join(__dirname, "bookmarks.json");
 
 // Local Auth Secret & Salt
 const AUTH_SECRET = process.env.AUTH_SECRET || "miniblogs_secure_dev_secret_key_2026";
-const TEMP_2FA_SECRET = process.env.TEMP_2FA_SECRET || "miniblogs_2fa_pending_secret_2026";
 
-// --- LOCAL USERS & AUTH HELPERS (Offline Fallback) ---
 const hashPassword = (password) => {
     const salt = crypto.randomBytes(16).toString("hex");
     const hash = crypto.scryptSync(password, salt, 64).toString("hex");
@@ -82,43 +78,6 @@ const verifyLocalToken = (token) => {
     } catch (e) {
         return null;
     }
-};
-
-// Temporary 2FA Pending Login Token (valid for 5 minutes)
-const createTemp2FAToken = (user) => {
-    const payload = Buffer.from(JSON.stringify({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        exp: Date.now() + 5 * 60 * 1000
-    })).toString("base64url");
-    const signature = crypto.createHmac("sha256", TEMP_2FA_SECRET).update(payload).digest("base64url");
-    return `${payload}.${signature}`;
-};
-
-const verifyTemp2FAToken = (token) => {
-    try {
-        if (!token || !token.includes(".")) return null;
-        const [payload, signature] = token.split(".");
-        const expected = crypto.createHmac("sha256", TEMP_2FA_SECRET).update(payload).digest("base64url");
-        if (signature !== expected) return null;
-        const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
-        if (data.exp && data.exp < Date.now()) return null;
-        return data;
-    } catch (e) {
-        return null;
-    }
-};
-
-// Generate 8 random backup recovery codes
-const generateBackupCodes = () => {
-    const codes = [];
-    for (let i = 0; i < 8; i++) {
-        const part1 = crypto.randomBytes(2).toString("hex").toUpperCase();
-        const part2 = crypto.randomBytes(2).toString("hex").toUpperCase();
-        codes.push(`${part1}-${part2}`);
-    }
-    return codes;
 };
 
 const readLocalUsers = async () => {
@@ -718,17 +677,6 @@ app.post("/api/auth/login", async (req, res) => {
 
         const maxAge = remember ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
-        // Check if user has 2FA enabled
-        const check2FA = async (userId, userEmail, userName) => {
-            const profiles = await readProfiles();
-            const profile = profiles.find(p => p.id === userId || (p.email && userEmail && p.email.toLowerCase() === userEmail.toLowerCase()));
-            if (profile && profile.twoFactorEnabled && profile.twoFactorSecret) {
-                const tempToken = createTemp2FAToken({ id: userId, email: userEmail, name: userName });
-                return { requires2FA: true, tempToken };
-            }
-            return null;
-        };
-
         if (supabase) {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: email.trim(),
@@ -741,15 +689,6 @@ app.post("/api/auth/login", async (req, res) => {
 
             if (data.session) {
                 const userName = data.user.user_metadata?.display_name || data.user.user_metadata?.name || data.user.email.split("@")[0];
-                const twoFactorCheck = await check2FA(data.user.id, data.user.email, userName);
-                if (twoFactorCheck) {
-                    return res.json({
-                        requires2FA: true,
-                        tempToken: twoFactorCheck.tempToken,
-                        message: "Two-Factor Authentication is enabled. Please enter your 6-digit code."
-                    });
-                }
-
                 res.cookie("auth_token", data.session.access_token, {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === "production",
@@ -775,15 +714,6 @@ app.post("/api/auth/login", async (req, res) => {
             return res.status(400).json({ error: "Invalid email or password." });
         }
 
-        const twoFactorCheck = await check2FA(localUser.id, localUser.email, localUser.name);
-        if (twoFactorCheck) {
-            return res.json({
-                requires2FA: true,
-                tempToken: twoFactorCheck.tempToken,
-                message: "Two-Factor Authentication is enabled. Please enter your 6-digit code."
-            });
-        }
-
         const token = generateLocalToken(localUser);
         res.cookie("auth_token", token, {
             httpOnly: true,
@@ -799,190 +729,6 @@ app.post("/api/auth/login", async (req, res) => {
     } catch (err) {
         console.error("Login error:", err);
         return res.status(400).json({ error: err.message || "Invalid credentials." });
-    }
-});
-
-// POST /api/auth/2fa-verify: Complete login with 2FA TOTP or backup code
-app.post("/api/auth/2fa-verify", async (req, res) => {
-    try {
-        const { tempToken, code } = req.body;
-        if (!tempToken || !code || !code.trim()) {
-            return res.status(400).json({ error: "Please enter your 6-digit 2FA code or backup recovery code." });
-        }
-
-        const payload = verifyTemp2FAToken(tempToken);
-        if (!payload) {
-            return res.status(400).json({ error: "2FA session expired. Please enter your email and password again." });
-        }
-
-        const profiles = await readProfiles();
-        const profile = profiles.find(p => p.id === payload.id || (p.email && payload.email && p.email.toLowerCase() === payload.email.toLowerCase()));
-
-        if (!profile || !profile.twoFactorSecret) {
-            return res.status(400).json({ error: "2FA is not configured for this account." });
-        }
-
-        const cleanCode = code.trim();
-        // 1. Verify TOTP 6-digit code
-        const isTotpValid = speakeasy.totp.verify({
-            secret: profile.twoFactorSecret,
-            encoding: "base32",
-            token: cleanCode.replace(/[^0-9]/g, ""),
-            window: 1
-        });
-
-        let isBackupCodeValid = false;
-        if (!isTotpValid && Array.isArray(profile.twoFactorBackupCodes)) {
-            const upperCode = cleanCode.toUpperCase();
-            const codeIdx = profile.twoFactorBackupCodes.findIndex(c => c === upperCode || c.replace("-", "") === upperCode.replace("-", ""));
-            if (codeIdx !== -1) {
-                isBackupCodeValid = true;
-                // Consume the one-time backup code
-                profile.twoFactorBackupCodes.splice(codeIdx, 1);
-                await writeProfiles(profiles);
-            }
-        }
-
-        if (!isTotpValid && !isBackupCodeValid) {
-            return res.status(400).json({ error: "Invalid 6-digit code or backup recovery code. Please check your authenticator app." });
-        }
-
-        // Verified! Issue session cookie
-        const token = generateLocalToken({ id: payload.id, email: payload.email, name: payload.name });
-        res.cookie("auth_token", token, {
-            httpOnly: true,
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-            sameSite: "lax",
-            secure: process.env.NODE_ENV === "production"
-        });
-
-        return res.json({
-            success: true,
-            message: "Two-Factor Authentication verified successfully!",
-            user: { id: payload.id, email: payload.email, name: payload.name }
-        });
-    } catch (err) {
-        console.error("2FA login verify error:", err);
-        return res.status(500).json({ error: "An unexpected error occurred during 2FA verification." });
-    }
-});
-
-// POST /api/2fa/setup: Generate TOTP secret, backup codes, and QR code for user
-app.post("/api/2fa/setup", requireAuth, async (req, res) => {
-    try {
-        const email = req.user.email || "user";
-        const secret = speakeasy.generateSecret({
-            name: `miniblogs (${email})`,
-            issuer: "miniblogs",
-            length: 20
-        });
-
-        const qrCodeDataUrl = await QRCode.toDataURL(secret.otpauth_url, {
-            width: 240,
-            margin: 1,
-            color: {
-                dark: "#0c0d10",
-                light: "#ffffff"
-            }
-        });
-
-        const backupCodes = generateBackupCodes();
-
-        res.json({
-            success: true,
-            secret: secret.base32,
-            otpauthUrl: secret.otpauth_url,
-            qrCode: qrCodeDataUrl,
-            backupCodes
-        });
-    } catch (err) {
-        console.error("2FA setup error:", err);
-        res.status(500).json({ error: "Failed to generate 2FA setup details." });
-    }
-});
-
-// POST /api/2fa/enable: Verify 6-digit code and permanently enable 2FA on account
-app.post("/api/2fa/enable", requireAuth, async (req, res) => {
-    try {
-        const { secret, code, backupCodes } = req.body;
-        if (!secret || !code) {
-            return res.status(400).json({ error: "Secret key and 6-digit confirmation code are required." });
-        }
-
-        const isValid = speakeasy.totp.verify({
-            secret: secret.trim(),
-            encoding: "base32",
-            token: code.trim().replace(/[^0-9]/g, ""),
-            window: 1
-        });
-
-        if (!isValid) {
-            return res.status(400).json({ error: "Invalid 6-digit code. Please verify the code shown in Google Authenticator / Authy and try again." });
-        }
-
-        const profiles = await readProfiles();
-        let profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
-        if (!profile) {
-            profile = await getOrCreateProfile(req.user);
-        }
-
-        profile.twoFactorEnabled = true;
-        profile.twoFactorSecret = secret.trim();
-        profile.twoFactorBackupCodes = Array.isArray(backupCodes) ? backupCodes : [];
-        await writeProfiles(profiles);
-
-        res.json({
-            success: true,
-            message: "Two-Factor Authentication has been successfully enabled on your account!"
-        });
-    } catch (err) {
-        console.error("2FA enable error:", err);
-        res.status(500).json({ error: "Failed to enable Two-Factor Authentication." });
-    }
-});
-
-// POST /api/2fa/disable: Disable 2FA with password/code verification
-app.post("/api/2fa/disable", requireAuth, async (req, res) => {
-    try {
-        const { password, code } = req.body;
-        const profiles = await readProfiles();
-        let profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
-
-        if (!profile || !profile.twoFactorEnabled) {
-            return res.json({ success: true, message: "2FA is already disabled." });
-        }
-
-        let verified = false;
-        if (code && profile.twoFactorSecret) {
-            verified = speakeasy.totp.verify({
-                secret: profile.twoFactorSecret,
-                encoding: "base32",
-                token: code.trim().replace(/[^0-9]/g, ""),
-                window: 1
-            });
-        }
-
-        if (!verified && password) {
-            const users = await readLocalUsers();
-            const user = users.find(u => u.id === req.user.id || (req.user.email && u.email.toLowerCase() === req.user.email.toLowerCase()));
-            if (user && verifyPassword(password, user.password)) {
-                verified = true;
-            }
-        }
-
-        if (!verified) {
-            return res.status(400).json({ error: "Please provide your current password or a valid 6-digit authenticator code to disable 2FA." });
-        }
-
-        profile.twoFactorEnabled = false;
-        profile.twoFactorSecret = null;
-        profile.twoFactorBackupCodes = [];
-        await writeProfiles(profiles);
-
-        res.json({ success: true, message: "Two-Factor Authentication has been disabled." });
-    } catch (err) {
-        console.error("2FA disable error:", err);
-        res.status(500).json({ error: "Failed to disable Two-Factor Authentication." });
     }
 });
 
