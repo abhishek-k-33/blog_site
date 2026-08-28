@@ -611,11 +611,12 @@ app.post("/api/auth/login", async (req, res) => {
 
 // Logout (POST & GET /logout)
 app.all(["/logout", "/api/auth/logout"], (req, res) => {
-    res.clearCookie("auth_token");
+    res.clearCookie("auth_token", { path: "/" });
+    res.clearCookie("guest_mode", { path: "/" });
     if (req.xhr || req.headers.accept?.includes("json")) {
         return res.json({ success: true, message: "Logged out." });
     }
-    res.redirect("/");
+    res.redirect("/login");
 });
 
 // POST /api/auth/forgot-password
@@ -750,9 +751,39 @@ app.get("/signup", (req, res) => {
     res.redirect("/login?tab=signup");
 });
 
+// GET /explore: Explicit explore route that enables guest mode
+app.get("/explore", (req, res) => {
+    res.cookie("guest_mode", "true", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: "lax",
+        path: "/"
+    });
+    res.redirect("/?guest=true");
+});
+
 // GET /: Display all posts (with tag filtering)
 app.get("/", async (req, res, next) => {
     try {
+        // If guest mode query param is provided, set guest cookie
+        if (req.query.guest === "true") {
+            res.cookie("guest_mode", "true", {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+                sameSite: "lax",
+                path: "/"
+            });
+        }
+
+        const isGuest = req.cookies?.guest_mode === "true" || req.query.guest === "true";
+
+        // If not authenticated and has not chosen guest mode, show login page first
+        if (!req.user && !isGuest) {
+            return res.redirect("/login");
+        }
+
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
         const allPosts = await getAllPosts();
         const selectedTag = req.query.tag ? req.query.tag.trim() : null;
