@@ -762,13 +762,17 @@
                         grid.appendChild(codeEl);
                     });
 
-                    document.getElementById('input-2fa-confirm-code').focus();
+                    if (setupOtpDigits && setupOtpDigits[0]) {
+                        setupOtpDigits.forEach(d => d.value = '');
+                        setTimeout(() => setupOtpDigits[0].focus(), 150);
+                    }
                 } else {
                     alert(data.error || 'Failed to initialize 2FA setup.');
                     closeAll2FAModals();
                 }
             } catch (err) {
-                alert('Network error initializing 2FA.');
+                console.error('2FA setup init error:', err);
+                alert('Error initializing 2FA: ' + (err.message || 'Network error'));
                 closeAll2FAModals();
             }
         });
