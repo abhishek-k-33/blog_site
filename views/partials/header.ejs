@@ -117,26 +117,16 @@
                     </a>
                 </div>
 
-                <!-- Center: Clean Modern Text Navigation (wegrow style) -->
-                <nav class="navbar-center-nav" aria-label="Main Navigation">
-                    <a href="/" class="nav-center-link">Home</a>
-                    <a href="/?tag=Tech" class="nav-center-link">Tech</a>
-                    <a href="/?tag=Design" class="nav-center-link">Design</a>
-                    <a href="/?tag=Guides" class="nav-center-link">Guides</a>
-                    <a href="/?tag=Opinion" class="nav-center-link">Opinion</a>
-                    <a href="/?tag=Thoughts" class="nav-center-link">Thoughts</a>
-                </nav>
-
                 <!-- Center Dynamic Info (Visible on single post reader pages) -->
                 <% if (typeof post !== 'undefined' && post && post.title) { %>
                     <div class="pill-dynamic-info" id="pill-dynamic-info">
                         <span class="dynamic-dot"></span>
-                        <span class="dynamic-title" id="dynamic-title"><%= post.title.length > 20 ? post.title.substring(0, 18) + '…' : post.title %></span>
+                        <span class="dynamic-title" id="dynamic-title"><%= post.title.length > 22 ? post.title.substring(0, 20) + '…' : post.title %></span>
                         <span class="dynamic-percent" id="dynamic-percent">0%</span>
                     </div>
                 <% } %>
 
-                <!-- Right: Search, Newsletter, Theme & High-Contrast Pill CTA -->
+                <!-- Right: Search, Theme, Auth & Write CTA -->
                 <div class="pill-nav" id="pill-nav">
                     <!-- Glassmorphic Search Bar -->
                     <div class="navbar-search-box" role="search">
@@ -146,13 +136,6 @@
                         </svg>
                         <input type="search" id="navbar-search-input" class="navbar-search-input" placeholder="Search..." aria-label="Search stories" autocomplete="off">
                     </div>
-
-                    <button type="button" class="btn-navbar-newsletter" id="navbar-newsletter-btn" title="Newsletter Subscription" aria-label="Newsletter Subscription">
-                        <svg class="nav-newsletter-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                            <polyline points="22,6 12,13 2,6"></polyline>
-                        </svg>
-                    </button>
 
                     <div class="theme-switch-wrapper">
                         <label class="theme-switch" for="theme-toggle" title="Toggle Theme">
