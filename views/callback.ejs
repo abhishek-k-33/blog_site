@@ -128,18 +128,24 @@
                 // Store in localStorage and client cookie immediately
                 localStorage.setItem('auth_token', accessToken);
                 if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
-                document.cookie = `auth_token=${encodeURIComponent(accessToken)}; path=/; max-age=31536000; SameSite=Lax`;
+                
+                const isSecure = window.location.protocol === 'https:' ? '; Secure' : '';
+                document.cookie = `auth_token=${encodeURIComponent(accessToken)}; path=/; max-age=31536000; SameSite=Lax${isSecure}`;
                 if (refreshToken) {
-                    document.cookie = `refresh_token=${encodeURIComponent(refreshToken)}; path=/; max-age=31536000; SameSite=Lax`;
+                    document.cookie = `refresh_token=${encodeURIComponent(refreshToken)}; path=/; max-age=31536000; SameSite=Lax${isSecure}`;
                 }
 
-                await fetch('/api/auth/session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: accessToken, refreshToken: refreshToken || '' })
-                }).catch(() => {});
+                try {
+                    await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: accessToken, refreshToken: refreshToken || '' })
+                    });
+                } catch (e) {}
 
-                window.location.replace('/');
+                setTimeout(() => {
+                    window.location.replace('/');
+                }, 150);
                 return true;
             } catch (err) {
                 window.location.replace('/');

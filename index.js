@@ -2213,9 +2213,31 @@ app.get("/", async (req, res, next) => {
 
         const isGuest = req.cookies?.guest_mode === "true" || req.query.guest === "true";
 
-        // If not authenticated and has not chosen guest mode, show login page first
+        // If not authenticated and has not chosen guest mode, check localStorage token before redirecting
         if (!req.user && !isGuest) {
-            return res.redirect("/login");
+            return res.send(`<!DOCTYPE html><html><head><title>miniblogs</title><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#0c0d10;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;}</style><script>
+                const token = localStorage.getItem('auth_token');
+                if (token) {
+                    const isSecure = window.location.protocol === 'https:' ? '; Secure' : '';
+                    document.cookie = 'auth_token=' + encodeURIComponent(token) + '; path=/; max-age=31536000; SameSite=Lax' + isSecure;
+                    fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: token })
+                    }).then(r => r.json()).then(d => {
+                        if (d && d.success) {
+                            window.location.replace('/');
+                        } else {
+                            localStorage.removeItem('auth_token');
+                            window.location.replace('/login');
+                        }
+                    }).catch(() => {
+                        window.location.replace('/');
+                    });
+                } else {
+                    window.location.replace('/login');
+                }
+            </script></head><body>Loading miniblogs...</body></html>`);
         }
 
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
