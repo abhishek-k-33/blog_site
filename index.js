@@ -567,10 +567,15 @@ app.use(async (req, res, next) => {
                     profile = await readProfileFromDB(req.user.id);
                 }
 
-                // 3. Try local JSON
+                // 3. Try local JSON / seed
                 if (!profile) {
                     const profiles = await readProfiles();
                     profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
+                }
+
+                // 4. If still not loaded, load/create profile
+                if (!profile) {
+                    profile = await getOrCreateProfile(req.user, req);
                 }
 
                 if (profile) {
@@ -578,8 +583,13 @@ app.use(async (req, res, next) => {
                     if (profile.avatar) req.user.avatar = profile.avatar;
                     if (profile.username) req.user.username = profile.username;
                     req.user.profile = profile;
+                    res.locals.user = req.user;
+
+                    // Automatically restore profile cookie if missing so subsequent requests have it
+                    if (!req.cookies?.user_profile_data) {
+                        setUserProfileCookie(res, profile);
+                    }
                 }
-                res.locals.user = req.user;
             } catch (err) {
                 console.error("Error syncing profile info into req.user:", err);
             }
@@ -1100,6 +1110,10 @@ app.get("/auth/callback", async (req, res) => {
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
             if (data?.session) {
                 setSessionCookies(res, data.session.access_token, data.session.refresh_token);
+                const profile = await getOrCreateProfile(data.session.user, req);
+                if (profile) {
+                    setUserProfileCookie(res, profile);
+                }
                 return res.redirect("/");
             }
         } catch (e) {
@@ -1114,10 +1128,23 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 // POST /api/auth/session: Set auth cookie from client-side token
-app.post("/api/auth/session", (req, res) => {
+app.post("/api/auth/session", async (req, res) => {
     const { token, refreshToken } = req.body;
     if (token) {
         setSessionCookies(res, token, refreshToken);
+        if (supabase) {
+            try {
+                const { data: { user } } = await supabase.auth.getUser(token);
+                if (user) {
+                    const profile = await getOrCreateProfile(user, req);
+                    if (profile) {
+                        setUserProfileCookie(res, profile);
+                    }
+                }
+            } catch (e) {
+                // Ignore
+            }
+        }
         return res.json({ success: true });
     }
     res.status(400).json({ error: "Token required" });
@@ -1471,7 +1498,7 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         // 2. Persist to Supabase DB (if profiles table exists)
         await writeProfileToDB(profile);
 
-        // 3. Sync to Supabase Auth cloud metadata via direct REST API
+        // 3. Sync to Supabase Auth cloud metadata via direct REST API (AWAITED for serverless persistence)
         if (supabaseUrl && supabaseKey && req.cookies?.auth_token) {
             try {
                 const profileMetadata = {
@@ -1487,7 +1514,7 @@ app.post("/api/profile", requireAuth, async (req, res) => {
                     notifications: profile.notifications,
                     privacy: profile.privacy
                 };
-                fetch(`${supabaseUrl}/auth/v1/user`, {
+                const sbResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -1495,9 +1522,13 @@ app.post("/api/profile", requireAuth, async (req, res) => {
                         "Authorization": `Bearer ${req.cookies.auth_token}`
                     },
                     body: JSON.stringify({ data: profileMetadata })
-                }).catch(err => {
-                    console.warn("Supabase background metadata sync:", err.message);
                 });
+                if (sbResp.ok) {
+                    console.log("Supabase user_metadata cloud sync completed for:", profile.name);
+                } else {
+                    const errBody = await sbResp.text();
+                    console.warn("Supabase user_metadata cloud sync returned:", sbResp.status, errBody);
+                }
             } catch (sbErr) {
                 console.warn("Supabase user_metadata sync notice:", sbErr.message);
             }
