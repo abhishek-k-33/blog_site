@@ -323,20 +323,11 @@ const getOrCreateProfile = async (user) => {
         profiles.push(profile);
         await writeProfiles(profiles);
     } else {
-        // Sync latest metadata from Supabase user_metadata if available
-        if (meta.name && meta.name.trim()) profile.name = meta.name.trim();
-        if (meta.username && meta.username.trim()) profile.username = meta.username.trim();
-        if (meta.bio !== undefined && meta.bio !== "") profile.bio = meta.bio;
-        if (meta.location !== undefined && meta.location !== "") profile.location = meta.location;
-        if (meta.website !== undefined && meta.website !== "") profile.website = meta.website;
-        if (meta.phone !== undefined && meta.phone !== "") profile.phone = meta.phone;
-        if (meta.avatar !== undefined) profile.avatar = meta.avatar;
-        if (meta.cover !== undefined) profile.cover = meta.cover;
-        if (metaSocial) profile.social = metaSocial;
-        if (meta.notifications) profile.notifications = meta.notifications;
-        if (meta.privacy) profile.privacy = meta.privacy;
-
-        if (!profile.social) profile.social = {};
+        // Profile already exists locally — trust local edits.
+        // Only fill in missing fields from Supabase metadata (don't overwrite existing values).
+        if (!profile.name && meta.name) profile.name = meta.name.trim();
+        if (!profile.username && meta.username) profile.username = meta.username.trim();
+        if (!profile.social) profile.social = metaSocial || {};
         if (user.avatar && !profile.avatar) profile.avatar = user.avatar;
     }
     return profile;
@@ -1329,10 +1320,15 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             try {
                 const { createClient } = require("@supabase/supabase-js");
                 const userClient = createClient(supabaseUrl, supabaseKey, {
-                    auth: { persistSession: false },
-                    global: { headers: { Authorization: `Bearer ${req.cookies.auth_token}` } }
+                    auth: { persistSession: false }
                 });
-                await userClient.auth.updateUser({
+                // Properly authenticate the user on this client using their session tokens
+                const refreshToken = req.cookies?.refresh_token || "";
+                await userClient.auth.setSession({
+                    access_token: req.cookies.auth_token,
+                    refresh_token: refreshToken
+                });
+                const { data: updateData, error: updateErr } = await userClient.auth.updateUser({
                     data: {
                         name: profile.name,
                         username: profile.username,
@@ -1347,6 +1343,11 @@ app.post("/api/profile", requireAuth, async (req, res) => {
                         privacy: profile.privacy
                     }
                 });
+                if (updateErr) {
+                    console.warn("Supabase user_metadata sync error:", updateErr.message);
+                } else {
+                    console.log("Profile synced to Supabase cloud for user:", profile.name);
+                }
             } catch (sbErr) {
                 console.warn("Supabase user_metadata sync notice:", sbErr.message);
             }
