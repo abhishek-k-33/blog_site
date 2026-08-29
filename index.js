@@ -313,61 +313,42 @@ const authenticateLocalUser = async (email, password) => {
 // --- LIGHTNING-FAST HIGH-PERFORMANCE CACHE & PERSISTENCE ENGINE ---
 const memoryCache = new Map();
 const CACHE_TTL_MS = 60 * 1000; // 60s memory cache TTL
-
-const readSystemState = async (key, fallback) => {
+const readSystemState = async (key, fallback = []) => {
     const filename = `${key.toLowerCase()}.json`;
-    const cached = memoryCache.get(key);
     const now = Date.now();
 
-    // 1. Instant RAM Cache Hit (< 0.1ms response time)
+    // 1. Instant RAM Cache Hit (< 0.1ms)
+    const cached = memoryCache.get(key);
     if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
         return cached.data;
     }
 
-    // 2. Fast local disk cache read (~0.5ms)
-    let localData = cached ? cached.data : await readJSONSafe(filename, null);
-    if (localData !== null) {
-        memoryCache.set(key, { data: localData, timestamp: now });
-        // Background revalidate from Supabase asynchronously without blocking user response
-        if (supabase && (!cached || now - cached.timestamp >= CACHE_TTL_MS)) {
-            setImmediate(async () => {
-                try {
-                    const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
-                    const { data } = await supabase
-                        .from("posts")
-                        .select("content")
-                        .eq("title", systemTitle)
-                        .maybeSingle();
-                    if (data?.content) {
-                        const parsed = JSON.parse(data.content);
-                        memoryCache.set(key, { data: parsed, timestamp: Date.now() });
-                        await writeJSONSafe(filename, parsed);
-                    }
-                } catch (e) {}
-            });
-        }
-        return localData;
-    }
-
-    // 3. Cold Start Supabase Fetch (only if zero local cache)
+    // 2. Fetch from Supabase (resilient to multiple rows)
     if (supabase) {
         try {
             const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
             const { data, error } = await supabase
                 .from("posts")
-                .select("content")
+                .select("id, content")
                 .eq("title", systemTitle)
-                .maybeSingle();
+                .order("created_at", { ascending: false });
 
-            if (!error && data?.content) {
-                const parsed = JSON.parse(data.content);
+            if (!error && data && data.length > 0 && data[0]?.content) {
+                const parsed = JSON.parse(data[0].content);
                 memoryCache.set(key, { data: parsed, timestamp: Date.now() });
                 await writeJSONSafe(filename, parsed);
                 return parsed;
             }
         } catch (e) {
-            console.warn(`Supabase readSystemState cold fetch error for ${key}:`, e.message);
+            console.warn(`Supabase readSystemState fetch error for ${key}:`, e.message);
         }
+    }
+
+    // 3. Fall back to local JSON cache
+    const localData = await readJSONSafe(filename, null);
+    if (localData !== null && localData !== undefined) {
+        memoryCache.set(key, { data: localData, timestamp: now });
+        return localData;
     }
 
     const finalData = fallback;
@@ -377,7 +358,7 @@ const readSystemState = async (key, fallback) => {
 
 const writeSystemState = async (key, data) => {
     const filename = `${key.toLowerCase()}.json`;
-    // 1. Instant RAM update (< 0.1ms) - user gets instant UI update
+    // 1. Instant RAM update (< 0.1ms)
     memoryCache.set(key, { data, timestamp: Date.now() });
 
     // 2. Fast local disk write (non-blocking)
@@ -388,13 +369,14 @@ const writeSystemState = async (key, data) => {
         setImmediate(async () => {
             try {
                 const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
-                const { data: existing } = await supabase
+                const { data: existingRows } = await supabase
                     .from("posts")
                     .select("id")
                     .eq("title", systemTitle)
-                    .maybeSingle();
+                    .order("created_at", { ascending: false });
 
-                if (existing?.id) {
+                if (existingRows && existingRows.length > 0) {
+                    const [keep, ...deleteRows] = existingRows;
                     await supabase
                         .from("posts")
                         .update({
@@ -402,7 +384,10 @@ const writeSystemState = async (key, data) => {
                             excerpt: `System ${key} State`,
                             author: "__SYSTEM__"
                         })
-                        .eq("id", existing.id);
+                        .eq("id", keep.id);
+                    for (const d of deleteRows) {
+                        await supabase.from("posts").delete().eq("id", d.id).catch(() => {});
+                    }
                 } else {
                     await supabase
                         .from("posts")
@@ -418,7 +403,7 @@ const writeSystemState = async (key, data) => {
             }
         });
     }
-};
+};;
 
 const readFollows = async () => {
     return readSystemState("FOLLOWS", []);
