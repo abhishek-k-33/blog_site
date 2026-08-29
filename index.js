@@ -167,6 +167,10 @@ const setUserProfileCookie = (res, profile) => {
     if (!res || !profile) return;
     const isProd = process.env.NODE_ENV === "production";
     try {
+        // Keep cookie under 3KB to prevent HTTP 502/431 header size overflows
+        const safeAvatar = (profile.avatar && typeof profile.avatar === "string" && !profile.avatar.startsWith("data:")) ? profile.avatar : (profile.avatar?.startsWith("data:") && profile.avatar.length < 1500 ? profile.avatar : null);
+        const safeCover = (profile.cover && typeof profile.cover === "string" && !profile.cover.startsWith("data:")) ? profile.cover : (profile.cover?.startsWith("data:") && profile.cover.length < 1500 ? profile.cover : null);
+
         const safeProfile = {
             id: profile.id,
             name: profile.name,
@@ -174,8 +178,8 @@ const setUserProfileCookie = (res, profile) => {
             email: profile.email,
             phone: profile.phone || "",
             bio: profile.bio || "",
-            avatar: profile.avatar || null,
-            cover: profile.cover || null,
+            avatar: safeAvatar,
+            cover: safeCover,
             location: profile.location || "",
             website: profile.website || "",
             social: profile.social || { twitter: "" },
@@ -407,6 +411,17 @@ const getOrCreateProfile = async (user, req = null) => {
             cookieProfile.id = user.id;
             if (user.email) cookieProfile.email = user.email;
             if (!cookieProfile.social) cookieProfile.social = {};
+            // Enrich cover/avatar from local profiles if cookie omitted huge data URLs
+            if (!cookieProfile.cover || !cookieProfile.avatar) {
+                try {
+                    const profiles = await readProfiles();
+                    const diskProfile = profiles.find(p => p.id === user.id || (user.email && p.email && p.email.toLowerCase() === user.email.toLowerCase()));
+                    if (diskProfile) {
+                        if (!cookieProfile.cover && diskProfile.cover) cookieProfile.cover = diskProfile.cover;
+                        if (!cookieProfile.avatar && diskProfile.avatar) cookieProfile.avatar = diskProfile.avatar;
+                    }
+                } catch (e) {}
+            }
             return cookieProfile;
         }
     }
