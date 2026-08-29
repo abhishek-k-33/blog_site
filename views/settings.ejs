@@ -39,7 +39,7 @@
                 <h2 class="settings-section-title">Personal Information & Persona</h2>
                 <p class="settings-section-desc">Update your public identity, bio, social presence, and visual assets.</p>
 
-                <form id="profile-general-form">
+                <form id="profile-general-form" action="/api/profile" method="POST">
                     <div class="settings-form-grid">
                         <div>
                             <label class="settings-label" for="setting-name">Display Name</label>
@@ -567,6 +567,7 @@
     });
 
     // Save Profile Form
+    const profileForm = document.getElementById('profile-general-form');
     if (profileForm) {
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -604,8 +605,8 @@
                 if (res.ok) {
                     showSettingsToast('All profile changes saved successfully!');
                     setTimeout(() => {
-                        window.location.href = '/profile';
-                    }, 800);
+                        window.location.reload();
+                    }, 600);
                 } else {
                     const data = await res.json();
                     showSettingsToast(data.error || 'Failed to update profile', true);

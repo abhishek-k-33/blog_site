@@ -1511,7 +1511,10 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             req.user.profile = profile;
         }
 
-        res.json({ success: true, profile });
+        if (req.xhr || req.headers.accept?.includes("json") || req.is("json")) {
+            return res.json({ success: true, profile });
+        }
+        return res.redirect("/settings?saved=true");
     } catch (e) {
         console.error("Profile update error:", e);
         res.status(500).json({ error: "Failed to update profile." });
