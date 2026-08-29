@@ -84,10 +84,12 @@
                         </svg>
                         <span class="bookmark-btn-text">Save Story</span>
                     </button>
-                    <a href="/edit/<%= post.id %>" class="btn btn-secondary">Edit Post</a>
-                    <form action="/delete/<%= post.id %>" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this post?');">Delete Post</button>
-                    </form>
+                    <% if (typeof isAuthor !== 'undefined' && isAuthor) { %>
+                        <a href="/edit/<%= post.id %>" class="btn btn-secondary">Edit Post</a>
+                        <form action="/delete/<%= post.id %>" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this post?');">Delete Post</button>
+                        </form>
+                    <% } %>
                 </div>
             </div>
         </article>

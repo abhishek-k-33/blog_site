@@ -668,11 +668,14 @@ const extractTags = (post) => {
     return inferred;
 };
 
-// Helper: Extract cover image and clean content
+// Helper: Extract cover image and clean content + author metadata
 const extractCoverAndCleanContent = (rawContent) => {
-    if (!rawContent) return { cleanContent: "", coverImage: null };
+    if (!rawContent) return { cleanContent: "", coverImage: null, authorId: null, authorEmail: null, authorUsername: null };
     let content = rawContent;
     let coverImage = null;
+    let authorId = null;
+    let authorEmail = null;
+    let authorUsername = null;
 
     // Check for explicit cover tag <!-- COVER_IMAGE: url/data -->
     const coverMatch = content.match(/<!--\s*COVER_IMAGE:\s*([\s\S]*?)\s*-->/);
@@ -688,7 +691,24 @@ const extractCoverAndCleanContent = (rawContent) => {
         content = content.replace(/<div\s+data-cover-image=["'][\s\S]*?["'][^>]*>\s*<\/div>/gi, "").trim();
     }
 
-    return { cleanContent: content, coverImage };
+    // Check for author tags
+    const authorIdMatch = content.match(/<!--\s*AUTHOR_ID:\s*([\s\S]*?)\s*-->/);
+    if (authorIdMatch) {
+        authorId = authorIdMatch[1].trim();
+        content = content.replace(/<!--\s*AUTHOR_ID:\s*[\s\S]*?\s*-->/, "").trim();
+    }
+    const authorEmailMatch = content.match(/<!--\s*AUTHOR_EMAIL:\s*([\s\S]*?)\s*-->/);
+    if (authorEmailMatch) {
+        authorEmail = authorEmailMatch[1].trim();
+        content = content.replace(/<!--\s*AUTHOR_EMAIL:\s*[\s\S]*?\s*-->/, "").trim();
+    }
+    const authorUsernameMatch = content.match(/<!--\s*AUTHOR_USERNAME:\s*([\s\S]*?)\s*-->/);
+    if (authorUsernameMatch) {
+        authorUsername = authorUsernameMatch[1].trim();
+        content = content.replace(/<!--\s*AUTHOR_USERNAME:\s*[\s\S]*?\s*-->/, "").trim();
+    }
+
+    return { cleanContent: content, coverImage, authorId, authorEmail, authorUsername };
 };
 
 // Helper: Format post object date, word count, reading time, and tags
@@ -706,7 +726,7 @@ const formatPost = (post) => {
             formattedDate = post.date || new Date().toLocaleDateString();
         }
     }
-    const { cleanContent, coverImage: embeddedCover } = extractCoverAndCleanContent(post.content || "");
+    const { cleanContent, coverImage: embeddedCover, authorId: embeddedAuthorId, authorEmail: embeddedAuthorEmail, authorUsername: embeddedAuthorUsername } = extractCoverAndCleanContent(post.content || "");
     const words = cleanContent ? cleanContent.trim().split(/\s+/).filter(Boolean).length : 0;
     const readingTime = Math.max(1, Math.ceil(words / 180));
     const tags = extractTags(post);
@@ -717,6 +737,10 @@ const formatPost = (post) => {
     return {
         ...post,
         content: cleanContent,
+        rawContent: post.content || "",
+        author_id: post.author_id || post.authorId || embeddedAuthorId || null,
+        author_email: post.author_email || post.authorEmail || embeddedAuthorEmail || null,
+        author_username: post.author_username || post.authorUsername || embeddedAuthorUsername || null,
         date: formattedDate || new Date().toLocaleDateString(),
         readingTime,
         words,
@@ -725,6 +749,35 @@ const formatPost = (post) => {
         coverImage: thumbnail,
         topicTheme: primaryTag,
     };
+};
+
+// Helper: Check if a user is the author/owner of a post
+const isUserPostAuthor = (user, post, profile = null) => {
+    if (!user || !post) return false;
+    const userId = String(user.id || "").toLowerCase();
+    const userEmail = String(user.email || "").toLowerCase();
+    const userName = String(profile?.name || user.name || "").toLowerCase().trim();
+    const userUsername = String(profile?.username || user.username || "").toLowerCase().trim();
+
+    const postAuthorId = String(post.author_id || post.authorId || "").toLowerCase();
+    const postAuthorEmail = String(post.author_email || post.authorEmail || "").toLowerCase();
+    const postAuthor = String(post.author || "").toLowerCase().trim();
+
+    // 1. Direct Author ID match
+    if (userId && postAuthorId && userId === postAuthorId) return true;
+
+    // 2. Direct Author Email match
+    if (userEmail && postAuthorEmail && userEmail === postAuthorEmail) return true;
+
+    // 3. Name or Username match
+    if (userName && postAuthor && (postAuthor === userName || postAuthor === userUsername)) return true;
+
+    // 4. Raw embedded content match
+    const rawContent = String(post.rawContent || post.content || "");
+    if (userId && rawContent.includes(`<!-- AUTHOR_ID: ${userId} -->`)) return true;
+    if (userEmail && rawContent.includes(`<!-- AUTHOR_EMAIL: ${userEmail} -->`)) return true;
+
+    return false;
 };
 
 // Helper: Generate fallback ID for local offline development
@@ -773,39 +826,55 @@ const getPostById = async (id) => {
     return post ? formatPost(post) : null;
 };
 
-const createPost = async ({ title, content, excerpt, author, tags, coverImage }) => {
+const createPost = async ({ title, content, excerpt, author, tags, coverImage, authorId, authorEmail, authorUsername }) => {
     const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
     const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
 
-    let contentWithCover = content || "";
+    let contentWithMetadata = content || "";
+    if (authorId) {
+        contentWithMetadata = `<!-- AUTHOR_ID: ${authorId} -->\n` + contentWithMetadata;
+    }
+    if (authorEmail) {
+        contentWithMetadata = `<!-- AUTHOR_EMAIL: ${authorEmail} -->\n` + contentWithMetadata;
+    }
+    if (authorUsername) {
+        contentWithMetadata = `<!-- AUTHOR_USERNAME: ${authorUsername} -->\n` + contentWithMetadata;
+    }
     if (cleanCover) {
-        contentWithCover = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithCover;
+        contentWithMetadata = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithMetadata;
     }
 
     if (supabase) {
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title, content: contentWithCover, excerpt, author, tags: cleanTags, cover_image: cleanCover }])
+                .insert([{ title, content: contentWithMetadata, excerpt, author, tags: cleanTags, cover_image: cleanCover, author_id: authorId }])
                 .select()
                 .single();
             if (!error && data) return formatPost(data);
-        } catch (e) {
-            // Fallback if cover_image column does not exist
-        }
+        } catch (e) {}
+
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title, content: contentWithCover, excerpt, author, tags: cleanTags }])
+                .insert([{ title, content: contentWithMetadata, excerpt, author, tags: cleanTags, cover_image: cleanCover }])
+                .select()
+                .single();
+            if (!error && data) return formatPost(data);
+        } catch (e) {}
+
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .insert([{ title, content: contentWithMetadata, excerpt, author, tags: cleanTags }])
                 .select()
                 .single();
             if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
-        } catch (e) {
-            // Fallback if tags column does not exist
-        }
+        } catch (e) {}
+
         const { data, error } = await supabase
             .from("posts")
-            .insert([{ title, content: contentWithCover, excerpt, author }])
+            .insert([{ title, content: contentWithMetadata, excerpt, author }])
             .select()
             .single();
         if (error) throw error;
@@ -815,9 +884,12 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage })
     const newPost = {
         id: generateId(),
         title,
-        content: contentWithCover,
+        content: contentWithMetadata,
         excerpt,
         author,
+        author_id: authorId,
+        author_email: authorEmail,
+        author_username: authorUsername,
         tags: cleanTags.length > 0 ? cleanTags : undefined,
         coverImage: cleanCover,
         created_at: new Date().toISOString(),
@@ -828,41 +900,58 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage })
     return formatPost(newPost);
 };
 
-const updatePost = async (id, { title, content, excerpt, author, tags, coverImage }) => {
+const updatePost = async (id, { title, content, excerpt, author, tags, coverImage, authorId, authorEmail, authorUsername }) => {
     const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
     const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
 
-    let contentWithCover = content || "";
+    let contentWithMetadata = content || "";
+    if (authorId) {
+        contentWithMetadata = `<!-- AUTHOR_ID: ${authorId} -->\n` + contentWithMetadata;
+    }
+    if (authorEmail) {
+        contentWithMetadata = `<!-- AUTHOR_EMAIL: ${authorEmail} -->\n` + contentWithMetadata;
+    }
+    if (authorUsername) {
+        contentWithMetadata = `<!-- AUTHOR_USERNAME: ${authorUsername} -->\n` + contentWithMetadata;
+    }
     if (cleanCover) {
-        contentWithCover = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithCover;
+        contentWithMetadata = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithMetadata;
     }
 
     if (supabase) {
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .update({ title, content: contentWithCover, excerpt, author, tags: cleanTags, cover_image: cleanCover })
+                .update({ title, content: contentWithMetadata, excerpt, author, tags: cleanTags, cover_image: cleanCover, author_id: authorId })
                 .eq("id", id)
                 .select()
                 .single();
             if (!error && data) return formatPost(data);
-        } catch (e) {
-            // Fallback if cover_image column does not exist
-        }
+        } catch (e) {}
+
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .update({ title, content: contentWithCover, excerpt, author, tags: cleanTags })
+                .update({ title, content: contentWithMetadata, excerpt, author, tags: cleanTags, cover_image: cleanCover })
+                .eq("id", id)
+                .select()
+                .single();
+            if (!error && data) return formatPost(data);
+        } catch (e) {}
+
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .update({ title, content: contentWithMetadata, excerpt, author, tags: cleanTags })
                 .eq("id", id)
                 .select()
                 .single();
             if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
-        } catch (e) {
-            // Fallback if tags column does not exist
-        }
+        } catch (e) {}
+
         const { data, error } = await supabase
             .from("posts")
-            .update({ title, content: contentWithCover, excerpt, author })
+            .update({ title, content: contentWithMetadata, excerpt, author })
             .eq("id", id)
             .select()
             .single();
@@ -875,9 +964,12 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
         localPosts[index] = {
             ...localPosts[index],
             title,
-            content: contentWithCover,
+            content: contentWithMetadata,
             excerpt,
             author,
+            author_id: authorId || localPosts[index].author_id,
+            author_email: authorEmail || localPosts[index].author_email,
+            author_username: authorUsername || localPosts[index].author_username,
             tags: cleanTags.length > 0 ? cleanTags : undefined,
             coverImage: cleanCover,
         };
@@ -1767,10 +1859,11 @@ app.get("/new", requireAuth, (req, res) => {
 app.post("/posts", requireAuth, async (req, res, next) => {
     try {
         const { title, content, tags, coverImage } = req.body;
-        const author = (req.body.author && req.body.author.trim()) || (req.user && req.user.name) || "Anonymous";
+        const profile = await getOrCreateProfile(req.user, req);
+        const author = (req.body.author && req.body.author.trim()) || (profile && profile.name) || (req.user && req.user.name) || "Anonymous";
 
         if (!title?.trim() || !content?.trim() || !author?.trim()) {
-            return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
+            return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty.", user: req.user });
         }
 
         await createPost({
@@ -1778,6 +1871,9 @@ app.post("/posts", requireAuth, async (req, res, next) => {
             content: content.trim(),
             excerpt: generateExcerpt(content.trim()),
             author: simpleSanitize(author.trim()),
+            authorId: req.user?.id || null,
+            authorEmail: req.user?.email || null,
+            authorUsername: profile?.username || req.user?.username || null,
             tags: tags ? simpleSanitize(tags.trim()) : undefined,
             coverImage: coverImage ? simpleSanitize(coverImage.trim()) : undefined,
         });
@@ -1821,35 +1917,56 @@ app.get("/posts/:id", async (req, res, next) => {
                 })
                 .slice(0, 3);
 
-            res.render("post.ejs", { post, relatedPosts, user: req.user });
+            let isAuthor = false;
+            if (req.user) {
+                const profile = await getOrCreateProfile(req.user, req);
+                isAuthor = isUserPostAuthor(req.user, post, profile);
+            }
+
+            res.render("post.ejs", { post, relatedPosts, user: req.user, isAuthor });
         } else {
-            res.status(404).render("404.ejs", { message: "The requested post could not be found." });
+            res.status(404).render("404.ejs", { message: "The requested post could not be found.", user: req.user });
         }
     } catch (err) {
         next(err);
     }
 });
 
-// GET /edit/:id: Show form to edit a post (Protected)
+// GET /edit/:id: Show form to edit a post (Protected - Creator only)
 app.get("/edit/:id", requireAuth, async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
-        if (post) {
-            res.render("edit.ejs", { post, user: req.user });
-        } else {
-            res.status(404).render("404.ejs", { message: "The post you wish to edit does not exist." });
+        if (!post) {
+            return res.status(404).render("404.ejs", { message: "The post you wish to edit does not exist.", user: req.user });
         }
+
+        const profile = await getOrCreateProfile(req.user, req);
+        if (!isUserPostAuthor(req.user, post, profile)) {
+            return res.status(403).render("404.ejs", { message: "Permission denied: You can only edit stories that you created.", user: req.user });
+        }
+
+        res.render("edit.ejs", { post, user: req.user });
     } catch (err) {
         next(err);
     }
 });
 
-// POST /update/:id: Update an existing post (Protected)
+// POST /update/:id: Update an existing post (Protected - Creator only)
 app.post("/update/:id", requireAuth, async (req, res, next) => {
     try {
+        const post = await getPostById(req.params.id);
+        if (!post) {
+            return res.status(404).render("404.ejs", { message: "The post to update could not be found.", user: req.user });
+        }
+
+        const profile = await getOrCreateProfile(req.user, req);
+        if (!isUserPostAuthor(req.user, post, profile)) {
+            return res.status(403).render("404.ejs", { message: "Permission denied: You can only edit stories that you authored.", user: req.user });
+        }
+
         const { title, content, author, tags, coverImage } = req.body;
         if (!title?.trim() || !content?.trim() || !author?.trim()) {
-            return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty." });
+            return res.status(400).render("404.ejs", { message: "Title, author, and content cannot be empty.", user: req.user });
         }
 
         const updated = await updatePost(req.params.id, {
@@ -1857,6 +1974,9 @@ app.post("/update/:id", requireAuth, async (req, res, next) => {
             content: content.trim(),
             excerpt: generateExcerpt(content.trim()),
             author: simpleSanitize(author.trim()),
+            authorId: post.author_id || req.user.id,
+            authorEmail: post.author_email || req.user.email,
+            authorUsername: post.author_username || profile?.username,
             tags: tags ? simpleSanitize(tags.trim()) : undefined,
             coverImage: coverImage ? simpleSanitize(coverImage.trim()) : undefined,
         });
@@ -1864,16 +1984,26 @@ app.post("/update/:id", requireAuth, async (req, res, next) => {
         if (updated) {
             res.redirect(`/posts/${req.params.id}`);
         } else {
-            res.status(404).render("404.ejs", { message: "The post to update could not be found." });
+            res.status(404).render("404.ejs", { message: "The post to update could not be found.", user: req.user });
         }
     } catch (err) {
         next(err);
     }
 });
 
-// POST /delete/:id: Delete a post (Protected)
+// POST /delete/:id: Delete a post (Protected - Creator only)
 app.post("/delete/:id", requireAuth, async (req, res, next) => {
     try {
+        const post = await getPostById(req.params.id);
+        if (!post) {
+            return res.status(404).render("404.ejs", { message: "The post to delete could not be found.", user: req.user });
+        }
+
+        const profile = await getOrCreateProfile(req.user, req);
+        if (!isUserPostAuthor(req.user, post, profile)) {
+            return res.status(403).render("404.ejs", { message: "Permission denied: You can only delete stories that you created.", user: req.user });
+        }
+
         await deletePost(req.params.id);
         res.redirect("/");
     } catch (err) {
