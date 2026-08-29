@@ -1372,16 +1372,20 @@ app.all(["/logout", "/api/auth/logout"], (req, res) => {
     res.clearCookie("refresh_token", { path: "/" });
     res.clearCookie("user_profile_data", { path: "/" });
     res.clearCookie("guest_mode", { path: "/" });
+    res.clearCookie("blog_reader_id", { path: "/" });
     if (req.xhr || req.headers.accept?.includes("json")) {
         return res.json({ success: true, message: "Logged out." });
     }
-    res.send(`<!DOCTYPE html><html><head><script>
+    res.send(`<!DOCTYPE html><html><head><title>Signed Out</title><script>
         try {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('refresh_token');
+            localStorage.clear();
+            sessionStorage.clear();
+            document.cookie = 'auth_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            document.cookie = 'refresh_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            document.cookie = 'user_profile_data=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         } catch (e) {}
         window.location.replace('/login');
-    </script></head><body>Logging out...</body></html>`);
+    </script></head><body style="background:#0c0d10;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;">Signing out...</body></html>`);
 });
 
 // POST /api/auth/forgot-password

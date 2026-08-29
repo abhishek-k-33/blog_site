@@ -19,19 +19,6 @@
     <script>
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme) document.body.className = savedTheme + ' auth-body';
-        if (localStorage.getItem('auth_token')) {
-            const token = localStorage.getItem('auth_token');
-            if (!document.cookie.includes('auth_token=')) {
-                document.cookie = 'auth_token=' + encodeURIComponent(token) + '; path=/; max-age=31536000; SameSite=Lax';
-            }
-            fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
-            }).then(r => r.json()).then(d => {
-                if (d.success) window.location.replace('/');
-            }).catch(() => {});
-        }
     </script>
 
     <!-- Top Minimal Navbar matching mockup -->
