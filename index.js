@@ -163,6 +163,59 @@ const setSessionCookies = (res, accessToken, refreshToken = null) => {
     }
 };
 
+const setUserProfileCookie = (res, profile) => {
+    if (!res || !profile) return;
+    const isProd = process.env.NODE_ENV === "production";
+    try {
+        const safeProfile = {
+            id: profile.id,
+            name: profile.name,
+            username: profile.username,
+            email: profile.email,
+            phone: profile.phone || "",
+            bio: profile.bio || "",
+            avatar: profile.avatar || null,
+            cover: profile.cover || null,
+            location: profile.location || "",
+            website: profile.website || "",
+            social: profile.social || { twitter: "" },
+            badges: profile.badges || [],
+            isPro: Boolean(profile.isPro),
+            twoFactorEnabled: Boolean(profile.twoFactorEnabled),
+            notifications: profile.notifications || { comments: true, followers: true, digest: true, push: false },
+            privacy: profile.privacy || { isPublic: true, showBookmarks: true },
+            updated_at: new Date().toISOString()
+        };
+        const encoded = Buffer.from(JSON.stringify(safeProfile)).toString("base64url");
+        res.cookie("user_profile_data", encoded, {
+            httpOnly: false,
+            secure: isProd,
+            maxAge: SESSION_COOKIE_MAX_AGE,
+            sameSite: "lax",
+            path: "/"
+        });
+    } catch (e) {
+        console.error("Error setting user profile cookie:", e);
+    }
+};
+
+const getProfileFromCookie = (req, userId, userEmail) => {
+    if (!req?.cookies?.user_profile_data) return null;
+    try {
+        const json = Buffer.from(req.cookies.user_profile_data, "base64url").toString("utf-8");
+        const profile = JSON.parse(json);
+        if (profile && (
+            (userId && profile.id === userId) ||
+            (userEmail && profile.email && profile.email.toLowerCase() === userEmail.toLowerCase())
+        )) {
+            return profile;
+        }
+    } catch (e) {
+        // Invalid or corrupted cookie
+    }
+    return null;
+};
+
 const generateLocalToken = (user) => {
     const payload = Buffer.from(JSON.stringify({
         id: user.id,
@@ -344,20 +397,30 @@ const recordPostClap = async (postId, count = 1) => {
     }
 };
 
-const getOrCreateProfile = async (user) => {
+const getOrCreateProfile = async (user, req = null) => {
     if (!user) return null;
 
-    // 1. Try Supabase DB first (persistent across all Vercel instances)
+    // 1. Try browser profile cookie first (fastest, 100% persistent across Vercel serverless requests)
+    if (req) {
+        const cookieProfile = getProfileFromCookie(req, user.id, user.email);
+        if (cookieProfile) {
+            cookieProfile.id = user.id;
+            if (user.email) cookieProfile.email = user.email;
+            if (!cookieProfile.social) cookieProfile.social = {};
+            return cookieProfile;
+        }
+    }
+
+    // 2. Try Supabase DB (persistent across all Vercel instances if table exists)
     const dbProfile = await readProfileFromDB(user.id);
     if (dbProfile) {
-        // Ensure ID & email are current
         dbProfile.id = user.id;
         if (user.email) dbProfile.email = user.email;
         if (!dbProfile.social) dbProfile.social = {};
         return dbProfile;
     }
 
-    // 2. Fall back to local JSON file
+    // 3. Fall back to local JSON file
     const profiles = await readProfiles();
     let profile = profiles.find(p => p.id === user.id || (user.email && p.email && p.email.toLowerCase() === user.email.toLowerCase()));
 
@@ -387,7 +450,7 @@ const getOrCreateProfile = async (user) => {
         };
         profiles.push(profile);
         await writeProfiles(profiles);
-        // Also persist to DB for future Vercel instances
+        // Also attempt to persist to DB for future Vercel instances
         await writeProfileToDB(profile);
     } else {
         if (!profile.social) profile.social = metaSocial || {};
@@ -396,11 +459,17 @@ const getOrCreateProfile = async (user) => {
     return profile;
 };
 
-const getProfileByIdentifier = async (identifier) => {
+const getProfileByIdentifier = async (identifier, req = null) => {
     if (!identifier) return null;
     const cleanId = String(identifier).replace(/^@/, "").toLowerCase();
 
-    // Try Supabase DB first
+    // Try browser profile cookie if inspecting own profile
+    if (req) {
+        const cookieProfile = getProfileFromCookie(req, identifier, identifier);
+        if (cookieProfile) return cookieProfile;
+    }
+
+    // Try Supabase DB
     const dbProfile = await readProfileFromDB(identifier);
     if (dbProfile) return dbProfile;
 
@@ -411,7 +480,7 @@ const getProfileByIdentifier = async (identifier) => {
         const users = await readLocalUsers();
         const user = users.find(u => u.id === identifier || u.email.toLowerCase().startsWith(cleanId));
         if (user) {
-            return await getOrCreateProfile(user);
+            return await getOrCreateProfile(user, req);
         }
     }
     return profile;
@@ -490,16 +559,25 @@ app.use(async (req, res, next) => {
         // Enrich authenticated user with their up-to-date saved profile information (name, avatar, username)
         if (req.user) {
             try {
-                // Try DB first, then local JSON
-                let profile = await readProfileFromDB(req.user.id);
+                // 1. Try cookie profile first (fastest, 100% persistent across all Vercel instances)
+                let profile = getProfileFromCookie(req, req.user.id, req.user.email);
+
+                // 2. Try DB
+                if (!profile) {
+                    profile = await readProfileFromDB(req.user.id);
+                }
+
+                // 3. Try local JSON
                 if (!profile) {
                     const profiles = await readProfiles();
                     profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
                 }
+
                 if (profile) {
                     if (profile.name) req.user.name = profile.name;
                     if (profile.avatar) req.user.avatar = profile.avatar;
                     if (profile.username) req.user.username = profile.username;
+                    req.user.profile = profile;
                 }
                 res.locals.user = req.user;
             } catch (err) {
@@ -935,6 +1013,7 @@ app.post("/api/auth/login", async (req, res) => {
 app.all(["/logout", "/api/auth/logout"], (req, res) => {
     res.clearCookie("auth_token", { path: "/" });
     res.clearCookie("refresh_token", { path: "/" });
+    res.clearCookie("user_profile_data", { path: "/" });
     res.clearCookie("guest_mode", { path: "/" });
     if (req.xhr || req.headers.accept?.includes("json")) {
         return res.json({ success: true, message: "Logged out." });
@@ -1075,17 +1154,16 @@ app.get("/explore", (req, res) => {
 });
 
 // --- PROFILE & SETTINGS ROUTES ---
-
-// GET /profile & /profile/me: View logged-in user profile
-app.get(["/profile", "/profile/me"], requireAuth, async (req, res, next) => {
+// GET /profile: View Current Authenticated User's Profile
+app.get("/profile", requireAuth, async (req, res, next) => {
     try {
-        const profile = await getOrCreateProfile(req.user);
+        const profile = await getOrCreateProfile(req.user, req);
         const allPosts = await getAllPosts();
         const publishedPosts = allPosts.filter(p => {
             return (p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase()) ||
                    (p.author && profile.username && p.author.toLowerCase() === profile.username.toLowerCase()) ||
                    (p.author_id && p.author_id === profile.id);
-        });
+        });;
 
         const drafts = [];
 
@@ -1152,7 +1230,7 @@ app.get("/profile/:identifier", async (req, res, next) => {
             return res.redirect("/profile");
         }
 
-        const profile = await getProfileByIdentifier(identifier);
+        const profile = await getProfileByIdentifier(identifier, req);
         if (!profile) {
             return res.status(404).render("404.ejs", { message: "Author profile not found." });
         }
@@ -1226,7 +1304,7 @@ app.get("/profile/:identifier", async (req, res, next) => {
 // GET /settings: Private Account Settings Screen
 app.get("/settings", requireAuth, async (req, res, next) => {
     try {
-        const profile = await getOrCreateProfile(req.user);
+        const profile = await getOrCreateProfile(req.user, req);
         const isGoogleUser = Boolean(
             req.user?.isGoogleUser || 
             req.user?.provider === "google" || 
@@ -1309,7 +1387,7 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         let profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
 
         if (!profile) {
-            profile = await getOrCreateProfile(req.user);
+            profile = await getOrCreateProfile(req.user, req);
         }
 
         if (name !== undefined && name.trim()) profile.name = name.trim();
@@ -1387,10 +1465,42 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         }
         await writeProfiles(profiles);
 
-        // Persist to Supabase DB (works across all Vercel instances)
-        const dbSaved = await writeProfileToDB(profile);
-        if (!dbSaved) {
-            console.warn('Profile DB save failed - falling back to local JSON only');
+        // 1. Set persistent Cookie in response (instant, guaranteed persistence across all Vercel instances)
+        setUserProfileCookie(res, profile);
+
+        // 2. Persist to Supabase DB (if profiles table exists)
+        await writeProfileToDB(profile);
+
+        // 3. Sync to Supabase Auth cloud metadata via direct REST API
+        if (supabaseUrl && supabaseKey && req.cookies?.auth_token) {
+            try {
+                const profileMetadata = {
+                    name: profile.name,
+                    username: profile.username,
+                    bio: profile.bio,
+                    phone: profile.phone,
+                    avatar: profile.avatar,
+                    cover: profile.cover,
+                    location: profile.location,
+                    website: profile.website,
+                    social: profile.social,
+                    notifications: profile.notifications,
+                    privacy: profile.privacy
+                };
+                fetch(`${supabaseUrl}/auth/v1/user`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": supabaseKey,
+                        "Authorization": `Bearer ${req.cookies.auth_token}`
+                    },
+                    body: JSON.stringify({ data: profileMetadata })
+                }).catch(err => {
+                    console.warn("Supabase background metadata sync:", err.message);
+                });
+            } catch (sbErr) {
+                console.warn("Supabase user_metadata sync notice:", sbErr.message);
+            }
         }
 
         // Update live user session reference immediately
@@ -1398,6 +1508,7 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             if (profile.name) req.user.name = profile.name;
             if (profile.avatar !== undefined) req.user.avatar = profile.avatar;
             if (profile.username) req.user.username = profile.username;
+            req.user.profile = profile;
         }
 
         res.json({ success: true, profile });
@@ -1512,7 +1623,7 @@ app.post("/api/profile/follow/:userId", requireAuth, async (req, res) => {
 // GET /api/profile/export: Export User Data JSON
 app.get("/api/profile/export", requireAuth, async (req, res) => {
     try {
-        const profile = await getOrCreateProfile(req.user);
+        const profile = await getOrCreateProfile(req.user, req);
         const allPosts = await getAllPosts();
         const userPosts = allPosts.filter(p => p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase());
         const bookmarks = await readBookmarks();
