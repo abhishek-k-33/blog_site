@@ -348,7 +348,7 @@
     }
     if (btnRemoveAvatar) {
         btnRemoveAvatar.addEventListener('click', () => {
-            avatarHiddenInput.value = '';
+            avatarHiddenInput.value = '__REMOVE__';
             const initial = (document.getElementById('setting-name')?.value || 'U').charAt(0).toUpperCase();
             avatarPreviewContainer.innerHTML = `<div class="media-avatar-initial">${initial}</div>`;
             btnRemoveAvatar.style.display = 'none';

@@ -513,6 +513,10 @@ const recordPostClap = async (postId, count = 1) => {
 const getOrCreateProfile = async (user, req = null) => {
     if (!user) return null;
 
+    const meta = user.user_metadata || {};
+    const metaSocial = meta.social || (meta.twitter ? { twitter: meta.twitter } : null);
+    const googleAvatar = meta.avatar_url || meta.picture || meta.avatar || user.avatar || user.picture || null;
+
     // 1. Try browser profile cookie first (fastest, 100% persistent across Vercel serverless requests)
     if (req) {
         const cookieProfile = getProfileFromCookie(req, user.id, user.email);
@@ -531,6 +535,9 @@ const getOrCreateProfile = async (user, req = null) => {
                     }
                 } catch (e) {}
             }
+            if (!cookieProfile.avatar && googleAvatar) {
+                cookieProfile.avatar = googleAvatar;
+            }
             return cookieProfile;
         }
     }
@@ -541,15 +548,15 @@ const getOrCreateProfile = async (user, req = null) => {
         dbProfile.id = user.id;
         if (user.email) dbProfile.email = user.email;
         if (!dbProfile.social) dbProfile.social = {};
+        if (!dbProfile.avatar && googleAvatar) {
+            dbProfile.avatar = googleAvatar;
+        }
         return dbProfile;
     }
 
     // 3. Fall back to local JSON file
     const profiles = await readProfiles();
     let profile = profiles.find(p => p.id === user.id || (user.email && p.email && p.email.toLowerCase() === user.email.toLowerCase()));
-
-    const meta = user.user_metadata || {};
-    const metaSocial = meta.social || (meta.twitter ? { twitter: meta.twitter } : null);
 
     if (!profile) {
         const usernameBase = meta.username || (user.email ? user.email.split("@")[0] : user.name || "author").toLowerCase().replace(/[^a-z0-9_]/g, "");
@@ -560,7 +567,7 @@ const getOrCreateProfile = async (user, req = null) => {
             email: user.email || "",
             phone: meta.phone || "",
             bio: meta.bio || "",
-            avatar: meta.avatar || user.avatar || null,
+            avatar: googleAvatar,
             cover: meta.cover || null,
             location: meta.location || "",
             website: meta.website || "",
@@ -578,7 +585,7 @@ const getOrCreateProfile = async (user, req = null) => {
         await writeProfileToDB(profile);
     } else {
         if (!profile.social) profile.social = metaSocial || {};
-        if (user.avatar && !profile.avatar) profile.avatar = user.avatar;
+        if (!profile.avatar && googleAvatar) profile.avatar = googleAvatar;
     }
     return profile;
 };
@@ -752,8 +759,12 @@ app.use(async (req, res, next) => {
                 }
 
                 if (profile) {
+                    const googleAvatar = req.user.avatar || req.user.user_metadata?.avatar_url || req.user.user_metadata?.picture || null;
                     if (profile.name) req.user.name = profile.name;
-                    if (profile.avatar) req.user.avatar = profile.avatar;
+                    if (!profile.avatar && googleAvatar) {
+                        profile.avatar = googleAvatar;
+                    }
+                    req.user.avatar = profile.avatar || googleAvatar || null;
                     if (profile.username) req.user.username = profile.username;
                     req.user.profile = profile;
                     res.locals.user = req.user;
@@ -1846,6 +1857,7 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             profile = await getOrCreateProfile(req.user, req);
         }
 
+        const googleAvatar = req.user?.user_metadata?.avatar_url || req.user?.user_metadata?.picture || req.user?.user_metadata?.avatar || req.user?.avatar || null;
         if (name !== undefined && name.trim()) profile.name = name.trim();
         if (username !== undefined && username.trim()) profile.username = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
         if (phone !== undefined) profile.phone = phone ? phone.trim() : "";
@@ -1853,11 +1865,16 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         if (avatar !== undefined) {
             if (avatar && typeof avatar === "string" && avatar.startsWith("data:image/")) {
                 profile.avatar = await saveBase64Image(avatar, "avatar", req.user.id);
-            } else if (avatar && typeof avatar === "string" && avatar.trim()) {
+            } else if (avatar && typeof avatar === "string" && avatar.trim() && avatar !== "__REMOVE__") {
                 profile.avatar = avatar.trim();
-            } else if (avatar === "" || avatar === null) {
+            } else if (avatar === "__REMOVE__") {
                 profile.avatar = null;
+            } else if (!profile.avatar && googleAvatar) {
+                profile.avatar = googleAvatar;
             }
+        }
+        if (!profile.avatar && googleAvatar) {
+            profile.avatar = googleAvatar;
         }
         if (cover !== undefined) {
             if (cover && typeof cover === "string" && cover.startsWith("data:image/")) {
