@@ -247,6 +247,34 @@ const verifyLocalToken = (token) => {
     }
 };
 
+const decodeSupabaseJWT = (token) => {
+    try {
+        if (!token || typeof token !== "string") return null;
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
+        if (!payload || !payload.sub) return null;
+        if (payload.exp && (payload.exp * 1000) < Date.now()) return null; // expired
+
+        const isGoogle = payload.app_metadata?.provider === "google" ||
+                         (Array.isArray(payload.identities) && payload.identities.some(i => i.provider === "google")) ||
+                         Boolean(payload.user_metadata?.iss?.includes("google") || payload.user_metadata?.avatar_url?.includes("googleusercontent.com") || payload.user_metadata?.picture?.includes("googleusercontent.com"));
+
+        return {
+            id: payload.sub,
+            email: payload.email,
+            name: payload.user_metadata?.name || payload.user_metadata?.display_name || payload.user_metadata?.full_name || (payload.email ? payload.email.split("@")[0] : "Author"),
+            avatar: payload.user_metadata?.avatar || payload.user_metadata?.avatar_url || payload.user_metadata?.picture || null,
+            username: payload.user_metadata?.username || null,
+            user_metadata: payload.user_metadata || {},
+            isGoogleUser: isGoogle,
+            provider: isGoogle ? "google" : (payload.app_metadata?.provider || "email")
+        };
+    } catch (e) {
+        return null;
+    }
+};
+
 const readLocalUsers = async () => {
     return readJSONSafe("users.json", []);
 };
@@ -674,7 +702,12 @@ app.use(async (req, res, next) => {
     res.locals.user = null;
 
     if (token) {
-        if (supabase) {
+        // Fast local JWT decode first (sub-0.1ms)
+        const fastUser = decodeSupabaseJWT(token);
+        if (fastUser) {
+            req.user = fastUser;
+            res.locals.user = fastUser;
+        } else if (supabase) {
             try {
                 const { data: { user }, error } = await supabase.auth.getUser(token);
                 if (user && !error) {
@@ -1454,7 +1487,13 @@ app.post("/api/auth/session", async (req, res) => {
     const { token, refreshToken } = req.body;
     if (token) {
         setSessionCookies(res, token, refreshToken);
-        if (supabase) {
+        const decoded = decodeSupabaseJWT(token);
+        if (decoded) {
+            const profile = await getOrCreateProfile(decoded, req);
+            if (profile) {
+                setUserProfileCookie(res, profile);
+            }
+        } else if (supabase) {
             try {
                 const { data: { user } } = await supabase.auth.getUser(token);
                 if (user) {
