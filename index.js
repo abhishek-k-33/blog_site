@@ -1344,12 +1344,84 @@ app.get("/explore", (req, res) => {
         secure: process.env.NODE_ENV === "production",
         maxAge: 7 * 24 * 60 * 60 * 1000,
         sameSite: "lax",
-        path: "/"
+                path: "/"
     });
     res.redirect("/?guest=true");
 });
 
 // --- PROFILE & SETTINGS ROUTES ---
+
+const getUserNetwork = async (profileId, currentUserId = null) => {
+    const follows = await readFollows();
+    const profiles = await readProfiles();
+    const users = await readLocalUsers();
+
+    const findProfile = (id) => {
+        let p = profiles.find(pr => pr.id === id || (pr.email && pr.email.toLowerCase() === String(id).toLowerCase()));
+        if (!p) {
+            const u = users.find(usr => usr.id === id || (usr.email && usr.email.toLowerCase() === String(id).toLowerCase()));
+            if (u) {
+                p = {
+                    id: u.id,
+                    name: u.name || u.email.split("@")[0],
+                    username: u.email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                    email: u.email,
+                    avatar: null,
+                    bio: "Creator on BlogSite"
+                };
+            }
+        }
+        return p || {
+            id,
+            name: "Community Member",
+            username: "user_" + String(id).substring(0, 6),
+            avatar: null,
+            bio: ""
+        };
+    };
+
+    // People following profileId
+    const followerRecords = follows.filter(f => f.followingId === profileId);
+    // People profileId is following
+    const followingRecords = follows.filter(f => f.followerId === profileId);
+
+    const followers = followerRecords.map(f => {
+        const p = findProfile(f.followerId);
+        // Is mutual friend: profileId also follows this person
+        const isMutualFriend = followingRecords.some(fg => fg.followingId === f.followerId);
+        const isFollowedByCurrentUser = currentUserId ? follows.some(cf => cf.followerId === currentUserId && cf.followingId === p.id) : false;
+        return {
+            id: p.id,
+            name: p.name,
+            username: p.username || (p.name || "user").toLowerCase().replace(/[^a-z0-9_]/g, ""),
+            avatar: p.avatar || null,
+            bio: p.bio || "",
+            isFriend: isMutualFriend,
+            isFollowedByCurrentUser,
+            isSelf: currentUserId ? (currentUserId === p.id) : false
+        };
+    });
+
+    const following = followingRecords.map(f => {
+        const p = findProfile(f.followingId);
+        // Is mutual friend: this person also follows profileId
+        const isMutualFriend = followerRecords.some(fr => fr.followerId === f.followingId);
+        const isFollowedByCurrentUser = currentUserId ? follows.some(cf => cf.followerId === currentUserId && cf.followingId === p.id) : false;
+        return {
+            id: p.id,
+            name: p.name,
+            username: p.username || (p.name || "user").toLowerCase().replace(/[^a-z0-9_]/g, ""),
+            avatar: p.avatar || null,
+            bio: p.bio || "",
+            isFriend: isMutualFriend,
+            isFollowedByCurrentUser,
+            isSelf: currentUserId ? (currentUserId === p.id) : false
+        };
+    });
+
+    return { followers, following };
+};
+
 // GET /profile: View Current Authenticated User's Profile
 app.get("/profile", requireAuth, async (req, res, next) => {
     try {
@@ -1373,6 +1445,7 @@ app.get("/profile", requireAuth, async (req, res, next) => {
         const follows = await readFollows();
         const followersCount = follows.filter(f => f.followingId === profile.id).length;
         const followingCount = follows.filter(f => f.followerId === profile.id).length;
+        const { followers: followersList, following: followingList } = await getUserNetwork(profile.id, req.user?.id);
 
         const analytics = await readAnalytics();
         let totalReads = 0;
@@ -1409,6 +1482,8 @@ app.get("/profile", requireAuth, async (req, res, next) => {
             publishedPosts,
             drafts,
             bookmarks,
+            followersList,
+            followingList,
             stats,
             user: req.user
         });
@@ -1453,6 +1528,7 @@ app.get("/profile/:identifier", async (req, res, next) => {
         const followersCount = follows.filter(f => f.followingId === profile.id).length;
         const followingCount = follows.filter(f => f.followerId === profile.id).length;
         const isFollowing = req.user ? follows.some(f => f.followerId === req.user.id && f.followingId === profile.id) : false;
+        const { followers: followersList, following: followingList } = await getUserNetwork(profile.id, req.user?.id);
 
         const analytics = await readAnalytics();
         let totalReads = 0;
@@ -1489,6 +1565,8 @@ app.get("/profile/:identifier", async (req, res, next) => {
             publishedPosts,
             drafts,
             bookmarks,
+            followersList,
+            followingList,
             stats,
             user: req.user
         });

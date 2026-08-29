@@ -98,13 +98,13 @@
 
             <!-- Engagement Stats Grid -->
             <div class="profile-stats-grid">
-                <div class="profile-stat-box">
+                <div class="profile-stat-box is-network-clickable" id="stat-followers-box" role="button" tabindex="0" title="Click to view followers list" aria-label="View followers list">
                     <div class="stat-value" id="followers-count"><%= stats.followersCount || 0 %></div>
-                    <div class="stat-label">Followers</div>
+                    <div class="stat-label">Followers ↗</div>
                 </div>
-                <div class="profile-stat-box">
-                    <div class="stat-value"><%= stats.followingCount || 0 %></div>
-                    <div class="stat-label">Following</div>
+                <div class="profile-stat-box is-network-clickable" id="stat-following-box" role="button" tabindex="0" title="Click to view following list" aria-label="View following list">
+                    <div class="stat-value" id="following-count"><%= stats.followingCount || 0 %></div>
+                    <div class="stat-label">Following ↗</div>
                 </div>
                 <div class="profile-stat-box">
                     <div class="stat-value"><%= publishedPosts.length %></div>
@@ -303,6 +303,404 @@
     <% } %>
 </div>
 
+<!-- ==================== FOLLOWERS / FOLLOWING NETWORK MODAL ==================== -->
+<div class="network-modal-backdrop" id="network-modal" style="display:none;" aria-hidden="true">
+    <div class="network-modal-card" role="dialog" aria-modal="true" aria-labelledby="network-modal-title">
+        <div class="network-modal-header">
+            <div class="network-modal-tabs">
+                <button type="button" class="network-tab-btn is-active" id="modal-tab-followers" data-view="followers">
+                    <span>Followers</span>
+                    <span class="network-tab-badge" id="modal-followers-badge"><%= (typeof followersList !== 'undefined') ? followersList.length : 0 %></span>
+                </button>
+                <button type="button" class="network-tab-btn" id="modal-tab-following" data-view="following">
+                    <span>Following</span>
+                    <span class="network-tab-badge" id="modal-following-badge"><%= (typeof followingList !== 'undefined') ? followingList.length : 0 %></span>
+                </button>
+            </div>
+            <button type="button" class="network-modal-close" id="close-network-modal" aria-label="Close modal">✕</button>
+        </div>
+
+        <div class="network-modal-search">
+            <input type="text" id="network-search-input" class="network-search-field" placeholder="Search people by name or @username...">
+        </div>
+
+        <div class="network-modal-body">
+            <!-- Followers List -->
+            <div class="network-user-list" id="network-list-followers">
+                <% if (typeof followersList !== 'undefined' && followersList.length > 0) { %>
+                    <% followersList.forEach(userItem => { %>
+                        <div class="network-user-card" data-name="<%= (userItem.name || '').toLowerCase() %>" data-username="<%= (userItem.username || '').toLowerCase() %>">
+                            <a href="/profile/<%= encodeURIComponent(userItem.username || userItem.id) %>" class="network-user-avatar-link">
+                                <% if (userItem.avatar) { %>
+                                    <img src="<%= userItem.avatar %>" alt="<%= userItem.name %>" class="network-user-avatar-img">
+                                <% } else { %>
+                                    <div class="network-user-avatar-initial"><%= (userItem.name || 'U').charAt(0).toUpperCase() %></div>
+                                <% } %>
+                            </a>
+                            <div class="network-user-info">
+                                <div class="network-user-name-row">
+                                    <a href="/profile/<%= encodeURIComponent(userItem.username || userItem.id) %>" class="network-user-name">
+                                        <%= userItem.name %>
+                                    </a>
+                                    <% if (userItem.isFriend) { %>
+                                        <span class="friend-badge" title="You both follow each other">🤝 Friend</span>
+                                    <% } %>
+                                </div>
+                                <span class="network-user-handle">@<%= userItem.username %></span>
+                                <% if (userItem.bio) { %>
+                                    <p class="network-user-bio"><%= userItem.bio.substring(0, 80) %><%= userItem.bio.length > 80 ? '...' : '' %></p>
+                                <% } %>
+                            </div>
+                            <div class="network-user-action">
+                                <a href="/profile/<%= encodeURIComponent(userItem.username || userItem.id) %>" class="btn-network-view">View</a>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div class="network-empty-state">
+                        <p>No followers yet.</p>
+                    </div>
+                <% } %>
+            </div>
+
+            <!-- Following List -->
+            <div class="network-user-list" id="network-list-following" style="display: none;">
+                <% if (typeof followingList !== 'undefined' && followingList.length > 0) { %>
+                    <% followingList.forEach(userItem => { %>
+                        <div class="network-user-card" data-name="<%= (userItem.name || '').toLowerCase() %>" data-username="<%= (userItem.username || '').toLowerCase() %>">
+                            <a href="/profile/<%= encodeURIComponent(userItem.username || userItem.id) %>" class="network-user-avatar-link">
+                                <% if (userItem.avatar) { %>
+                                    <img src="<%= userItem.avatar %>" alt="<%= userItem.name %>" class="network-user-avatar-img">
+                                <% } else { %>
+                                    <div class="network-user-avatar-initial"><%= (userItem.name || 'U').charAt(0).toUpperCase() %></div>
+                                <% } %>
+                            </a>
+                            <div class="network-user-info">
+                                <div class="network-user-name-row">
+                                    <a href="/profile/<%= encodeURIComponent(userItem.username || userItem.id) %>" class="network-user-name">
+                                        <%= userItem.name %>
+                                    </a>
+                                    <% if (userItem.isFriend) { %>
+                                        <span class="friend-badge" title="You both follow each other">🤝 Friend</span>
+                                    <% } %>
+                                </div>
+                                <span class="network-user-handle">@<%= userItem.username %></span>
+                                <% if (userItem.bio) { %>
+                                    <p class="network-user-bio"><%= userItem.bio.substring(0, 80) %><%= userItem.bio.length > 80 ? '...' : '' %></p>
+                                <% } %>
+                            </div>
+                            <div class="network-user-action">
+                                <a href="/profile/<%= encodeURIComponent(userItem.username || userItem.id) %>" class="btn-network-view">View</a>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div class="network-empty-state">
+                        <p>Not following anyone yet.</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Clickable Stat Boxes */
+.profile-stat-box.is-network-clickable {
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    position: relative;
+    user-select: none;
+}
+.profile-stat-box.is-network-clickable:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-color);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    background: rgba(255, 138, 0, 0.05);
+}
+.profile-stat-box.is-network-clickable:active {
+    transform: scale(0.97);
+}
+
+/* Network Modal Backdrop */
+.network-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.network-modal-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Network Modal Card */
+.network-modal-card {
+    background: #18181b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    transform: translateY(16px) scale(0.98);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body:not(.dark-mode) .network-modal-card {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.1);
+}
+.network-modal-backdrop.is-open .network-modal-card {
+    transform: translateY(0) scale(1);
+}
+
+/* Header & Tabs */
+.network-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 0 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+body:not(.dark-mode) .network-modal-header {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+.network-modal-tabs {
+    display: flex;
+    gap: 8px;
+}
+.network-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 16px 14px 16px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+body:not(.dark-mode) .network-tab-btn {
+    color: rgba(0, 0, 0, 0.55);
+}
+.network-tab-btn.is-active {
+    color: #ffffff;
+    border-bottom-color: var(--accent-color);
+}
+body:not(.dark-mode) .network-tab-btn.is-active {
+    color: #18181b;
+}
+.network-tab-badge {
+    font-size: 0.75rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: inherit;
+}
+body:not(.dark-mode) .network-tab-badge {
+    background: rgba(0, 0, 0, 0.08);
+}
+.network-modal-close {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: color 0.15s, background 0.15s;
+}
+.network-modal-close:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Search Box */
+.network-modal-search {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+body:not(.dark-mode) .network-modal-search {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+.network-search-field {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 0.88rem;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+body:not(.dark-mode) .network-search-field {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #18181b;
+}
+.network-search-field:focus {
+    border-color: var(--accent-color);
+}
+
+/* Modal Body / User List */
+.network-modal-body {
+    padding: 8px 12px;
+    overflow-y: auto;
+    max-height: calc(85vh - 140px);
+}
+.network-user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.network-user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    transition: background 0.15s ease;
+}
+.network-user-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+body:not(.dark-mode) .network-user-card:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+.network-user-avatar-link {
+    text-decoration: none;
+    flex-shrink: 0;
+}
+.network-user-avatar-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.network-user-avatar-initial {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF8A00 0%, #F59E0B 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+.network-user-info {
+    flex: 1;
+    min-width: 0;
+}
+.network-user-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.network-user-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #ffffff;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body:not(.dark-mode) .network-user-name {
+    color: #18181b;
+}
+.network-user-name:hover {
+    color: var(--accent-color);
+}
+.friend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(34, 197, 94, 0.25) 100%);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    box-shadow: 0 2px 6px rgba(74, 222, 128, 0.15);
+}
+.network-user-handle {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    display: block;
+}
+body:not(.dark-mode) .network-user-handle {
+    color: rgba(0, 0, 0, 0.5);
+}
+.network-user-bio {
+    margin: 4px 0 0 0;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body:not(.dark-mode) .network-user-bio {
+    color: rgba(0, 0, 0, 0.65);
+}
+.btn-network-view {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    text-decoration: none;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+body:not(.dark-mode) .btn-network-view {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #18181b;
+}
+.btn-network-view:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+.network-empty-state {
+    padding: 32px 16px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.9rem;
+}
+body:not(.dark-mode) .network-empty-state {
+    color: rgba(0, 0, 0, 0.45);
+}
+</style>
+
 <script>
     // Tab Switcher Controller
     document.querySelectorAll('.profile-tab-btn').forEach(btn => {
@@ -359,6 +757,105 @@
                 console.error('Follow error:', e);
             }
         });
+    }
+
+    // =========================================
+    // Followers & Following Network Modal
+    // =========================================
+    const networkModal = document.getElementById('network-modal');
+    const btnStatFollowers = document.getElementById('stat-followers-box');
+    const btnStatFollowing = document.getElementById('stat-following-box');
+    const btnCloseNetworkModal = document.getElementById('close-network-modal');
+    const modalTabFollowers = document.getElementById('modal-tab-followers');
+    const modalTabFollowing = document.getElementById('modal-tab-following');
+    const listFollowers = document.getElementById('network-list-followers');
+    const listFollowing = document.getElementById('network-list-following');
+    const networkSearchInput = document.getElementById('network-search-input');
+
+    function openNetworkModal(view = 'followers') {
+        if (!networkModal) return;
+        networkModal.style.display = 'flex';
+        // Force reflow for animation
+        void networkModal.offsetWidth;
+        networkModal.classList.add('is-open');
+        networkModal.setAttribute('aria-hidden', 'false');
+        switchNetworkView(view);
+        if (networkSearchInput) {
+            networkSearchInput.value = '';
+            filterNetworkList('');
+            networkSearchInput.focus();
+        }
+    }
+
+    function closeNetworkModal() {
+        if (!networkModal) return;
+        networkModal.classList.remove('is-open');
+        networkModal.setAttribute('aria-hidden', 'true');
+        setTimeout(() => {
+            networkModal.style.display = 'none';
+        }, 220);
+    }
+
+    function switchNetworkView(view) {
+        if (view === 'followers') {
+            if (modalTabFollowers) modalTabFollowers.classList.add('is-active');
+            if (modalTabFollowing) modalTabFollowing.classList.remove('is-active');
+            if (listFollowers) listFollowers.style.display = 'flex';
+            if (listFollowing) listFollowing.style.display = 'none';
+        } else {
+            if (modalTabFollowing) modalTabFollowing.classList.add('is-active');
+            if (modalTabFollowers) modalTabFollowers.classList.remove('is-active');
+            if (listFollowing) listFollowing.style.display = 'flex';
+            if (listFollowers) listFollowers.style.display = 'none';
+        }
+        if (networkSearchInput) filterNetworkList(networkSearchInput.value);
+    }
+
+    function filterNetworkList(query) {
+        const cleanQ = (query || '').toLowerCase().trim();
+        const activeList = listFollowers?.style.display !== 'none' ? listFollowers : listFollowing;
+        if (!activeList) return;
+        const cards = activeList.querySelectorAll('.network-user-card');
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name') || '';
+            const username = card.getAttribute('data-username') || '';
+            if (!cleanQ || name.includes(cleanQ) || username.includes(cleanQ)) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    if (btnStatFollowers) {
+        btnStatFollowers.addEventListener('click', () => openNetworkModal('followers'));
+        btnStatFollowers.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openNetworkModal('followers'); });
+    }
+    if (btnStatFollowing) {
+        btnStatFollowing.addEventListener('click', () => openNetworkModal('following'));
+        btnStatFollowing.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openNetworkModal('following'); });
+    }
+    if (btnCloseNetworkModal) {
+        btnCloseNetworkModal.addEventListener('click', closeNetworkModal);
+    }
+    if (networkModal) {
+        networkModal.addEventListener('click', (e) => {
+            if (e.target === networkModal) closeNetworkModal();
+        });
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && networkModal?.classList.contains('is-open')) {
+            closeNetworkModal();
+        }
+    });
+    if (modalTabFollowers) {
+        modalTabFollowers.addEventListener('click', () => switchNetworkView('followers'));
+    }
+    if (modalTabFollowing) {
+        modalTabFollowing.addEventListener('click', () => switchNetworkView('following'));
+    }
+    if (networkSearchInput) {
+        networkSearchInput.addEventListener('input', (e) => filterNetworkList(e.target.value));
     }
 </script>
 
