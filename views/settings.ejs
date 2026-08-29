@@ -4,7 +4,7 @@
 <div class="settings-container">
     <div class="settings-header-banner">
         <h1 class="settings-header-title">Account & Profile Settings</h1>
-        <p class="settings-header-desc">Manage your public persona, security credentials, notifications, monetization, and data privacy.</p>
+        <p class="settings-header-desc">Manage your public persona, security credentials, monetization, and data privacy.</p>
     </div>
 
     <div class="settings-layout">
@@ -17,10 +17,6 @@
             <button class="settings-nav-item" data-tab="security" role="tab" aria-selected="false">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                 <span>Security & Sessions</span>
-            </button>
-            <button class="settings-nav-item" data-tab="notifications" role="tab" aria-selected="false">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                <span>Notifications</span>
             </button>
             <button class="settings-nav-item" data-tab="monetization" role="tab" aria-selected="false">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -219,57 +215,7 @@
                 </div>
             </div>
 
-            <!-- ========== TAB 3: NOTIFICATIONS ========== -->
-            <div class="settings-tab-panel" id="settings-panel-notifications" style="display:none;">
-                <h2 class="settings-section-title">Notification Preferences</h2>
-                <p class="settings-section-desc">Choose what updates and digests you receive in your inbox and browser. Toggles save automatically.</p>
-
-                <div class="settings-toggle-row">
-                    <div class="toggle-info">
-                        <h4>Story Comments & Responses</h4>
-                        <p>Receive email notifications when someone leaves a comment on your stories.</p>
-                    </div>
-                    <label class="theme-switch">
-                        <input type="checkbox" <%= (profile.notifications && profile.notifications.comments !== false) ? 'checked' : '' %> id="notif-comments">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-
-                <div class="settings-toggle-row">
-                    <div class="toggle-info">
-                        <h4>New Followers & Claps</h4>
-                        <p>Get notified when a fellow reader follows your profile or applauds your article.</p>
-                    </div>
-                    <label class="theme-switch">
-                        <input type="checkbox" <%= (profile.notifications && profile.notifications.followers !== false) ? 'checked' : '' %> id="notif-followers">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-
-                <div class="settings-toggle-row">
-                    <div class="toggle-info">
-                        <h4>Weekly Digest & Highlights</h4>
-                        <p>A weekly roundup of trending stories tailored to your interests.</p>
-                    </div>
-                    <label class="theme-switch">
-                        <input type="checkbox" <%= (profile.notifications && profile.notifications.digest !== false) ? 'checked' : '' %> id="notif-digest">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-
-                <div class="settings-toggle-row">
-                    <div class="toggle-info">
-                        <h4>Web & Mobile Push Alerts</h4>
-                        <p>Instant browser push notifications for breaking story updates.</p>
-                    </div>
-                    <label class="theme-switch">
-                        <input type="checkbox" <%= (profile.notifications && profile.notifications.push === true) ? 'checked' : '' %> id="notif-push">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- ========== TAB 4: MONETIZATION & PAYOUTS ========== -->
+            <!-- ========== TAB 3: MONETIZATION & PAYOUTS ========== -->
             <div class="settings-tab-panel" id="settings-panel-monetization" style="display:none;">
                 <h2 class="settings-section-title">Creator Monetization & Subscriptions</h2>
                 <p class="settings-section-desc">Earn revenue based on reading time and member applause from your published stories.</p>
@@ -542,10 +488,6 @@
 
     // Auto-Save Preference Toggles Handler
     async function autoSavePreferences() {
-        const notifComments = document.getElementById('notif-comments')?.checked ?? true;
-        const notifFollowers = document.getElementById('notif-followers')?.checked ?? true;
-        const notifDigest = document.getElementById('notif-digest')?.checked ?? true;
-        const notifPush = document.getElementById('notif-push')?.checked ?? false;
         const privacyVisibility = document.getElementById('privacy-visibility')?.checked ?? true;
 
         try {
@@ -553,12 +495,6 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    notifications: {
-                        comments: notifComments,
-                        followers: notifFollowers,
-                        digest: notifDigest,
-                        push: notifPush
-                    },
                     privacy: {
                         isPublic: privacyVisibility
                     }
@@ -574,10 +510,8 @@
         }
     }
 
-    ['notif-comments', 'notif-followers', 'notif-digest', 'notif-push', 'privacy-visibility'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', autoSavePreferences);
-    });
+    const privacyToggle = document.getElementById('privacy-visibility');
+    if (privacyToggle) privacyToggle.addEventListener('change', autoSavePreferences);
 
     // Save Profile Form
     const profileForm = document.getElementById('profile-general-form');
@@ -598,12 +532,6 @@
                 location: document.getElementById('setting-location').value,
                 website: document.getElementById('setting-website').value,
                 twitter: document.getElementById('setting-twitter').value,
-                notifications: {
-                    comments: document.getElementById('notif-comments')?.checked ?? true,
-                    followers: document.getElementById('notif-followers')?.checked ?? true,
-                    digest: document.getElementById('notif-digest')?.checked ?? true,
-                    push: document.getElementById('notif-push')?.checked ?? false
-                },
                 privacy: {
                     isPublic: document.getElementById('privacy-visibility')?.checked ?? true
                 }
