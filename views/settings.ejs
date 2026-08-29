@@ -377,6 +377,9 @@
     const coverFileInput = document.getElementById('cover-file-input');
     const coverHiddenInput = document.getElementById('setting-cover');
     const coverDropzone = document.getElementById('media-cover-dropzone');
+    const btnUploadCover = document.getElementById('btn-upload-cover');
+    const btnRemoveCover = document.getElementById('btn-remove-cover');
+
     function compressImageFile(file, maxWidth, maxHeight, quality, callback) {
         if (!file || !file.type.startsWith('image/')) {
             alert('Please select a valid image file (JPG, PNG, GIF, or WebP).');
