@@ -566,6 +566,14 @@ const getOrCreateProfile = async (user, req = null) => {
             if (!cookieProfile.avatar && googleAvatar) {
                 cookieProfile.avatar = googleAvatar;
             }
+            // Ensure cookieProfile is registered in global profiles state
+            readProfiles().then(profiles => {
+                const idx = profiles.findIndex(p => p.id === user.id || (user.email && p.email && p.email.toLowerCase() === user.email.toLowerCase()));
+                if (idx === -1) {
+                    profiles.push(cookieProfile);
+                    writeProfiles(profiles).catch(() => {});
+                }
+            }).catch(() => {});
             return cookieProfile;
         }
     }
@@ -1559,6 +1567,8 @@ const getUserNetwork = async (profileId, currentUserId = null) => {
         getAllPosts()
     ]);
 
+    const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
     const findProfile = (id) => {
         const cleanId = String(id || "").toLowerCase();
         const strippedId = cleanId.replace(/^user_/, "");
@@ -1603,9 +1613,14 @@ const getUserNetwork = async (profileId, currentUserId = null) => {
                 };
             }
         }
-        const displayName = p?.name || (strippedId.charAt(0).toUpperCase() + strippedId.slice(1)) || "Author";
-        const displayUsername = p?.username || strippedId || (String(id).toLowerCase().replace(/[^a-z0-9_]/g, ""));
-        return p || {
+
+        if (p) return p;
+
+        const isRawUUID = isUUID(strippedId) || isUUID(id);
+        const displayName = isRawUUID ? "Reader" : (strippedId.charAt(0).toUpperCase() + strippedId.slice(1));
+        const displayUsername = isRawUUID ? `reader_${strippedId.substring(0, 6)}` : strippedId;
+
+        return {
             id: strippedId || id,
             name: displayName,
             username: displayUsername,
