@@ -5,4 +5,7 @@ node_modules/
 data.json
 profiles.json
 users.json
+analytics.json
+follows.json
+bookmarks.json
 

@@ -34,6 +34,7 @@ const USERS_FILE = path.join(__dirname, "users.json");
 const PROFILES_FILE = path.join(__dirname, "profiles.json");
 const FOLLOWS_FILE = path.join(__dirname, "follows.json");
 const BOOKMARKS_FILE = path.join(__dirname, "bookmarks.json");
+const ANALYTICS_FILE = path.join(__dirname, "analytics.json");
 
 // Local Auth Secret & Salt
 const AUTH_SECRET = process.env.AUTH_SECRET || "miniblogs_secure_dev_secret_key_2026";
@@ -240,6 +241,59 @@ const writeBookmarks = async (bookmarks) => {
         await fs.writeFile(BOOKMARKS_FILE, JSON.stringify(bookmarks, null, 2), "utf-8");
     } catch (e) {
         console.error("Error writing bookmarks file:", e);
+    }
+};
+
+// --- REAL ANALYTICS ENGINE (Story Views, Applause & Reading Time) ---
+const readAnalytics = async () => {
+    try {
+        if (fsSync.existsSync(ANALYTICS_FILE)) {
+            const data = await fs.readFile(ANALYTICS_FILE, "utf-8");
+            const parsed = JSON.parse(data);
+            return {
+                views: parsed.views || {},
+                claps: parsed.claps || {}
+            };
+        }
+    } catch (e) {
+        console.error("Error reading analytics file:", e);
+    }
+    return { views: {}, claps: {} };
+};
+
+const writeAnalytics = async (analytics) => {
+    try {
+        await fs.writeFile(ANALYTICS_FILE, JSON.stringify(analytics, null, 2), "utf-8");
+    } catch (e) {
+        console.error("Error writing analytics file:", e);
+    }
+};
+
+const recordPostView = async (postId) => {
+    if (!postId) return 0;
+    try {
+        const analytics = await readAnalytics();
+        const key = String(postId);
+        analytics.views[key] = (analytics.views[key] || 0) + 1;
+        await writeAnalytics(analytics);
+        return analytics.views[key];
+    } catch (e) {
+        console.error("Error recording post view:", e);
+        return 0;
+    }
+};
+
+const recordPostClap = async (postId, count = 1) => {
+    if (!postId) return 0;
+    try {
+        const analytics = await readAnalytics();
+        const key = String(postId);
+        analytics.claps[key] = (analytics.claps[key] || 0) + count;
+        await writeAnalytics(analytics);
+        return analytics.claps[key];
+    } catch (e) {
+        console.error("Error recording post clap:", e);
+        return 0;
     }
 };
 
@@ -968,14 +1022,7 @@ app.get(["/profile", "/profile/me"], requireAuth, async (req, res, next) => {
                    (p.author_id && p.author_id === profile.id);
         });
 
-        const drafts = [
-            {
-                id: "draft-1",
-                title: "The Architecture of Beautiful Typography in Digital Systems",
-                snippet: "Exploring how letterforms, optical line heights, and serif pairings elevate modern publications...",
-                formattedDate: "Yesterday"
-            }
-        ];
+        const drafts = [];
 
         const bookmarksData = await readBookmarks();
         const userBookmarks = bookmarksData.filter(b => b.userId === req.user.id);
@@ -988,11 +1035,32 @@ app.get(["/profile", "/profile/me"], requireAuth, async (req, res, next) => {
         const followersCount = follows.filter(f => f.followingId === profile.id).length;
         const followingCount = follows.filter(f => f.followerId === profile.id).length;
 
+        const analytics = await readAnalytics();
+        let totalReads = 0;
+        let totalApplause = 0;
+        let totalWords = 0;
+
+        publishedPosts.forEach(p => {
+            const pViews = analytics.views?.[String(p.id)] || 0;
+            const pClaps = analytics.claps?.[String(p.id)] || 0;
+            p.views = pViews;
+            p.claps = pClaps;
+            totalReads += pViews;
+            totalApplause += pClaps;
+            const words = (p.content || "").trim().split(/\s+/).filter(Boolean).length;
+            totalWords += words;
+        });
+
+        const readTimeHours = totalReads > 0 ? ((totalWords / 200) * totalReads / 60).toFixed(1) : "0.0";
+        const estimatedEarnings = (totalReads * 0.02).toFixed(2);
+
         const stats = {
-            followersCount: Math.max(followersCount, 18),
-            followingCount: Math.max(followingCount, 12),
-            totalReads: publishedPosts.length * 164 + 48,
-            totalApplause: publishedPosts.length * 52 + 19
+            followersCount,
+            followingCount,
+            totalReads,
+            totalApplause,
+            readTimeHours,
+            estimatedEarnings
         };
 
         res.render("profile.ejs", {
@@ -1033,14 +1101,7 @@ app.get("/profile/:identifier", async (req, res, next) => {
                    (p.author_id && p.author_id === profile.id);
         });
 
-        const drafts = isOwner ? [
-            {
-                id: "draft-1",
-                title: "The Architecture of Beautiful Typography in Digital Systems",
-                snippet: "Exploring how letterforms, optical line heights, and serif pairings elevate modern publications...",
-                formattedDate: "Yesterday"
-            }
-        ] : [];
+        const drafts = [];
 
         const bookmarksData = await readBookmarks();
         const userBookmarks = bookmarksData.filter(b => b.userId === profile.id);
@@ -1054,11 +1115,32 @@ app.get("/profile/:identifier", async (req, res, next) => {
         const followingCount = follows.filter(f => f.followerId === profile.id).length;
         const isFollowing = req.user ? follows.some(f => f.followerId === req.user.id && f.followingId === profile.id) : false;
 
+        const analytics = await readAnalytics();
+        let totalReads = 0;
+        let totalApplause = 0;
+        let totalWords = 0;
+
+        publishedPosts.forEach(p => {
+            const pViews = analytics.views?.[String(p.id)] || 0;
+            const pClaps = analytics.claps?.[String(p.id)] || 0;
+            p.views = pViews;
+            p.claps = pClaps;
+            totalReads += pViews;
+            totalApplause += pClaps;
+            const words = (p.content || "").trim().split(/\s+/).filter(Boolean).length;
+            totalWords += words;
+        });
+
+        const readTimeHours = totalReads > 0 ? ((totalWords / 200) * totalReads / 60).toFixed(1) : "0.0";
+        const estimatedEarnings = (totalReads * 0.02).toFixed(2);
+
         const stats = {
-            followersCount: Math.max(followersCount, 18),
-            followingCount: Math.max(followingCount, 12),
-            totalReads: publishedPosts.length * 164 + 48,
-            totalApplause: publishedPosts.length * 52 + 19
+            followersCount,
+            followingCount,
+            totalReads,
+            totalApplause,
+            readTimeHours,
+            estimatedEarnings
         };
 
         res.render("profile.ejs", {
@@ -1088,7 +1170,25 @@ app.get("/settings", requireAuth, async (req, res, next) => {
         );
         const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || req.ip;
         const currentSessionInfo = parseDeviceInfo(req.headers["user-agent"], clientIp);
-        res.render("settings.ejs", { profile, user: req.user, isGoogleUser, currentSessionInfo });
+
+        // Compute real author earnings for monetization tab
+        const allPosts = await getAllPosts();
+        const publishedPosts = allPosts.filter(p => {
+            return (p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase()) ||
+                   (p.author && profile.username && p.author.toLowerCase() === profile.username.toLowerCase()) ||
+                   (p.author_id && p.author_id === profile.id);
+        });
+        const analytics = await readAnalytics();
+        let totalReads = 0;
+        publishedPosts.forEach(p => {
+            totalReads += (analytics.views?.[String(p.id)] || 0);
+        });
+        const stats = {
+            totalReads,
+            estimatedEarnings: (totalReads * 0.02).toFixed(2)
+        };
+
+        res.render("settings.ejs", { profile, user: req.user, isGoogleUser, currentSessionInfo, stats });
     } catch (err) {
         next(err);
     }
@@ -1428,11 +1528,28 @@ app.post("/posts", requireAuth, async (req, res, next) => {
     }
 });
 
+// POST /api/posts/:id/clap: Record applause / clap
+app.post("/api/posts/:id/clap", async (req, res) => {
+    try {
+        const totalClaps = await recordPostClap(req.params.id, 1);
+        res.json({ success: true, totalClaps });
+    } catch (e) {
+        res.status(500).json({ error: "Could not record applause." });
+    }
+});
+
 // GET /posts/:id: View a single post
 app.get("/posts/:id", async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         if (post) {
+            // Record real reader view
+            await recordPostView(post.id);
+
+            const analytics = await readAnalytics();
+            post.views = analytics.views?.[String(post.id)] || 1;
+            post.claps = analytics.claps?.[String(post.id)] || 0;
+
             const allPosts = await getAllPosts();
             const postTags = (post.tags || []).map(t => t.toLowerCase());
             const relatedPosts = allPosts

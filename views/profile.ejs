@@ -102,11 +102,11 @@
                     <div class="stat-label">Published Stories</div>
                 </div>
                 <div class="profile-stat-box">
-                    <div class="stat-value"><%= stats.totalReads || (publishedPosts.length * 142) %></div>
+                    <div class="stat-value"><%= stats.totalReads || 0 %></div>
                     <div class="stat-label">Total Reads</div>
                 </div>
                 <div class="profile-stat-box">
-                    <div class="stat-value">👏 <%= stats.totalApplause || (publishedPosts.length * 48) %></div>
+                    <div class="stat-value">👏 <%= stats.totalApplause || 0 %></div>
                     <div class="stat-label">Applause</div>
                 </div>
             </div>
@@ -271,23 +271,23 @@
             <div class="analytics-dashboard-grid">
                 <div class="analytics-card">
                     <div class="analytics-title">Total Story Views</div>
-                    <div class="analytics-num"><%= (publishedPosts.length * 318) %></div>
-                    <div class="analytics-subtext">↑ +24% this month</div>
+                    <div class="analytics-num"><%= stats.totalReads || 0 %></div>
+                    <div class="analytics-subtext"><%= stats.totalReads > 0 ? 'Live reader traffic' : 'No views recorded yet' %></div>
                 </div>
                 <div class="analytics-card">
-                    <div class="analytics-title">Total Read Time</div>
-                    <div class="analytics-num"><%= (publishedPosts.length * 8.4).toFixed(1) %> <span style="font-size:1rem;font-weight:600;">hrs</span></div>
-                    <div class="analytics-subtext">Avg. 3.2m per reader</div>
+                    <div class="analytics-title">Estimated Total Read Time</div>
+                    <div class="analytics-num"><%= stats.readTimeHours || '0.0' %> <span style="font-size:1rem;font-weight:600;">hrs</span></div>
+                    <div class="analytics-subtext">Based on story length & reader traffic</div>
                 </div>
                 <div class="analytics-card">
                     <div class="analytics-title">Total Applause / Claps</div>
-                    <div class="analytics-num">👏 <%= (publishedPosts.length * 52) %></div>
-                    <div class="analytics-subtext">Top 5% author</div>
+                    <div class="analytics-num">👏 <%= stats.totalApplause || 0 %></div>
+                    <div class="analytics-subtext">Live reader applause</div>
                 </div>
                 <div class="analytics-card">
                     <div class="analytics-title">Estimated Partner Earnings</div>
-                    <div class="analytics-num">$<%= (publishedPosts.length * 28.50).toFixed(2) %></div>
-                    <div class="analytics-subtext">Payout: Stripe Connected</div>
+                    <div class="analytics-num">$<%= stats.estimatedEarnings || '0.00' %></div>
+                    <div class="analytics-subtext">Based on reader views ($0.02 / read)</div>
                 </div>
             </div>
         </div>

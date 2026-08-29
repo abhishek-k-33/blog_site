@@ -282,8 +282,8 @@
                     </div>
                     <div class="analytics-card">
                         <div class="analytics-title">Current Balance</div>
-                        <div class="analytics-num">$142.50</div>
-                        <div class="analytics-subtext">Next payout on 1st of month</div>
+                        <div class="analytics-num">$<%= (typeof stats !== 'undefined' && stats.estimatedEarnings) ? stats.estimatedEarnings : '0.00' %></div>
+                        <div class="analytics-subtext"><%= (typeof stats !== 'undefined' && stats.totalReads > 0) ? (stats.totalReads + ' total reads recorded') : 'No earnings accumulated yet' %></div>
                     </div>
                 </div>
 

@@ -74,6 +74,10 @@
                 </div>
 
                 <div class="post-actions">
+                    <button type="button" class="btn btn-secondary post-page-clap-btn" id="post-page-clap-btn" data-id="<%= post.id %>" title="Clap / Applaud story">
+                        <span class="clap-icon" style="font-size: 1.05rem; display: inline-block; transition: transform 0.2s cubic-bezier(0.16,1,0.3,1);">👏</span>
+                        <span class="clap-btn-text" id="post-clap-text"><%= typeof post.claps !== 'undefined' ? post.claps : 0 %> Claps</span>
+                    </button>
                     <button type="button" class="btn btn-secondary post-page-bookmark-btn" id="post-page-bookmark-btn" data-id="<%= post.id %>" data-title="<%= post.title %>" data-author="<%= post.author %>">
                         <svg class="post-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
@@ -266,8 +270,28 @@
             }).catch(() => {});
         }
 
-        if (copyBtn) copyBtn.addEventListener('click', triggerCopy);
-        if (sidebarCopyBtn) sidebarCopyBtn.addEventListener('click', triggerCopy);
+        // Interactive Clap / Applause Handler
+        const clapBtn = document.getElementById('post-page-clap-btn');
+        const clapText = document.getElementById('post-clap-text');
+        if (clapBtn) {
+            clapBtn.addEventListener('click', async () => {
+                const postId = clapBtn.getAttribute('data-id');
+                const icon = clapBtn.querySelector('.clap-icon');
+                if (icon) {
+                    icon.style.transform = 'scale(1.4) rotate(-15deg)';
+                    setTimeout(() => { icon.style.transform = 'scale(1) rotate(0deg)'; }, 250);
+                }
+                try {
+                    const res = await fetch('/api/posts/' + postId + '/clap', { method: 'POST' });
+                    const data = await res.json();
+                    if (res.ok && typeof data.totalClaps !== 'undefined') {
+                        if (clapText) clapText.textContent = data.totalClaps + ' Claps';
+                    }
+                } catch (e) {
+                    console.error('Error clapping:', e);
+                }
+            });
+        }
     });
 </script>
 
