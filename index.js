@@ -85,6 +85,29 @@ const parseDeviceInfo = (userAgent, ip) => {
     };
 };
 
+// Persistent Session Settings (1 Year Lifetime until Explicit Logout)
+const SESSION_COOKIE_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 365 days in ms
+
+const setSessionCookies = (res, accessToken, refreshToken = null) => {
+    const isProd = process.env.NODE_ENV === "production";
+    res.cookie("auth_token", accessToken, {
+        httpOnly: true,
+        secure: isProd,
+        maxAge: SESSION_COOKIE_MAX_AGE,
+        sameSite: "lax",
+        path: "/"
+    });
+    if (refreshToken) {
+        res.cookie("refresh_token", refreshToken, {
+            httpOnly: true,
+            secure: isProd,
+            maxAge: SESSION_COOKIE_MAX_AGE,
+            sameSite: "lax",
+            path: "/"
+        });
+    }
+};
+
 const generateLocalToken = (user) => {
     const payload = Buffer.from(JSON.stringify({
         id: user.id,
@@ -92,7 +115,7 @@ const generateLocalToken = (user) => {
         name: user.name,
         sessionVersion: user.sessionVersion || 1,
         sessionId: user.sessionId || crypto.randomBytes(8).toString("hex"),
-        exp: Date.now() + 30 * 24 * 60 * 60 * 1000
+        exp: Date.now() + SESSION_COOKIE_MAX_AGE
     })).toString("base64url");
     const signature = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
     return `${payload}.${signature}`;
@@ -274,6 +297,7 @@ const getProfileByIdentifier = async (identifier) => {
 // --- AUTH SESSION DETECTION MIDDLEWARE ---
 app.use(async (req, res, next) => {
     const token = req.cookies?.auth_token || req.headers?.authorization?.replace("Bearer ", "");
+    const refreshToken = req.cookies?.refresh_token;
     req.user = null;
     res.locals.user = null;
 
@@ -295,9 +319,33 @@ app.use(async (req, res, next) => {
                         provider: isGoogle ? "google" : (user.app_metadata?.provider || "email")
                     };
                     res.locals.user = req.user;
+                } else if (refreshToken) {
+                    // Token expired; transparently refresh session using persistent refresh token
+                    try {
+                        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+                        if (refreshData?.session && !refreshErr && refreshData.user) {
+                            const refreshedUser = refreshData.user;
+                            const isGoogle = refreshedUser.app_metadata?.provider === "google" ||
+                                             (Array.isArray(refreshedUser.identities) && refreshedUser.identities.some(i => i.provider === "google")) ||
+                                             Boolean(refreshedUser.user_metadata?.iss?.includes("google") || refreshedUser.user_metadata?.avatar_url?.includes("googleusercontent.com") || refreshedUser.user_metadata?.picture?.includes("googleusercontent.com"));
+
+                            req.user = {
+                                id: refreshedUser.id,
+                                email: refreshedUser.email,
+                                name: refreshedUser.user_metadata?.display_name || refreshedUser.user_metadata?.full_name || refreshedUser.user_metadata?.name || (refreshedUser.email ? refreshedUser.email.split("@")[0] : "Author"),
+                                avatar: refreshedUser.user_metadata?.avatar_url || refreshedUser.user_metadata?.picture || null,
+                                isGoogleUser: isGoogle,
+                                provider: isGoogle ? "google" : (refreshedUser.app_metadata?.provider || "email")
+                            };
+                            res.locals.user = req.user;
+                            setSessionCookies(res, refreshData.session.access_token, refreshData.session.refresh_token);
+                        }
+                    } catch (re) {
+                        // Refresh attempt failed
+                    }
                 }
             } catch (e) {
-                // Ignore invalid Supabase session
+                // Ignore Supabase getUser error
             }
         }
         if (!req.user) {
@@ -679,12 +727,7 @@ app.post("/api/auth/signup", async (req, res) => {
             }
 
             if (data.session) {
-                res.cookie("auth_token", data.session.access_token, {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === "production",
-                    maxAge: 30 * 24 * 60 * 60 * 1000,
-                    sameSite: "lax"
-                });
+                setSessionCookies(res, data.session.access_token, data.session.refresh_token);
             }
 
             return res.json({
@@ -702,11 +745,7 @@ app.post("/api/auth/signup", async (req, res) => {
         // Local Fallback signup
         const localUser = await createLocalUser({ name: name.trim(), email: email.trim(), password });
         const token = generateLocalToken(localUser);
-        res.cookie("auth_token", token, {
-            httpOnly: true,
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-            sameSite: "lax"
-        });
+        setSessionCookies(res, token);
 
         return res.json({
             success: true,
@@ -722,12 +761,10 @@ app.post("/api/auth/signup", async (req, res) => {
 // POST /api/auth/login
 app.post("/api/auth/login", async (req, res) => {
     try {
-        const { email, password, remember } = req.body;
+        const { email, password } = req.body;
         if (!email?.trim() || !password) {
             return res.status(400).json({ error: "Please enter both email and password." });
         }
-
-        const maxAge = remember ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
         if (supabase) {
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -741,12 +778,7 @@ app.post("/api/auth/login", async (req, res) => {
 
             if (data.session) {
                 const userName = data.user.user_metadata?.display_name || data.user.user_metadata?.name || data.user.email.split("@")[0];
-                res.cookie("auth_token", data.session.access_token, {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === "production",
-                    maxAge,
-                    sameSite: "lax"
-                });
+                setSessionCookies(res, data.session.access_token, data.session.refresh_token);
 
                 return res.json({
                     success: true,
@@ -767,11 +799,7 @@ app.post("/api/auth/login", async (req, res) => {
         }
 
         const token = generateLocalToken(localUser);
-        res.cookie("auth_token", token, {
-            httpOnly: true,
-            maxAge,
-            sameSite: "lax"
-        });
+        setSessionCookies(res, token);
 
         return res.json({
             success: true,
@@ -787,6 +815,7 @@ app.post("/api/auth/login", async (req, res) => {
 // Logout (POST & GET /logout)
 app.all(["/logout", "/api/auth/logout"], (req, res) => {
     res.clearCookie("auth_token", { path: "/" });
+    res.clearCookie("refresh_token", { path: "/" });
     res.clearCookie("guest_mode", { path: "/" });
     if (req.xhr || req.headers.accept?.includes("json")) {
         return res.json({ success: true, message: "Logged out." });
@@ -872,13 +901,7 @@ app.get("/auth/callback", async (req, res) => {
         try {
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
             if (data?.session) {
-                res.cookie("auth_token", data.session.access_token, {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === "production",
-                    maxAge: 30 * 24 * 60 * 60 * 1000,
-                    sameSite: "lax",
-                    path: "/"
-                });
+                setSessionCookies(res, data.session.access_token, data.session.refresh_token);
                 return res.redirect("/");
             }
         } catch (e) {
@@ -894,15 +917,9 @@ app.get("/auth/callback", async (req, res) => {
 
 // POST /api/auth/session: Set auth cookie from client-side token
 app.post("/api/auth/session", (req, res) => {
-    const { token } = req.body;
+    const { token, refreshToken } = req.body;
     if (token) {
-        res.cookie("auth_token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-            sameSite: "lax",
-            path: "/"
-        });
+        setSessionCookies(res, token, refreshToken);
         return res.json({ success: true });
     }
     res.status(400).json({ error: "Token required" });
@@ -1107,12 +1124,7 @@ app.post("/api/profile/sessions/revoke-others", requireAuth, async (req, res) =>
             sessionId: crypto.randomBytes(8).toString("hex")
         };
         const newToken = generateLocalToken(refreshedUser);
-        res.cookie("auth_token", newToken, {
-            httpOnly: true,
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-            sameSite: "lax",
-            secure: process.env.NODE_ENV === "production"
-        });
+        setSessionCookies(res, newToken);
 
         return res.json({
             success: true,

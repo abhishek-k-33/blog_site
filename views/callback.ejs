@@ -123,12 +123,12 @@
             document.getElementById('return-btn').style.display = 'inline-block';
         }
 
-        async function createServerSession(accessToken) {
+        async function createServerSession(accessToken, refreshToken) {
             try {
                 const response = await fetch('/api/auth/session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: accessToken })
+                    body: JSON.stringify({ token: accessToken, refreshToken: refreshToken || '' })
                 });
 
                 if (response.ok) {
@@ -162,15 +162,17 @@
 
             // 2. Check if accessToken is directly in hash fragment (#access_token=...)
             const accessToken = hashParams.get('access_token');
+            const refreshToken = hashParams.get('refresh_token');
             if (accessToken) {
-                await createServerSession(accessToken);
+                await createServerSession(accessToken, refreshToken);
                 return;
             }
 
             // 3. Check if accessToken is in search query (?access_token=...)
             const searchAccessToken = searchParams.get('access_token');
+            const searchRefreshToken = searchParams.get('refresh_token');
             if (searchAccessToken) {
-                await createServerSession(searchAccessToken);
+                await createServerSession(searchAccessToken, searchRefreshToken);
                 return;
             }
 
@@ -180,7 +182,7 @@
                     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     const { data: { session }, error } = await client.auth.getSession();
                     if (session?.access_token) {
-                        await createServerSession(session.access_token);
+                        await createServerSession(session.access_token, session.refresh_token);
                         return;
                     }
                     if (error) {
