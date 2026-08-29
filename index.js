@@ -282,87 +282,91 @@ const authenticateLocalUser = async (email, password) => {
     return { id: user.id, name: user.name, email: user.email };
 };
 
-// --- PROFILES, SOCIAL & BOOKMARKS HELPERS ---
-const readProfiles = async () => {
-    return readJSONSafe("profiles.json", []);
-};
+// --- PERSISTENT STATE ENGINE (Supabase PostgreSQL Storage across Vercel Redeploys) ---
+const readSystemState = async (key, fallback) => {
+    const filename = `${key.toLowerCase()}.json`;
+    // If Supabase is available, sync directly with PostgreSQL
+    if (supabase) {
+        try {
+            const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
+            const { data, error } = await supabase
+                .from("posts")
+                .select("id, content")
+                .eq("title", systemTitle)
+                .maybeSingle();
 
-const writeProfiles = async (profiles) => {
-    return writeJSONSafe("profiles.json", profiles);
-};
-
-// --- Supabase DB profile persistence (works across Vercel instances) ---
-let profilesTableExists = null; // null = unknown, true/false = cached result
-
-const readProfileFromDB = async (userId) => {
-    if (!supabase || !userId || profilesTableExists === false) return null;
-    try {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('data')
-            .eq('id', String(userId))
-            .single();
-        if (error) {
-            if (error.code === '42P01' || error.message?.includes('does not exist')) {
-                profilesTableExists = false;
-                console.warn('Profiles table does not exist in Supabase. Run the SQL from supabase-schema.sql.');
+            if (!error && data?.content) {
+                const parsed = JSON.parse(data.content);
+                // Also update local cache
+                await writeJSONSafe(filename, parsed);
+                return parsed;
             }
-            return null;
+        } catch (e) {
+            console.warn(`Supabase readSystemState error for ${key}:`, e.message);
         }
-        profilesTableExists = true;
-        return data?.data || null;
-    } catch (e) {
-        return null;
     }
+    // Fall back to local JSON file
+    return readJSONSafe(filename, fallback);
 };
 
-const writeProfileToDB = async (profile) => {
-    if (!supabase || !profile?.id || profilesTableExists === false) return false;
-    try {
-        const { error } = await supabase
-            .from('profiles')
-            .upsert({
-                id: String(profile.id),
-                data: profile,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'id' });
-        if (error) {
-            if (error.code === '42P01' || error.message?.includes('does not exist')) {
-                profilesTableExists = false;
-                console.warn('Profiles table does not exist in Supabase. Run the SQL from supabase-schema.sql.');
+const writeSystemState = async (key, data) => {
+    const filename = `${key.toLowerCase()}.json`;
+    // 1. Write to local file / tmp
+    await writeJSONSafe(filename, data);
+
+    // 2. Persist to Supabase PostgreSQL (survives all redeployments and cold starts)
+    if (supabase) {
+        try {
+            const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
+            const { data: existing } = await supabase
+                .from("posts")
+                .select("id")
+                .eq("title", systemTitle)
+                .maybeSingle();
+
+            if (existing?.id) {
+                await supabase
+                    .from("posts")
+                    .update({
+                        content: JSON.stringify(data),
+                        excerpt: `System ${key} State`,
+                        author: "__SYSTEM__"
+                    })
+                    .eq("id", existing.id);
             } else {
-                console.warn('Supabase profile DB write error:', error.message);
+                await supabase
+                    .from("posts")
+                    .insert([{
+                        title: systemTitle,
+                        content: JSON.stringify(data),
+                        excerpt: `System ${key} State`,
+                        author: "__SYSTEM__"
+                    }]);
             }
-            return false;
+        } catch (e) {
+            console.warn(`Supabase writeSystemState error for ${key}:`, e.message);
         }
-        profilesTableExists = true;
-        console.log('Profile saved to Supabase DB for:', profile.name);
-        return true;
-    } catch (e) {
-        console.warn('Supabase profile DB write exception:', e.message);
-        return false;
     }
 };
 
 const readFollows = async () => {
-    return readJSONSafe("follows.json", []);
+    return readSystemState("FOLLOWS", []);
 };
 
 const writeFollows = async (follows) => {
-    return writeJSONSafe("follows.json", follows);
+    return writeSystemState("FOLLOWS", follows);
 };
 
 const readBookmarks = async () => {
-    return readJSONSafe("bookmarks.json", []);
+    return readSystemState("BOOKMARKS", []);
 };
 
 const writeBookmarks = async (bookmarks) => {
-    return writeJSONSafe("bookmarks.json", bookmarks);
+    return writeSystemState("BOOKMARKS", bookmarks);
 };
 
-// --- REAL ANALYTICS ENGINE (Unique Story Views, Applause & Reading Time) ---
 const readAnalytics = async () => {
-    const data = await readJSONSafe("analytics.json", { views: {}, claps: {}, unique_views: {} });
+    const data = await readSystemState("ANALYTICS", { views: {}, claps: {}, unique_views: {} });
     return {
         views: data.views || {},
         claps: data.claps || {},
@@ -371,7 +375,38 @@ const readAnalytics = async () => {
 };
 
 const writeAnalytics = async (analytics) => {
-    return writeJSONSafe("analytics.json", analytics);
+    return writeSystemState("ANALYTICS", analytics);
+};
+
+// --- PROFILES, SOCIAL & BOOKMARKS HELPERS ---
+const readProfiles = async () => {
+    return readSystemState("PROFILES", []);
+};
+
+const writeProfiles = async (profiles) => {
+    return writeSystemState("PROFILES", profiles);
+};
+
+// --- Supabase DB profile persistence (works across Vercel instances) ---
+let profilesTableExists = null; // null = unknown, true/false = cached result
+
+const readProfileFromDB = async (userId) => {
+    if (!userId) return null;
+    const profiles = await readProfiles();
+    return profiles.find(p => p.id === userId || (p.email && p.email.toLowerCase() === String(userId).toLowerCase())) || null;
+};
+
+const writeProfileToDB = async (profile) => {
+    if (!profile?.id) return false;
+    const profiles = await readProfiles();
+    const idx = profiles.findIndex(p => p.id === profile.id || (profile.email && p.email && p.email.toLowerCase() === profile.email.toLowerCase()));
+    if (idx >= 0) {
+        profiles[idx] = { ...profiles[idx], ...profile, updated_at: new Date().toISOString() };
+    } else {
+        profiles.push({ ...profile, updated_at: new Date().toISOString() });
+    }
+    await writeProfiles(profiles);
+    return true;
 };
 
 const recordPostView = async (postId, req = null, res = null) => {
@@ -883,12 +918,18 @@ const getAllPosts = async () => {
         const { data, error } = await supabase
             .from("posts")
             .select("*")
+            .not("title", "like", "__SYSTEM_%")
+            .neq("author", "__SYSTEM__")
             .order("created_at", { ascending: false });
         if (error) throw error;
-        return (data || []).map(formatPost);
+        return (data || [])
+            .filter(p => !p.title?.startsWith("__SYSTEM_") && p.author !== "__SYSTEM__")
+            .map(formatPost);
     }
     const localPosts = await readLocalPosts();
-    return localPosts.map(formatPost);
+    return localPosts
+        .filter(p => !p.title?.startsWith("__SYSTEM_") && p.author !== "__SYSTEM__")
+        .map(formatPost);
 };
 
 const getPostById = async (id) => {
@@ -898,11 +939,13 @@ const getPostById = async (id) => {
             .select("*")
             .eq("id", id)
             .single();
-        if (error) return null;
+        if (error || !data) return null;
+        if (data.title?.startsWith("__SYSTEM_") || data.author === "__SYSTEM__") return null;
         return formatPost(data);
     }
     const localPosts = await readLocalPosts();
     const post = localPosts.find((p) => String(p.id) === String(id));
+    if (post && (post.title?.startsWith("__SYSTEM_") || post.author === "__SYSTEM__")) return null;
     return post ? formatPost(post) : null;
 };
 
