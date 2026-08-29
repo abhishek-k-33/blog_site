@@ -135,12 +135,17 @@
                 }
 
                 try {
-                    await fetch('/api/auth/session', {
+                    const resp = await fetch('/api/auth/session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
                         body: JSON.stringify({ token: accessToken, refreshToken: refreshToken || '' })
                     });
+                    const data = await resp.json();
+                    if (data && data.token) {
+                        localStorage.setItem('auth_token', data.token);
+                        document.cookie = `auth_token=${encodeURIComponent(data.token)}; path=/; max-age=31536000; SameSite=Lax${isSecure}`;
+                    }
                 } catch (e) {}
 
                 window.location.replace('/');

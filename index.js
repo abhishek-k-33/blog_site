@@ -1473,12 +1473,30 @@ app.get("/auth/callback", async (req, res) => {
     if (code && supabase) {
         try {
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-            if (data?.session) {
-                setSessionCookies(res, data.session.access_token, data.session.refresh_token);
-                const profile = await getOrCreateProfile(data.session.user, req);
+            if (data?.session && data.session.user) {
+                const user = data.session.user;
+                const isGoogle = user.app_metadata?.provider === "google" ||
+                                 (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
+                                 Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
+                const authUser = {
+                    id: user.id,
+                    email: user.email,
+                    name: user.user_metadata?.name || user.user_metadata?.display_name || user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Author"),
+                    avatar: user.user_metadata?.avatar || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                    username: user.user_metadata?.username || null,
+                    user_metadata: user.user_metadata || {},
+                    isGoogleUser: isGoogle,
+                    provider: isGoogle ? "google" : (user.app_metadata?.provider || "email")
+                };
+                const profile = await getOrCreateProfile(authUser, req);
                 if (profile) {
+                    authUser.name = profile.name || authUser.name;
+                    authUser.avatar = profile.avatar || authUser.avatar;
+                    authUser.username = profile.username || authUser.username;
                     setUserProfileCookie(res, profile);
                 }
+                const persistentToken = generateLocalToken(authUser);
+                setSessionCookies(res, persistentToken, data.session.refresh_token);
                 return res.redirect("/");
             }
         } catch (e) {
@@ -1496,26 +1514,45 @@ app.get("/auth/callback", async (req, res) => {
 app.post("/api/auth/session", async (req, res) => {
     const { token, refreshToken } = req.body;
     if (token) {
-        setSessionCookies(res, token, refreshToken);
-        const decoded = decodeSupabaseJWT(token);
-        if (decoded) {
-            const profile = await getOrCreateProfile(decoded, req);
-            if (profile) {
-                setUserProfileCookie(res, profile);
-            }
-        } else if (supabase) {
+        let authUser = decodeSupabaseJWT(token);
+        if (!authUser && supabase) {
             try {
                 const { data: { user } } = await supabase.auth.getUser(token);
                 if (user) {
-                    const profile = await getOrCreateProfile(user, req);
-                    if (profile) {
-                        setUserProfileCookie(res, profile);
-                    }
+                    const isGoogle = user.app_metadata?.provider === "google" ||
+                                     (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
+                                     Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
+                    authUser = {
+                        id: user.id,
+                        email: user.email,
+                        name: user.user_metadata?.name || user.user_metadata?.display_name || user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Author"),
+                        avatar: user.user_metadata?.avatar || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                        username: user.user_metadata?.username || null,
+                        user_metadata: user.user_metadata || {},
+                        isGoogleUser: isGoogle,
+                        provider: isGoogle ? "google" : (user.app_metadata?.provider || "email")
+                    };
                 }
-            } catch (e) {
-                // Ignore
-            }
+            } catch (e) {}
         }
+        if (!authUser) {
+            authUser = verifyLocalToken(token);
+        }
+
+        if (authUser) {
+            const profile = await getOrCreateProfile(authUser, req);
+            if (profile) {
+                authUser.name = profile.name || authUser.name;
+                authUser.avatar = profile.avatar || authUser.avatar;
+                authUser.username = profile.username || authUser.username;
+                setUserProfileCookie(res, profile);
+            }
+            const persistentToken = generateLocalToken(authUser);
+            setSessionCookies(res, persistentToken, refreshToken || token);
+            return res.json({ success: true, user: authUser, token: persistentToken });
+        }
+
+        setSessionCookies(res, token, refreshToken);
         return res.json({ success: true });
     }
     res.status(400).json({ error: "Token required" });
