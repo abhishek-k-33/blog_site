@@ -29,16 +29,45 @@ if (supabaseUrl && supabaseKey) {
     console.log("Supabase credentials not found. Using local JSON file fallback.");
 }
 
-const DATA_FILE = path.join(__dirname, "data.json");
-const USERS_FILE = path.join(__dirname, "users.json");
-const PROFILES_FILE = path.join(__dirname, "profiles.json");
-const FOLLOWS_FILE = path.join(__dirname, "follows.json");
-const BOOKMARKS_FILE = path.join(__dirname, "bookmarks.json");
-const ANALYTICS_FILE = path.join(__dirname, "analytics.json");
-const UPLOADS_DIR = path.join(__dirname, "public", "uploads");
+const isVercel = Boolean(process.env.VERCEL);
+const getStoragePath = (filename) => isVercel ? path.join("/tmp", filename) : path.join(__dirname, filename);
+const getSeedPath = (filename) => path.join(__dirname, filename);
 
-if (!fsSync.existsSync(UPLOADS_DIR)) {
-    fsSync.mkdirSync(UPLOADS_DIR, { recursive: true });
+const readJSONSafe = async (filename, fallback = []) => {
+    try {
+        const primary = getStoragePath(filename);
+        if (fsSync.existsSync(primary)) {
+            const data = await fs.readFile(primary, "utf-8");
+            return JSON.parse(data);
+        }
+        const seed = getSeedPath(filename);
+        if (fsSync.existsSync(seed)) {
+            const data = await fs.readFile(seed, "utf-8");
+            return JSON.parse(data);
+        }
+    } catch (e) {
+        console.error(`Error reading ${filename}:`, e.message);
+    }
+    return fallback;
+};
+
+const writeJSONSafe = async (filename, data) => {
+    try {
+        const target = getStoragePath(filename);
+        await fs.writeFile(target, JSON.stringify(data, null, 2), "utf-8");
+    } catch (e) {
+        console.error(`Error writing ${filename}:`, e.message);
+    }
+};
+
+const UPLOADS_DIR = isVercel ? path.join("/tmp", "uploads") : path.join(__dirname, "public", "uploads");
+
+try {
+    if (!fsSync.existsSync(UPLOADS_DIR)) {
+        fsSync.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+} catch (e) {
+    console.warn("Uploads directory notice:", e.message);
 }
 
 const saveBase64Image = async (dataUrl, prefix, userId) => {
@@ -54,7 +83,7 @@ const saveBase64Image = async (dataUrl, prefix, userId) => {
         const fileName = `${prefix}_${safeUserId}_${Date.now()}.${ext}`;
         const filePath = path.join(UPLOADS_DIR, fileName);
         await fs.writeFile(filePath, Buffer.from(base64Data, "base64"));
-        return `/uploads/${fileName}`;
+        return isVercel ? dataUrl : `/uploads/${fileName}`;
     } catch (e) {
         console.error("Error saving base64 image:", e);
         return dataUrl;
@@ -162,23 +191,11 @@ const verifyLocalToken = (token) => {
 };
 
 const readLocalUsers = async () => {
-    try {
-        if (fsSync.existsSync(USERS_FILE)) {
-            const data = await fs.readFile(USERS_FILE, "utf-8");
-            return JSON.parse(data);
-        }
-    } catch (e) {
-        console.error("Error reading users file:", e);
-    }
-    return [];
+    return readJSONSafe("users.json", []);
 };
 
 const writeLocalUsers = async (users) => {
-    try {
-        await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
-    } catch (e) {
-        console.error("Error writing users file:", e);
-    }
+    return writeJSONSafe("users.json", users);
 };
 
 const createLocalUser = async ({ name, email, password }) => {
@@ -210,88 +227,40 @@ const authenticateLocalUser = async (email, password) => {
 
 // --- PROFILES, SOCIAL & BOOKMARKS HELPERS ---
 const readProfiles = async () => {
-    try {
-        if (fsSync.existsSync(PROFILES_FILE)) {
-            const data = await fs.readFile(PROFILES_FILE, "utf-8");
-            return JSON.parse(data);
-        }
-    } catch (e) {
-        console.error("Error reading profiles file:", e);
-    }
-    return [];
+    return readJSONSafe("profiles.json", []);
 };
 
 const writeProfiles = async (profiles) => {
-    try {
-        await fs.writeFile(PROFILES_FILE, JSON.stringify(profiles, null, 2), "utf-8");
-    } catch (e) {
-        console.error("Error writing profiles file:", e);
-    }
+    return writeJSONSafe("profiles.json", profiles);
 };
 
 const readFollows = async () => {
-    try {
-        if (fsSync.existsSync(FOLLOWS_FILE)) {
-            const data = await fs.readFile(FOLLOWS_FILE, "utf-8");
-            return JSON.parse(data);
-        }
-    } catch (e) {
-        console.error("Error reading follows file:", e);
-    }
-    return [];
+    return readJSONSafe("follows.json", []);
 };
 
 const writeFollows = async (follows) => {
-    try {
-        await fs.writeFile(FOLLOWS_FILE, JSON.stringify(follows, null, 2), "utf-8");
-    } catch (e) {
-        console.error("Error writing follows file:", e);
-    }
+    return writeJSONSafe("follows.json", follows);
 };
 
 const readBookmarks = async () => {
-    try {
-        if (fsSync.existsSync(BOOKMARKS_FILE)) {
-            const data = await fs.readFile(BOOKMARKS_FILE, "utf-8");
-            return JSON.parse(data);
-        }
-    } catch (e) {
-        console.error("Error reading bookmarks file:", e);
-    }
-    return [];
+    return readJSONSafe("bookmarks.json", []);
 };
 
 const writeBookmarks = async (bookmarks) => {
-    try {
-        await fs.writeFile(BOOKMARKS_FILE, JSON.stringify(bookmarks, null, 2), "utf-8");
-    } catch (e) {
-        console.error("Error writing bookmarks file:", e);
-    }
+    return writeJSONSafe("bookmarks.json", bookmarks);
 };
 
 // --- REAL ANALYTICS ENGINE (Story Views, Applause & Reading Time) ---
 const readAnalytics = async () => {
-    try {
-        if (fsSync.existsSync(ANALYTICS_FILE)) {
-            const data = await fs.readFile(ANALYTICS_FILE, "utf-8");
-            const parsed = JSON.parse(data);
-            return {
-                views: parsed.views || {},
-                claps: parsed.claps || {}
-            };
-        }
-    } catch (e) {
-        console.error("Error reading analytics file:", e);
-    }
-    return { views: {}, claps: {} };
+    const data = await readJSONSafe("analytics.json", { views: {}, claps: {} });
+    return {
+        views: data.views || {},
+        claps: data.claps || {}
+    };
 };
 
 const writeAnalytics = async (analytics) => {
-    try {
-        await fs.writeFile(ANALYTICS_FILE, JSON.stringify(analytics, null, 2), "utf-8");
-    } catch (e) {
-        console.error("Error writing analytics file:", e);
-    }
+    return writeJSONSafe("analytics.json", analytics);
 };
 
 const recordPostView = async (postId) => {
@@ -579,23 +548,11 @@ const generateId = () => {
 
 // Local JSON File helpers (Asynchronous)
 const readLocalPosts = async () => {
-    try {
-        if (fsSync.existsSync(DATA_FILE)) {
-            const data = await fs.readFile(DATA_FILE, "utf-8");
-            return JSON.parse(data);
-        }
-    } catch (err) {
-        console.error("Error reading local posts file:", err);
-    }
-    return [];
+    return readJSONSafe("data.json", []);
 };
 
 const writeLocalPosts = async (posts) => {
-    try {
-        await fs.writeFile(DATA_FILE, JSON.stringify(posts, null, 2), "utf-8");
-    } catch (err) {
-        console.error("Error writing local posts file:", err);
-    }
+    return writeJSONSafe("data.json", posts);
 };
 
 // =========================================
