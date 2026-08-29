@@ -298,6 +298,8 @@ const getOrCreateProfile = async (user) => {
 
     const meta = user.user_metadata || {};
     const metaSocial = meta.social || (meta.twitter ? { twitter: meta.twitter } : null);
+    // Supabase cloud metadata is the source of truth (local JSON is ephemeral on Vercel)
+    const hasCloudData = supabase && Object.keys(meta).length > 0;
 
     if (!profile) {
         const usernameBase = meta.username || (user.email ? user.email.split("@")[0] : user.name || "author").toLowerCase().replace(/[^a-z0-9_]/g, "");
@@ -322,11 +324,22 @@ const getOrCreateProfile = async (user) => {
         };
         profiles.push(profile);
         await writeProfiles(profiles);
+    } else if (hasCloudData) {
+        // Supabase connected: cloud metadata is authoritative (local JSON is stale on Vercel)
+        if (meta.name) profile.name = meta.name;
+        if (meta.username) profile.username = meta.username;
+        if (meta.bio !== undefined) profile.bio = meta.bio;
+        if (meta.phone !== undefined) profile.phone = meta.phone;
+        if (meta.location !== undefined) profile.location = meta.location;
+        if (meta.website !== undefined) profile.website = meta.website;
+        if (meta.avatar !== undefined) profile.avatar = meta.avatar;
+        if (meta.cover !== undefined) profile.cover = meta.cover;
+        if (metaSocial) profile.social = metaSocial;
+        if (meta.notifications) profile.notifications = meta.notifications;
+        if (meta.privacy) profile.privacy = meta.privacy;
+        if (!profile.social) profile.social = {};
     } else {
-        // Profile already exists locally — trust local edits.
-        // Only fill in missing fields from Supabase metadata (don't overwrite existing values).
-        if (!profile.name && meta.name) profile.name = meta.name.trim();
-        if (!profile.username && meta.username) profile.username = meta.username.trim();
+        // No Supabase / no cloud data: fill gaps only
         if (!profile.social) profile.social = metaSocial || {};
         if (user.avatar && !profile.avatar) profile.avatar = user.avatar;
     }
@@ -1315,36 +1328,34 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         }
         await writeProfiles(profiles);
 
-        // Sync to Supabase Auth cloud metadata so changes persist permanently on Vercel
-        if (supabase && req.cookies?.auth_token) {
+        // Sync to Supabase Auth cloud metadata via direct REST API (most reliable on Vercel)
+        if (supabaseUrl && supabaseKey && req.cookies?.auth_token) {
             try {
-                const { createClient } = require("@supabase/supabase-js");
-                const userClient = createClient(supabaseUrl, supabaseKey, {
-                    auth: { persistSession: false }
+                const profileMetadata = {
+                    name: profile.name,
+                    username: profile.username,
+                    bio: profile.bio,
+                    phone: profile.phone,
+                    avatar: profile.avatar,
+                    cover: profile.cover,
+                    location: profile.location,
+                    website: profile.website,
+                    social: profile.social,
+                    notifications: profile.notifications,
+                    privacy: profile.privacy
+                };
+                const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": supabaseKey,
+                        "Authorization": `Bearer ${req.cookies.auth_token}`
+                    },
+                    body: JSON.stringify({ data: profileMetadata })
                 });
-                // Properly authenticate the user on this client using their session tokens
-                const refreshToken = req.cookies?.refresh_token || "";
-                await userClient.auth.setSession({
-                    access_token: req.cookies.auth_token,
-                    refresh_token: refreshToken
-                });
-                const { data: updateData, error: updateErr } = await userClient.auth.updateUser({
-                    data: {
-                        name: profile.name,
-                        username: profile.username,
-                        bio: profile.bio,
-                        phone: profile.phone,
-                        avatar: profile.avatar,
-                        cover: profile.cover,
-                        location: profile.location,
-                        website: profile.website,
-                        social: profile.social,
-                        notifications: profile.notifications,
-                        privacy: profile.privacy
-                    }
-                });
-                if (updateErr) {
-                    console.warn("Supabase user_metadata sync error:", updateErr.message);
+                if (!resp.ok) {
+                    const errBody = await resp.text();
+                    console.warn("Supabase user_metadata REST sync failed:", resp.status, errBody);
                 } else {
                     console.log("Profile synced to Supabase cloud for user:", profile.name);
                 }
