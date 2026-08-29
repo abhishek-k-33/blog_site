@@ -234,6 +234,59 @@ const writeProfiles = async (profiles) => {
     return writeJSONSafe("profiles.json", profiles);
 };
 
+// --- Supabase DB profile persistence (works across Vercel instances) ---
+let profilesTableExists = null; // null = unknown, true/false = cached result
+
+const readProfileFromDB = async (userId) => {
+    if (!supabase || !userId || profilesTableExists === false) return null;
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('data')
+            .eq('id', String(userId))
+            .single();
+        if (error) {
+            if (error.code === '42P01' || error.message?.includes('does not exist')) {
+                profilesTableExists = false;
+                console.warn('Profiles table does not exist in Supabase. Run the SQL from supabase-schema.sql.');
+            }
+            return null;
+        }
+        profilesTableExists = true;
+        return data?.data || null;
+    } catch (e) {
+        return null;
+    }
+};
+
+const writeProfileToDB = async (profile) => {
+    if (!supabase || !profile?.id || profilesTableExists === false) return false;
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .upsert({
+                id: String(profile.id),
+                data: profile,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+        if (error) {
+            if (error.code === '42P01' || error.message?.includes('does not exist')) {
+                profilesTableExists = false;
+                console.warn('Profiles table does not exist in Supabase. Run the SQL from supabase-schema.sql.');
+            } else {
+                console.warn('Supabase profile DB write error:', error.message);
+            }
+            return false;
+        }
+        profilesTableExists = true;
+        console.log('Profile saved to Supabase DB for:', profile.name);
+        return true;
+    } catch (e) {
+        console.warn('Supabase profile DB write exception:', e.message);
+        return false;
+    }
+};
+
 const readFollows = async () => {
     return readJSONSafe("follows.json", []);
 };
@@ -293,13 +346,23 @@ const recordPostClap = async (postId, count = 1) => {
 
 const getOrCreateProfile = async (user) => {
     if (!user) return null;
+
+    // 1. Try Supabase DB first (persistent across all Vercel instances)
+    const dbProfile = await readProfileFromDB(user.id);
+    if (dbProfile) {
+        // Ensure ID & email are current
+        dbProfile.id = user.id;
+        if (user.email) dbProfile.email = user.email;
+        if (!dbProfile.social) dbProfile.social = {};
+        return dbProfile;
+    }
+
+    // 2. Fall back to local JSON file
     const profiles = await readProfiles();
     let profile = profiles.find(p => p.id === user.id || (user.email && p.email && p.email.toLowerCase() === user.email.toLowerCase()));
 
     const meta = user.user_metadata || {};
     const metaSocial = meta.social || (meta.twitter ? { twitter: meta.twitter } : null);
-    // Supabase cloud metadata is the source of truth (local JSON is ephemeral on Vercel)
-    const hasCloudData = supabase && Object.keys(meta).length > 0;
 
     if (!profile) {
         const usernameBase = meta.username || (user.email ? user.email.split("@")[0] : user.name || "author").toLowerCase().replace(/[^a-z0-9_]/g, "");
@@ -324,22 +387,9 @@ const getOrCreateProfile = async (user) => {
         };
         profiles.push(profile);
         await writeProfiles(profiles);
-    } else if (hasCloudData) {
-        // Supabase connected: cloud metadata is authoritative (local JSON is stale on Vercel)
-        if (meta.name) profile.name = meta.name;
-        if (meta.username) profile.username = meta.username;
-        if (meta.bio !== undefined) profile.bio = meta.bio;
-        if (meta.phone !== undefined) profile.phone = meta.phone;
-        if (meta.location !== undefined) profile.location = meta.location;
-        if (meta.website !== undefined) profile.website = meta.website;
-        if (meta.avatar !== undefined) profile.avatar = meta.avatar;
-        if (meta.cover !== undefined) profile.cover = meta.cover;
-        if (metaSocial) profile.social = metaSocial;
-        if (meta.notifications) profile.notifications = meta.notifications;
-        if (meta.privacy) profile.privacy = meta.privacy;
-        if (!profile.social) profile.social = {};
+        // Also persist to DB for future Vercel instances
+        await writeProfileToDB(profile);
     } else {
-        // No Supabase / no cloud data: fill gaps only
         if (!profile.social) profile.social = metaSocial || {};
         if (user.avatar && !profile.avatar) profile.avatar = user.avatar;
     }
@@ -349,6 +399,11 @@ const getOrCreateProfile = async (user) => {
 const getProfileByIdentifier = async (identifier) => {
     if (!identifier) return null;
     const cleanId = String(identifier).replace(/^@/, "").toLowerCase();
+
+    // Try Supabase DB first
+    const dbProfile = await readProfileFromDB(identifier);
+    if (dbProfile) return dbProfile;
+
     const profiles = await readProfiles();
     let profile = profiles.find(p => p.id === identifier || (p.username && p.username.toLowerCase() === cleanId) || (p.email && p.email.toLowerCase().startsWith(cleanId)));
 
@@ -435,8 +490,12 @@ app.use(async (req, res, next) => {
         // Enrich authenticated user with their up-to-date saved profile information (name, avatar, username)
         if (req.user) {
             try {
-                const profiles = await readProfiles();
-                const profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
+                // Try DB first, then local JSON
+                let profile = await readProfileFromDB(req.user.id);
+                if (!profile) {
+                    const profiles = await readProfiles();
+                    profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
+                }
                 if (profile) {
                     if (profile.name) req.user.name = profile.name;
                     if (profile.avatar) req.user.avatar = profile.avatar;
@@ -1319,7 +1378,7 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             }
         }
 
-        // Save updated profiles list
+        // Save updated profiles list (local cache)
         const existingIdx = profiles.findIndex(p => p.id === profile.id);
         if (existingIdx >= 0) {
             profiles[existingIdx] = profile;
@@ -1328,40 +1387,10 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         }
         await writeProfiles(profiles);
 
-        // Sync to Supabase Auth cloud metadata via direct REST API (most reliable on Vercel)
-        if (supabaseUrl && supabaseKey && req.cookies?.auth_token) {
-            try {
-                const profileMetadata = {
-                    name: profile.name,
-                    username: profile.username,
-                    bio: profile.bio,
-                    phone: profile.phone,
-                    avatar: profile.avatar,
-                    cover: profile.cover,
-                    location: profile.location,
-                    website: profile.website,
-                    social: profile.social,
-                    notifications: profile.notifications,
-                    privacy: profile.privacy
-                };
-                const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "apikey": supabaseKey,
-                        "Authorization": `Bearer ${req.cookies.auth_token}`
-                    },
-                    body: JSON.stringify({ data: profileMetadata })
-                });
-                if (!resp.ok) {
-                    const errBody = await resp.text();
-                    console.warn("Supabase user_metadata REST sync failed:", resp.status, errBody);
-                } else {
-                    console.log("Profile synced to Supabase cloud for user:", profile.name);
-                }
-            } catch (sbErr) {
-                console.warn("Supabase user_metadata sync notice:", sbErr.message);
-            }
+        // Persist to Supabase DB (works across all Vercel instances)
+        const dbSaved = await writeProfileToDB(profile);
+        if (!dbSaved) {
+            console.warn('Profile DB save failed - falling back to local JSON only');
         }
 
         // Update live user session reference immediately
