@@ -63,24 +63,31 @@
             <!-- Author Bio -->
             <p class="profile-bio"><%= profile.bio || 'Exploring life, technology, and storytelling through thoughtful writing on miniblogs.' %></p>
 
-            <!-- Metadata Chips (Location, Website, Social) -->
+            <!-- Metadata Chips (Location, Website, Phone, Social) -->
             <div class="profile-meta-chips">
                 <% if (profile.location) { %>
-                    <span class="profile-meta-item">
+                    <span class="profile-meta-item" title="Location">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                         <span><%= profile.location %></span>
                     </span>
                 <% } %>
 
                 <% if (profile.website) { %>
-                    <a href="<%= profile.website %>" target="_blank" rel="noopener noreferrer" class="profile-meta-item">
+                    <a href="<%= profile.website.startsWith('http') ? profile.website : 'https://' + profile.website %>" target="_blank" rel="noopener noreferrer" class="profile-meta-item" title="Website / Portfolio">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                         <span><%= profile.website.replace(/^https?:\/\//, '') %></span>
                     </a>
                 <% } %>
 
+                <% if (profile.phone) { %>
+                    <span class="profile-meta-item" title="Contact Phone">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                        <span><%= profile.phone %></span>
+                    </span>
+                <% } %>
+
                 <% if (profile.social && profile.social.twitter) { %>
-                    <a href="https://twitter.com/<%= profile.social.twitter.replace('@', '') %>" target="_blank" rel="noopener" class="profile-meta-item" title="Twitter / X">
+                    <a href="https://x.com/<%= profile.social.twitter.replace('@', '') %>" target="_blank" rel="noopener" class="profile-meta-item" title="Twitter / X">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                         <span><%= profile.social.twitter %></span>
                     </a>

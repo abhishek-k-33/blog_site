@@ -1254,11 +1254,25 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         if (avatar !== undefined) profile.avatar = avatar ? avatar.trim() : null;
         if (cover !== undefined) profile.cover = cover ? cover.trim() : null;
         if (location !== undefined) profile.location = location ? location.trim() : "";
-        if (website !== undefined) profile.website = website ? website.trim() : "";
+        if (website !== undefined) {
+            let cleanWebsite = website ? website.trim() : "";
+            if (cleanWebsite && !cleanWebsite.startsWith("http://") && !cleanWebsite.startsWith("https://")) {
+                cleanWebsite = "https://" + cleanWebsite;
+            }
+            profile.website = cleanWebsite;
+        }
+        if (phone !== undefined) profile.phone = phone ? phone.trim() : "";
         if (twitter !== undefined) {
+            let cleanTwitter = twitter ? twitter.trim() : "";
+            if (cleanTwitter.includes("twitter.com/") || cleanTwitter.includes("x.com/")) {
+                cleanTwitter = cleanTwitter.split("/").pop().replace(/^@/, "");
+            }
+            if (cleanTwitter && !cleanTwitter.startsWith("@")) {
+                cleanTwitter = "@" + cleanTwitter;
+            }
             profile.social = {
                 ...(profile.social || {}),
-                twitter: twitter ? twitter.trim() : ""
+                twitter: cleanTwitter
             };
         }
         if (notifications && typeof notifications === "object") {
