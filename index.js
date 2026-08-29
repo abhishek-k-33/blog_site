@@ -476,28 +476,59 @@ const getOrCreateProfile = async (user, req = null) => {
 
 const getProfileByIdentifier = async (identifier, req = null) => {
     if (!identifier) return null;
-    const cleanId = String(identifier).replace(/^@/, "").toLowerCase();
+    const rawId = decodeURIComponent(String(identifier)).replace(/^@/, "").trim();
+    const cleanId = rawId.toLowerCase();
 
     // Try browser profile cookie if inspecting own profile
     if (req) {
-        const cookieProfile = getProfileFromCookie(req, identifier, identifier);
+        const cookieProfile = getProfileFromCookie(req, rawId, rawId);
         if (cookieProfile) return cookieProfile;
     }
 
     // Try Supabase DB
-    const dbProfile = await readProfileFromDB(identifier);
+    const dbProfile = await readProfileFromDB(rawId);
     if (dbProfile) return dbProfile;
 
     const profiles = await readProfiles();
-    let profile = profiles.find(p => p.id === identifier || (p.username && p.username.toLowerCase() === cleanId) || (p.email && p.email.toLowerCase().startsWith(cleanId)));
+    let profile = profiles.find(p => 
+        (p.id && String(p.id).toLowerCase() === cleanId) || 
+        (p.username && p.username.toLowerCase() === cleanId) || 
+        (p.name && p.name.toLowerCase() === cleanId) || 
+        (p.email && p.email.toLowerCase() === cleanId) ||
+        (p.email && p.email.toLowerCase().startsWith(cleanId))
+    );
 
     if (!profile) {
         const users = await readLocalUsers();
-        const user = users.find(u => u.id === identifier || u.email.toLowerCase().startsWith(cleanId));
+        const user = users.find(u => (u.id && String(u.id).toLowerCase() === cleanId) || (u.name && u.name.toLowerCase() === cleanId) || (u.email && u.email.toLowerCase().startsWith(cleanId)));
         if (user) {
             return await getOrCreateProfile(user, req);
         }
     }
+
+    // Fallback: If this is an author from existing posts, generate an author profile dynamically
+    if (!profile) {
+        const allPosts = await getAllPosts();
+        const authorPost = allPosts.find(p => 
+            (p.author && p.author.toLowerCase() === cleanId) ||
+            (p.author_id && String(p.author_id).toLowerCase() === cleanId) ||
+            (p.author_username && p.author_username.toLowerCase() === cleanId)
+        );
+        if (authorPost) {
+            profile = {
+                id: authorPost.author_id || cleanId,
+                name: authorPost.author || rawId,
+                username: authorPost.author_username || (authorPost.author || rawId).toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                email: authorPost.author_email || "",
+                bio: "Storyteller & Creator on BlogSite.",
+                avatar: null,
+                cover: null,
+                social: {},
+                badges: ["Author"]
+            };
+        }
+    }
+
     return profile;
 };
 

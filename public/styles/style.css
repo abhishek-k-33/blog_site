@@ -585,9 +585,209 @@ body:not(.dark-mode) .user-avatar-chip {
 
 .user-name-text {
     max-width: 100px;
+        opacity 0.25s ease,
+        max-width 0.3s ease,
+        padding 0.25s ease;
+}
+
+.site-header.is-morphed .pill-dynamic-info {
+    opacity: 1;
+    max-width: 320px;
+    padding: 0 4px;
+}
+
+.pill-tagline-info {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-tagline-text {
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.7;
+    letter-spacing: 0.02em;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.dynamic-title {
+    max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    display: inline-block;
+}
+
+.dynamic-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent-color);
+    flex-shrink: 0;
+}
+
+.dynamic-percent {
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: var(--text-color);
+    flex-shrink: 0;
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+/* Navigation right */
+.pill-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.btn-navbar-newsletter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+body.dark-mode .btn-navbar-newsletter {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.btn-navbar-newsletter:hover {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    transform: translateY(-1px) scale(1.06);
+    box-shadow: 0 3px 8px var(--pill-glow);
+}
+
+/* Sign In Button (header pill navigation) */
+.btn-navbar-signin {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-color) !important;
+    text-decoration: none !important;
+    background: transparent;
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: 
+        transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.22s ease,
+        border-color 0.22s ease,
+        color 0.22s ease;
+}
+
+body:not(.dark-mode) .btn-navbar-signin {
+    border-color: rgba(24, 24, 27, 0.15);
+}
+
+.btn-navbar-signin:hover {
+    transform: translateY(-1px);
+    background: rgba(224, 106, 59, 0.1);
+    border-color: var(--accent-color);
+    color: var(--accent-color) !important;
+    text-decoration: none !important;
+}
+
+.btn-navbar-signin:active {
+    transform: scale(0.97);
+}
+
+.signin-btn-text {
+    white-space: nowrap;
+}
+
+@media (max-width: 680px) {
+    .signin-btn-text {
+        display: none;
+    }
+    .btn-navbar-signin {
+        padding: 7px 10px;
+    }
+}
+
+/* Logged-In User Profile Menu (Header) */
+.user-avatar-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px 4px 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-color) !important;
+    text-decoration: none !important;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.user-avatar-chip:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 138, 0, 0.4);
+    transform: translateY(-1px);
+}
+
+body:not(.dark-mode) .user-avatar-chip {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar-initial {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF8A00 0%, #F59E0B 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.user-avatar-initial-img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-name-text {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.meta-pill {
+    text-decoration: none;
+    cursor: pointer;
 }
 
 .btn-navbar-icon-action {
