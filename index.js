@@ -509,6 +509,7 @@ const getProfileByIdentifier = async (identifier, req = null) => {
     if (!identifier) return null;
     const rawId = decodeURIComponent(String(identifier)).replace(/^@/, "").trim();
     const cleanId = rawId.toLowerCase();
+    const strippedId = cleanId.replace(/^user_/, "");
 
     // Try browser profile cookie if inspecting own profile
     if (req) {
@@ -517,21 +518,24 @@ const getProfileByIdentifier = async (identifier, req = null) => {
     }
 
     // Try Supabase DB
-    const dbProfile = await readProfileFromDB(rawId);
+    const dbProfile = await readProfileFromDB(rawId) || (strippedId !== rawId ? await readProfileFromDB(strippedId) : null);
     if (dbProfile) return dbProfile;
 
     const profiles = await readProfiles();
     let profile = profiles.find(p => 
-        (p.id && String(p.id).toLowerCase() === cleanId) || 
-        (p.username && p.username.toLowerCase() === cleanId) || 
-        (p.name && p.name.toLowerCase() === cleanId) || 
-        (p.email && p.email.toLowerCase() === cleanId) ||
-        (p.email && p.email.toLowerCase().startsWith(cleanId))
+        (p.id && (String(p.id).toLowerCase() === cleanId || String(p.id).toLowerCase() === strippedId)) || 
+        (p.username && (p.username.toLowerCase() === cleanId || p.username.toLowerCase() === strippedId)) || 
+        (p.name && (p.name.toLowerCase() === cleanId || p.name.toLowerCase() === strippedId)) || 
+        (p.email && (p.email.toLowerCase() === cleanId || p.email.toLowerCase().startsWith(cleanId) || p.email.toLowerCase().startsWith(strippedId)))
     );
 
     if (!profile) {
         const users = await readLocalUsers();
-        const user = users.find(u => (u.id && String(u.id).toLowerCase() === cleanId) || (u.name && u.name.toLowerCase() === cleanId) || (u.email && u.email.toLowerCase().startsWith(cleanId)));
+        const user = users.find(u => 
+            (u.id && (String(u.id).toLowerCase() === cleanId || String(u.id).toLowerCase() === strippedId)) || 
+            (u.name && (u.name.toLowerCase() === cleanId || u.name.toLowerCase() === strippedId)) || 
+            (u.email && (u.email.toLowerCase().startsWith(cleanId) || u.email.toLowerCase().startsWith(strippedId)))
+        );
         if (user) {
             return await getOrCreateProfile(user, req);
         }
@@ -541,21 +545,35 @@ const getProfileByIdentifier = async (identifier, req = null) => {
     if (!profile) {
         const allPosts = await getAllPosts();
         const authorPost = allPosts.find(p => 
-            (p.author && p.author.toLowerCase() === cleanId) ||
-            (p.author_id && String(p.author_id).toLowerCase() === cleanId) ||
-            (p.author_username && p.author_username.toLowerCase() === cleanId)
+            (p.author && (p.author.toLowerCase() === cleanId || p.author.toLowerCase() === strippedId)) ||
+            (p.author_id && (String(p.author_id).toLowerCase() === cleanId || String(p.author_id).toLowerCase() === strippedId)) ||
+            (p.author_username && (p.author_username.toLowerCase() === cleanId || p.author_username.toLowerCase() === strippedId))
         );
         if (authorPost) {
             profile = {
-                id: authorPost.author_id || cleanId,
-                name: authorPost.author || rawId,
-                username: authorPost.author_username || (authorPost.author || rawId).toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                id: authorPost.author_id || authorPost.author || strippedId,
+                name: authorPost.author || (strippedId.charAt(0).toUpperCase() + strippedId.slice(1)),
+                username: authorPost.author_username || (authorPost.author || strippedId).toLowerCase().replace(/[^a-z0-9_]/g, ""),
                 email: authorPost.author_email || "",
                 bio: "Storyteller & Creator on BlogSite.",
                 avatar: null,
                 cover: null,
                 social: {},
                 badges: ["Author"]
+            };
+        } else if (cleanId.length > 0) {
+            // General dynamic profile fallback for any community member
+            const displayHandle = strippedId.charAt(0).toUpperCase() + strippedId.slice(1);
+            profile = {
+                id: strippedId,
+                name: displayHandle,
+                username: strippedId,
+                email: "",
+                bio: "Community Member on BlogSite.",
+                avatar: null,
+                cover: null,
+                social: {},
+                badges: ["Reader"]
             };
         }
     }
@@ -1355,11 +1373,24 @@ const getUserNetwork = async (profileId, currentUserId = null) => {
     const follows = await readFollows();
     const profiles = await readProfiles();
     const users = await readLocalUsers();
+    const allPosts = await getAllPosts();
 
     const findProfile = (id) => {
-        let p = profiles.find(pr => pr.id === id || (pr.email && pr.email.toLowerCase() === String(id).toLowerCase()));
+        const cleanId = String(id || "").toLowerCase();
+        const strippedId = cleanId.replace(/^user_/, "");
+
+        let p = profiles.find(pr => 
+            (pr.id && (String(pr.id).toLowerCase() === cleanId || String(pr.id).toLowerCase() === strippedId)) ||
+            (pr.username && (pr.username.toLowerCase() === cleanId || pr.username.toLowerCase() === strippedId)) ||
+            (pr.name && (pr.name.toLowerCase() === cleanId || pr.name.toLowerCase() === strippedId)) ||
+            (pr.email && pr.email.toLowerCase() === cleanId)
+        );
         if (!p) {
-            const u = users.find(usr => usr.id === id || (usr.email && usr.email.toLowerCase() === String(id).toLowerCase()));
+            const u = users.find(usr => 
+                (usr.id && (String(usr.id).toLowerCase() === cleanId || String(usr.id).toLowerCase() === strippedId)) ||
+                (usr.name && (usr.name.toLowerCase() === cleanId || usr.name.toLowerCase() === strippedId)) ||
+                (usr.email && usr.email.toLowerCase() === cleanId)
+            );
             if (u) {
                 p = {
                     id: u.id,
@@ -1371,12 +1402,31 @@ const getUserNetwork = async (profileId, currentUserId = null) => {
                 };
             }
         }
+        if (!p) {
+            const authorPost = allPosts.find(ap => 
+                (ap.author && (ap.author.toLowerCase() === cleanId || ap.author.toLowerCase() === strippedId)) ||
+                (ap.author_id && (String(ap.author_id).toLowerCase() === cleanId || String(ap.author_id).toLowerCase() === strippedId)) ||
+                (ap.author_username && (ap.author_username.toLowerCase() === cleanId || ap.author_username.toLowerCase() === strippedId))
+            );
+            if (authorPost) {
+                p = {
+                    id: authorPost.author_id || authorPost.author || strippedId,
+                    name: authorPost.author || (strippedId.charAt(0).toUpperCase() + strippedId.slice(1)),
+                    username: authorPost.author_username || (authorPost.author || strippedId).toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                    email: authorPost.author_email || "",
+                    avatar: null,
+                    bio: "Storyteller & Creator on BlogSite."
+                };
+            }
+        }
+        const displayName = p?.name || (strippedId.charAt(0).toUpperCase() + strippedId.slice(1)) || "Author";
+        const displayUsername = p?.username || strippedId || (String(id).toLowerCase().replace(/[^a-z0-9_]/g, ""));
         return p || {
-            id,
-            name: "Community Member",
-            username: "user_" + String(id).substring(0, 6),
+            id: strippedId || id,
+            name: displayName,
+            username: displayUsername,
             avatar: null,
-            bio: ""
+            bio: "Community Member on BlogSite."
         };
     };
 
