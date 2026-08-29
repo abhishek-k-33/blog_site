@@ -360,12 +360,13 @@ const writeBookmarks = async (bookmarks) => {
     return writeJSONSafe("bookmarks.json", bookmarks);
 };
 
-// --- REAL ANALYTICS ENGINE (Story Views, Applause & Reading Time) ---
+// --- REAL ANALYTICS ENGINE (Unique Story Views, Applause & Reading Time) ---
 const readAnalytics = async () => {
-    const data = await readJSONSafe("analytics.json", { views: {}, claps: {} });
+    const data = await readJSONSafe("analytics.json", { views: {}, claps: {}, unique_views: {} });
     return {
         views: data.views || {},
-        claps: data.claps || {}
+        claps: data.claps || {},
+        unique_views: data.unique_views || {}
     };
 };
 
@@ -373,16 +374,46 @@ const writeAnalytics = async (analytics) => {
     return writeJSONSafe("analytics.json", analytics);
 };
 
-const recordPostView = async (postId) => {
+const recordPostView = async (postId, req = null, res = null) => {
     if (!postId) return 0;
     try {
         const analytics = await readAnalytics();
         const key = String(postId);
-        analytics.views[key] = (analytics.views[key] || 0) + 1;
-        await writeAnalytics(analytics);
+        if (!analytics.views[key]) analytics.views[key] = 0;
+        if (!analytics.unique_views[key]) analytics.unique_views[key] = [];
+
+        // Determine unique reader identifier (User ID > User Email > Persistent Browser Reader ID)
+        let readerId = req?.user?.id || req?.user?.email;
+        if (!readerId && req?.cookies?.blog_reader_id) {
+            readerId = req.cookies.blog_reader_id;
+        }
+
+        // If new visitor, generate persistent 1-year reader cookie
+        if (!readerId) {
+            readerId = "r_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+            if (res) {
+                const isProd = process.env.NODE_ENV === "production";
+                res.cookie("blog_reader_id", readerId, {
+                    maxAge: 365 * 24 * 60 * 60 * 1000,
+                    httpOnly: true,
+                    secure: isProd,
+                    sameSite: "lax",
+                    path: "/"
+                });
+            }
+        }
+
+        // Only count read if this person has not viewed this story yet
+        const alreadyViewed = analytics.unique_views[key].includes(readerId);
+        if (!alreadyViewed) {
+            analytics.unique_views[key].push(readerId);
+            analytics.views[key] = analytics.unique_views[key].length;
+            await writeAnalytics(analytics);
+        }
+
         return analytics.views[key];
     } catch (e) {
-        console.error("Error recording post view:", e);
+        console.error("Error recording unique post view:", e);
         return 0;
     }
 };
@@ -1930,8 +1961,8 @@ app.get("/posts/:id", async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         if (post) {
-            // Record real reader view
-            await recordPostView(post.id);
+            // Record real unique reader view (1 person = 1 read)
+            await recordPostView(post.id, req, res);
 
             const analytics = await readAnalytics();
             post.views = analytics.views?.[String(post.id)] || 1;
