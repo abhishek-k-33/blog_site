@@ -11,7 +11,7 @@ const port = process.env.PORT || 5000;
 
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), { maxAge: "1d" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
@@ -282,70 +282,113 @@ const authenticateLocalUser = async (email, password) => {
     return { id: user.id, name: user.name, email: user.email };
 };
 
-// --- PERSISTENT STATE ENGINE (Supabase PostgreSQL Storage across Vercel Redeploys) ---
+// --- LIGHTNING-FAST HIGH-PERFORMANCE CACHE & PERSISTENCE ENGINE ---
+const memoryCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 60s memory cache TTL
+
 const readSystemState = async (key, fallback) => {
     const filename = `${key.toLowerCase()}.json`;
-    // If Supabase is available, sync directly with PostgreSQL
+    const cached = memoryCache.get(key);
+    const now = Date.now();
+
+    // 1. Instant RAM Cache Hit (< 0.1ms response time)
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+    }
+
+    // 2. Fast local disk cache read (~0.5ms)
+    let localData = cached ? cached.data : await readJSONSafe(filename, null);
+    if (localData !== null) {
+        memoryCache.set(key, { data: localData, timestamp: now });
+        // Background revalidate from Supabase asynchronously without blocking user response
+        if (supabase && (!cached || now - cached.timestamp >= CACHE_TTL_MS)) {
+            setImmediate(async () => {
+                try {
+                    const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
+                    const { data } = await supabase
+                        .from("posts")
+                        .select("content")
+                        .eq("title", systemTitle)
+                        .maybeSingle();
+                    if (data?.content) {
+                        const parsed = JSON.parse(data.content);
+                        memoryCache.set(key, { data: parsed, timestamp: Date.now() });
+                        await writeJSONSafe(filename, parsed);
+                    }
+                } catch (e) {}
+            });
+        }
+        return localData;
+    }
+
+    // 3. Cold Start Supabase Fetch (only if zero local cache)
     if (supabase) {
         try {
             const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
             const { data, error } = await supabase
                 .from("posts")
-                .select("id, content")
+                .select("content")
                 .eq("title", systemTitle)
                 .maybeSingle();
 
             if (!error && data?.content) {
                 const parsed = JSON.parse(data.content);
-                // Also update local cache
+                memoryCache.set(key, { data: parsed, timestamp: Date.now() });
                 await writeJSONSafe(filename, parsed);
                 return parsed;
             }
         } catch (e) {
-            console.warn(`Supabase readSystemState error for ${key}:`, e.message);
+            console.warn(`Supabase readSystemState cold fetch error for ${key}:`, e.message);
         }
     }
-    // Fall back to local JSON file
-    return readJSONSafe(filename, fallback);
+
+    const finalData = fallback;
+    memoryCache.set(key, { data: finalData, timestamp: now });
+    return finalData;
 };
 
 const writeSystemState = async (key, data) => {
     const filename = `${key.toLowerCase()}.json`;
-    // 1. Write to local file / tmp
-    await writeJSONSafe(filename, data);
+    // 1. Instant RAM update (< 0.1ms) - user gets instant UI update
+    memoryCache.set(key, { data, timestamp: Date.now() });
 
-    // 2. Persist to Supabase PostgreSQL (survives all redeployments and cold starts)
+    // 2. Fast local disk write (non-blocking)
+    writeJSONSafe(filename, data).catch(() => {});
+
+    // 3. Non-blocking asynchronous Supabase sync in background
     if (supabase) {
-        try {
-            const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
-            const { data: existing } = await supabase
-                .from("posts")
-                .select("id")
-                .eq("title", systemTitle)
-                .maybeSingle();
+        setImmediate(async () => {
+            try {
+                const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
+                const { data: existing } = await supabase
+                    .from("posts")
+                    .select("id")
+                    .eq("title", systemTitle)
+                    .maybeSingle();
 
-            if (existing?.id) {
-                await supabase
-                    .from("posts")
-                    .update({
-                        content: JSON.stringify(data),
-                        excerpt: `System ${key} State`,
-                        author: "__SYSTEM__"
-                    })
-                    .eq("id", existing.id);
-            } else {
-                await supabase
-                    .from("posts")
-                    .insert([{
-                        title: systemTitle,
-                        content: JSON.stringify(data),
-                        excerpt: `System ${key} State`,
-                        author: "__SYSTEM__"
-                    }]);
+                if (existing?.id) {
+                    await supabase
+                        .from("posts")
+                        .update({
+                            content: JSON.stringify(data),
+                            excerpt: `System ${key} State`,
+                            author: "__SYSTEM__"
+                        })
+                        .eq("id", existing.id);
+                } else {
+                    await supabase
+                        .from("posts")
+                        .insert([{
+                            title: systemTitle,
+                            content: JSON.stringify(data),
+                            excerpt: `System ${key} State`,
+                            author: "__SYSTEM__"
+                        }]);
+                }
+            } catch (e) {
+                console.warn(`Background Supabase writeSystemState error for ${key}:`, e.message);
             }
-        } catch (e) {
-            console.warn(`Supabase writeSystemState error for ${key}:`, e.message);
-        }
+        });
     }
 };
 
@@ -910,38 +953,66 @@ const writeLocalPosts = async (posts) => {
 };
 
 // =========================================
-// Data Layer (Supabase PostgreSQL + Local JSON Cache Fallback)
+// Data Layer (Supabase PostgreSQL + RAM Cache + Local JSON Cache Fallback)
 // =========================================
 
+let postsCache = { data: null, timestamp: 0 };
+const POSTS_CACHE_TTL = 15 * 1000; // 15s in-memory cache
+
+const invalidatePostsCache = () => {
+    postsCache = { data: null, timestamp: 0 };
+};
+
 const getAllPosts = async () => {
+    const now = Date.now();
+    if (postsCache.data && (now - postsCache.timestamp < POSTS_CACHE_TTL)) {
+        return postsCache.data;
+    }
+
     if (supabase) {
-        const { data, error } = await supabase
-            .from("posts")
-            .select("*")
-            .not("title", "like", "__SYSTEM_%")
-            .neq("author", "__SYSTEM__")
-            .order("created_at", { ascending: false });
-        if (error) throw error;
-        return (data || [])
-            .filter(p => !p.title?.startsWith("__SYSTEM_") && p.author !== "__SYSTEM__")
-            .map(formatPost);
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .select("*")
+                .not("title", "like", "__SYSTEM_%")
+                .neq("author", "__SYSTEM__")
+                .order("created_at", { ascending: false });
+            if (!error && data) {
+                const formatted = data
+                    .filter(p => !p.title?.startsWith("__SYSTEM_") && p.author !== "__SYSTEM__")
+                    .map(formatPost);
+                postsCache = { data: formatted, timestamp: now };
+                return formatted;
+            }
+        } catch (e) {
+            console.warn("Supabase getAllPosts fetch fallback:", e.message);
+        }
     }
     const localPosts = await readLocalPosts();
-    return localPosts
+    const formatted = localPosts
         .filter(p => !p.title?.startsWith("__SYSTEM_") && p.author !== "__SYSTEM__")
         .map(formatPost);
+    postsCache = { data: formatted, timestamp: now };
+    return formatted;
 };
 
 const getPostById = async (id) => {
+    if (postsCache.data) {
+        const cachedPost = postsCache.data.find(p => String(p.id) === String(id));
+        if (cachedPost) return cachedPost;
+    }
+
     if (supabase) {
-        const { data, error } = await supabase
-            .from("posts")
-            .select("*")
-            .eq("id", id)
-            .single();
-        if (error || !data) return null;
-        if (data.title?.startsWith("__SYSTEM_") || data.author === "__SYSTEM__") return null;
-        return formatPost(data);
+        try {
+            const { data, error } = await supabase
+                .from("posts")
+                .select("*")
+                .eq("id", id)
+                .single();
+            if (!error && data && !data.title?.startsWith("__SYSTEM_") && data.author !== "__SYSTEM__") {
+                return formatPost(data);
+            }
+        } catch (e) {}
     }
     const localPosts = await readLocalPosts();
     const post = localPosts.find((p) => String(p.id) === String(id));
@@ -1000,6 +1071,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
             .insert([{ title, content: contentWithMetadata, excerpt, author }])
             .select()
             .single();
+        invalidatePostsCache();
         if (error) throw error;
         return formatPost({ ...data, tags: cleanTags, coverImage: cleanCover });
     }
@@ -1020,6 +1092,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
     };
     localPosts.unshift(newPost);
     await writeLocalPosts(localPosts);
+    invalidatePostsCache();
     return formatPost(newPost);
 };
 
@@ -1049,6 +1122,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
                 .eq("id", id)
                 .select()
                 .single();
+            invalidatePostsCache();
             if (!error && data) return formatPost(data);
         } catch (e) {}
 
@@ -1059,6 +1133,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
                 .eq("id", id)
                 .select()
                 .single();
+            invalidatePostsCache();
             if (!error && data) return formatPost(data);
         } catch (e) {}
 
@@ -1069,6 +1144,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
                 .eq("id", id)
                 .select()
                 .single();
+            invalidatePostsCache();
             if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
         } catch (e) {}
 
@@ -1078,6 +1154,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
             .eq("id", id)
             .select()
             .single();
+        invalidatePostsCache();
         if (error) throw error;
         return formatPost({ ...data, tags: cleanTags, coverImage: cleanCover });
     }
@@ -1097,22 +1174,25 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
             coverImage: cleanCover,
         };
         await writeLocalPosts(localPosts);
+        invalidatePostsCache();
         return formatPost(localPosts[index]);
     }
     return null;
 };
 
-const deletePost = async (id) => {
-    if (supabase) {
-        const { error } = await supabase.from("posts").delete().eq("id", id);
-        if (error) throw error;
-        return true;
+const deletePost = async (id) => {    if (supabase) {
+        try {
+            const { error } = await supabase.from("posts").delete().eq("id", id);
+            invalidatePostsCache();
+            if (!error) return true;
+        } catch (e) {}
     }
     const localPosts = await readLocalPosts();
-    const filtered = localPosts.filter((p) => String(p.id) !== String(id));
-    await writeLocalPosts(filtered);
+    const filteredPosts = localPosts.filter((p) => String(p.id) !== String(id));
+    await writeLocalPosts(filteredPosts);
+    invalidatePostsCache();
     return true;
-};
+};;
 
 // Simple HTML sanitizer to prevent basic XSS
 const simpleSanitize = (str) => {
@@ -1411,12 +1491,13 @@ app.get("/explore", (req, res) => {
 });
 
 // --- PROFILE & SETTINGS ROUTES ---
-
 const getUserNetwork = async (profileId, currentUserId = null) => {
-    const follows = await readFollows();
-    const profiles = await readProfiles();
-    const users = await readLocalUsers();
-    const allPosts = await getAllPosts();
+    const [follows, profiles, users, allPosts] = await Promise.all([
+        readFollows(),
+        readProfiles(),
+        readLocalUsers(),
+        getAllPosts()
+    ]);
 
     const findProfile = (id) => {
         const cleanId = String(id || "").toLowerCase();
@@ -1519,28 +1600,33 @@ const getUserNetwork = async (profileId, currentUserId = null) => {
 app.get("/profile", requireAuth, async (req, res, next) => {
     try {
         const profile = await getOrCreateProfile(req.user, req);
-        const allPosts = await getAllPosts();
+        setUserProfileCookie(res, profile);
+
+        const [allPosts, bookmarksData, follows, network, analytics] = await Promise.all([
+            getAllPosts(),
+            readBookmarks(),
+            readFollows(),
+            getUserNetwork(profile.id, req.user?.id),
+            readAnalytics()
+        ]);
+
         const publishedPosts = allPosts.filter(p => {
             return (p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase()) ||
                    (p.author && profile.username && p.author.toLowerCase() === profile.username.toLowerCase()) ||
                    (p.author_id && p.author_id === profile.id);
-        });;
+        });
 
         const drafts = [];
-
-        const bookmarksData = await readBookmarks();
         const userBookmarks = bookmarksData.filter(b => b.userId === req.user.id);
         const bookmarks = userBookmarks.map(b => {
             const post = allPosts.find(p => String(p.id) === String(b.postId));
             return post ? { ...post, snippet: post.excerpt || post.content.substring(0, 120) + "..." } : null;
         }).filter(Boolean);
 
-        const follows = await readFollows();
         const followersCount = follows.filter(f => f.followingId === profile.id).length;
         const followingCount = follows.filter(f => f.followerId === profile.id).length;
-        const { followers: followersList, following: followingList } = await getUserNetwork(profile.id, req.user?.id);
+        const { followers: followersList, following: followingList } = network;
 
-        const analytics = await readAnalytics();
         let totalReads = 0;
         let totalApplause = 0;
         let totalWords = 0;
@@ -1601,7 +1687,14 @@ app.get("/profile/:identifier", async (req, res, next) => {
 
         const isOwner = Boolean(req.user && (req.user.id === profile.id || (req.user.email && req.user.email.toLowerCase() === profile.email.toLowerCase())));
 
-        const allPosts = await getAllPosts();
+        const [allPosts, bookmarksData, follows, network, analytics] = await Promise.all([
+            getAllPosts(),
+            readBookmarks(),
+            readFollows(),
+            getUserNetwork(profile.id, req.user?.id),
+            readAnalytics()
+        ]);
+
         const publishedPosts = allPosts.filter(p => {
             return (p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase()) ||
                    (p.author && profile.username && p.author.toLowerCase() === profile.username.toLowerCase()) ||
@@ -1609,21 +1702,17 @@ app.get("/profile/:identifier", async (req, res, next) => {
         });
 
         const drafts = [];
-
-        const bookmarksData = await readBookmarks();
         const userBookmarks = bookmarksData.filter(b => b.userId === profile.id);
         const bookmarks = userBookmarks.map(b => {
             const post = allPosts.find(p => String(p.id) === String(b.postId));
             return post ? { ...post, snippet: post.excerpt || post.content.substring(0, 120) + "..." } : null;
         }).filter(Boolean);
 
-        const follows = await readFollows();
         const followersCount = follows.filter(f => f.followingId === profile.id).length;
         const followingCount = follows.filter(f => f.followerId === profile.id).length;
         const isFollowing = req.user ? follows.some(f => f.followerId === req.user.id && f.followingId === profile.id) : false;
-        const { followers: followersList, following: followingList } = await getUserNetwork(profile.id, req.user?.id);
+        const { followers: followersList, following: followingList } = network;
 
-        const analytics = await readAnalytics();
         let totalReads = 0;
         let totalApplause = 0;
         let totalWords = 0;
@@ -1666,7 +1755,7 @@ app.get("/profile/:identifier", async (req, res, next) => {
     } catch (err) {
         next(err);
     }
-});
+});;
 
 // GET /settings: Private Account Settings Screen
 app.get("/settings", requireAuth, async (req, res, next) => {
@@ -2132,14 +2221,17 @@ app.get("/posts/:id", async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         if (post) {
-            // Record real unique reader view (1 person = 1 read)
-            await recordPostView(post.id, req, res);
+            // Record real unique reader view (non-blocking in background)
+            recordPostView(post.id, req, res).catch(() => {});
 
-            const analytics = await readAnalytics();
+            const [analytics, allPosts] = await Promise.all([
+                readAnalytics(),
+                getAllPosts()
+            ]);
+
             post.views = analytics.views?.[String(post.id)] || 1;
             post.claps = analytics.claps?.[String(post.id)] || 0;
 
-            const allPosts = await getAllPosts();
             const postTags = (post.tags || []).map(t => t.toLowerCase());
             const relatedPosts = allPosts
                 .filter(p => String(p.id) !== String(post.id))
