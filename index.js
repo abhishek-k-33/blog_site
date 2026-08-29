@@ -296,30 +296,46 @@ const getOrCreateProfile = async (user) => {
     const profiles = await readProfiles();
     let profile = profiles.find(p => p.id === user.id || (user.email && p.email && p.email.toLowerCase() === user.email.toLowerCase()));
 
+    const meta = user.user_metadata || {};
+    const metaSocial = meta.social || (meta.twitter ? { twitter: meta.twitter } : null);
+
     if (!profile) {
-        const usernameBase = (user.email ? user.email.split("@")[0] : user.name || "author").toLowerCase().replace(/[^a-z0-9_]/g, "");
+        const usernameBase = meta.username || (user.email ? user.email.split("@")[0] : user.name || "author").toLowerCase().replace(/[^a-z0-9_]/g, "");
         profile = {
             id: user.id,
-            name: user.name || "Author",
+            name: meta.name || meta.display_name || user.name || "Author",
             username: usernameBase,
             email: user.email || "",
-            phone: "",
-            bio: "",
-            avatar: user.avatar || null,
-            cover: null,
-            location: "",
-            website: "",
-            social: { twitter: "" },
-            badges: ["Writer"],
-            isPro: false,
+            phone: meta.phone || "",
+            bio: meta.bio || "",
+            avatar: meta.avatar || user.avatar || null,
+            cover: meta.cover || null,
+            location: meta.location || "",
+            website: meta.website || "",
+            social: metaSocial || { twitter: "" },
+            badges: meta.badges || [],
+            isPro: Boolean(meta.isPro),
             twoFactorEnabled: false,
-            notifications: { comments: true, followers: true, digest: true, push: false },
-            privacy: { isPublic: true, showBookmarks: true },
+            notifications: meta.notifications || { comments: true, followers: true, digest: true, push: false },
+            privacy: meta.privacy || { isPublic: true, showBookmarks: true },
             created_at: new Date().toISOString()
         };
         profiles.push(profile);
         await writeProfiles(profiles);
     } else {
+        // Sync latest metadata from Supabase user_metadata if available
+        if (meta.name && meta.name.trim()) profile.name = meta.name.trim();
+        if (meta.username && meta.username.trim()) profile.username = meta.username.trim();
+        if (meta.bio !== undefined && meta.bio !== "") profile.bio = meta.bio;
+        if (meta.location !== undefined && meta.location !== "") profile.location = meta.location;
+        if (meta.website !== undefined && meta.website !== "") profile.website = meta.website;
+        if (meta.phone !== undefined && meta.phone !== "") profile.phone = meta.phone;
+        if (meta.avatar !== undefined) profile.avatar = meta.avatar;
+        if (meta.cover !== undefined) profile.cover = meta.cover;
+        if (metaSocial) profile.social = metaSocial;
+        if (meta.notifications) profile.notifications = meta.notifications;
+        if (meta.privacy) profile.privacy = meta.privacy;
+
         if (!profile.social) profile.social = {};
         if (user.avatar && !profile.avatar) profile.avatar = user.avatar;
     }
@@ -361,8 +377,10 @@ app.use(async (req, res, next) => {
                     req.user = {
                         id: user.id,
                         email: user.email,
-                        name: user.user_metadata?.display_name || user.user_metadata?.full_name || user.user_metadata?.name || (user.email ? user.email.split("@")[0] : "Author"),
-                        avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                        name: user.user_metadata?.name || user.user_metadata?.display_name || user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Author"),
+                        avatar: user.user_metadata?.avatar || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                        username: user.user_metadata?.username || null,
+                        user_metadata: user.user_metadata || {},
                         isGoogleUser: isGoogle,
                         provider: isGoogle ? "google" : (user.app_metadata?.provider || "email")
                     };
@@ -380,8 +398,10 @@ app.use(async (req, res, next) => {
                             req.user = {
                                 id: refreshedUser.id,
                                 email: refreshedUser.email,
-                                name: refreshedUser.user_metadata?.display_name || refreshedUser.user_metadata?.full_name || refreshedUser.user_metadata?.name || (refreshedUser.email ? refreshedUser.email.split("@")[0] : "Author"),
-                                avatar: refreshedUser.user_metadata?.avatar_url || refreshedUser.user_metadata?.picture || null,
+                                name: refreshedUser.user_metadata?.name || refreshedUser.user_metadata?.display_name || refreshedUser.user_metadata?.full_name || (refreshedUser.email ? refreshedUser.email.split("@")[0] : "Author"),
+                                avatar: refreshedUser.user_metadata?.avatar || refreshedUser.user_metadata?.avatar_url || refreshedUser.user_metadata?.picture || null,
+                                username: refreshedUser.user_metadata?.username || null,
+                                user_metadata: refreshedUser.user_metadata || {},
                                 isGoogleUser: isGoogle,
                                 provider: isGoogle ? "google" : (refreshedUser.app_metadata?.provider || "email")
                             };
@@ -1303,6 +1323,34 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             profiles.push(profile);
         }
         await writeProfiles(profiles);
+
+        // Sync to Supabase Auth cloud metadata so changes persist permanently on Vercel
+        if (supabase && req.cookies?.auth_token) {
+            try {
+                const { createClient } = require("@supabase/supabase-js");
+                const userClient = createClient(supabaseUrl, supabaseKey, {
+                    auth: { persistSession: false },
+                    global: { headers: { Authorization: `Bearer ${req.cookies.auth_token}` } }
+                });
+                await userClient.auth.updateUser({
+                    data: {
+                        name: profile.name,
+                        username: profile.username,
+                        bio: profile.bio,
+                        phone: profile.phone,
+                        avatar: profile.avatar,
+                        cover: profile.cover,
+                        location: profile.location,
+                        website: profile.website,
+                        social: profile.social,
+                        notifications: profile.notifications,
+                        privacy: profile.privacy
+                    }
+                });
+            } catch (sbErr) {
+                console.warn("Supabase user_metadata sync notice:", sbErr.message);
+            }
+        }
 
         // Update live user session reference immediately
         if (req.user) {
