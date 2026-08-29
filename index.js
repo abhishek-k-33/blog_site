@@ -35,6 +35,31 @@ const PROFILES_FILE = path.join(__dirname, "profiles.json");
 const FOLLOWS_FILE = path.join(__dirname, "follows.json");
 const BOOKMARKS_FILE = path.join(__dirname, "bookmarks.json");
 const ANALYTICS_FILE = path.join(__dirname, "analytics.json");
+const UPLOADS_DIR = path.join(__dirname, "public", "uploads");
+
+if (!fsSync.existsSync(UPLOADS_DIR)) {
+    fsSync.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+const saveBase64Image = async (dataUrl, prefix, userId) => {
+    if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return dataUrl;
+    try {
+        const matches = dataUrl.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/);
+        if (!matches || matches.length < 3) return dataUrl;
+        let ext = matches[1];
+        if (ext === "jpeg") ext = "jpg";
+        if (ext.includes("+xml")) ext = "svg";
+        const base64Data = matches[2];
+        const safeUserId = String(userId || "user").replace(/[^a-zA-Z0-9_-]/g, "");
+        const fileName = `${prefix}_${safeUserId}_${Date.now()}.${ext}`;
+        const filePath = path.join(UPLOADS_DIR, fileName);
+        await fs.writeFile(filePath, Buffer.from(base64Data, "base64"));
+        return `/uploads/${fileName}`;
+    } catch (e) {
+        console.error("Error saving base64 image:", e);
+        return dataUrl;
+    }
+};
 
 // Local Auth Secret & Salt
 const AUTH_SECRET = process.env.AUTH_SECRET || "miniblogs_secure_dev_secret_key_2026";
@@ -1251,8 +1276,24 @@ app.post("/api/profile", requireAuth, async (req, res) => {
         if (username !== undefined && username.trim()) profile.username = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
         if (phone !== undefined) profile.phone = phone ? phone.trim() : "";
         if (bio !== undefined) profile.bio = bio ? bio.trim() : "";
-        if (avatar !== undefined) profile.avatar = avatar ? avatar.trim() : null;
-        if (cover !== undefined) profile.cover = cover ? cover.trim() : null;
+        if (avatar !== undefined) {
+            if (avatar && typeof avatar === "string" && avatar.startsWith("data:image/")) {
+                profile.avatar = await saveBase64Image(avatar, "avatar", req.user.id);
+            } else if (avatar && typeof avatar === "string" && avatar.trim()) {
+                profile.avatar = avatar.trim();
+            } else if (avatar === "" || avatar === null) {
+                profile.avatar = null;
+            }
+        }
+        if (cover !== undefined) {
+            if (cover && typeof cover === "string" && cover.startsWith("data:image/")) {
+                profile.cover = await saveBase64Image(cover, "cover", req.user.id);
+            } else if (cover && typeof cover === "string" && cover.trim()) {
+                profile.cover = cover.trim();
+            } else if (cover === "" || cover === null) {
+                profile.cover = null;
+            }
+        }
         if (location !== undefined) profile.location = location ? location.trim() : "";
         if (website !== undefined) {
             let cleanWebsite = website ? website.trim() : "";
@@ -1261,7 +1302,6 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             }
             profile.website = cleanWebsite;
         }
-        if (phone !== undefined) profile.phone = phone ? phone.trim() : "";
         if (twitter !== undefined) {
             let cleanTwitter = twitter ? twitter.trim() : "";
             if (cleanTwitter.includes("twitter.com/") || cleanTwitter.includes("x.com/")) {

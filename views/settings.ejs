@@ -105,7 +105,7 @@
                         <div class="form-full-width">
                             <label class="settings-label">Cover Banner Image</label>
                             <div class="media-cover-card" id="media-cover-dropzone">
-                                <div class="media-cover-preview-wrapper">
+                                <div class="media-cover-preview-wrapper <%= profile.cover ? 'has-cover' : '' %>" id="media-cover-wrapper">
                                     <% if (profile.cover) { %>
                                         <img src="<%= profile.cover %>" alt="Cover Banner" id="cover-img-element" class="media-cover-img">
                                     <% } else { %>
@@ -116,7 +116,7 @@
                                         <input type="hidden" id="setting-cover" name="cover" value="<%= profile.cover || '' %>">
                                         <button type="button" class="btn-profile-primary" id="btn-upload-cover">
                                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                            <span>Upload Banner from Device</span>
+                                            <span id="btn-upload-cover-text"><%= profile.cover ? 'Change Banner' : 'Upload Banner from Device' %></span>
                                         </button>
                                         <button type="button" class="btn-profile-secondary" id="btn-remove-cover" style="<%= profile.cover ? '' : 'display: none;' %>">
                                             <span>Reset to Default</span>
@@ -426,15 +426,15 @@
             alert('Please select a valid image file (JPG, PNG, or WebP).');
             return;
         }
-        if (file.size > 8 * 1024 * 1024) {
-            alert('Cover image size exceeds 8MB. Please choose a smaller image.');
+        if (file.size > 15 * 1024 * 1024) {
+            alert('Cover image size exceeds 15MB. Please choose a smaller image.');
             return;
         }
         const reader = new FileReader();
         reader.onload = (e) => {
             const dataUrl = e.target.result;
             coverHiddenInput.value = dataUrl;
-            const previewWrapper = coverDropzone.querySelector('.media-cover-preview-wrapper');
+            const previewWrapper = document.getElementById('media-cover-wrapper') || (coverDropzone && coverDropzone.querySelector('.media-cover-preview-wrapper'));
             let img = document.getElementById('cover-img-element');
             const placeholder = document.getElementById('cover-placeholder-element');
             if (placeholder) placeholder.style.display = 'none';
@@ -448,6 +448,9 @@
                 img.className = 'media-cover-img';
                 previewWrapper.prepend(img);
             }
+            if (previewWrapper) previewWrapper.classList.add('has-cover');
+            const btnText = document.getElementById('btn-upload-cover-text');
+            if (btnText) btnText.textContent = 'Change Banner';
             if (btnRemoveCover) btnRemoveCover.style.display = 'inline-flex';
         };
         reader.readAsDataURL(file);
@@ -467,9 +470,16 @@
         btnRemoveCover.addEventListener('click', () => {
             coverHiddenInput.value = '';
             const img = document.getElementById('cover-img-element');
-            if (img) img.style.display = 'none';
+            if (img) {
+                img.src = '';
+                img.style.display = 'none';
+            }
             const placeholder = document.getElementById('cover-placeholder-element');
             if (placeholder) placeholder.style.display = 'block';
+            const previewWrapper = document.getElementById('media-cover-wrapper') || (coverDropzone && coverDropzone.querySelector('.media-cover-preview-wrapper'));
+            if (previewWrapper) previewWrapper.classList.remove('has-cover');
+            const btnText = document.getElementById('btn-upload-cover-text');
+            if (btnText) btnText.textContent = 'Upload Banner from Device';
             btnRemoveCover.style.display = 'none';
         });
     }
