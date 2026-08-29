@@ -235,11 +235,15 @@ const generateLocalToken = (user) => {
 
 const verifyLocalToken = (token) => {
     try {
-        const [payload, signature] = token.split(".");
+        if (!token || typeof token !== "string") return null;
+        let cleanToken = decodeURIComponent(token.trim());
+        const [payload, signature] = cleanToken.split(".");
         if (!payload || !signature) return null;
         const expected = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
         if (signature !== expected) return null;
-        const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
+        let base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) base64 += "=";
+        const data = JSON.parse(Buffer.from(base64, "base64").toString("utf-8"));
         if (data.exp && data.exp < Date.now()) return null;
         return data;
     } catch (e) {
@@ -250,9 +254,12 @@ const verifyLocalToken = (token) => {
 const decodeSupabaseJWT = (token) => {
     try {
         if (!token || typeof token !== "string") return null;
-        const parts = token.split(".");
+        let cleanToken = decodeURIComponent(token.trim());
+        const parts = cleanToken.split(".");
         if (parts.length !== 3) return null;
-        const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
+        let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) base64 += "=";
+        const payload = JSON.parse(Buffer.from(base64, "base64").toString("utf-8"));
         if (!payload || !payload.sub) return null;
         if (payload.exp && (payload.exp * 1000) < Date.now()) return null; // expired
 
@@ -2213,31 +2220,9 @@ app.get("/", async (req, res, next) => {
 
         const isGuest = req.cookies?.guest_mode === "true" || req.query.guest === "true";
 
-        // If not authenticated and has not chosen guest mode, check localStorage token before redirecting
+        // If not authenticated and has not chosen guest mode, show login page first
         if (!req.user && !isGuest) {
-            return res.send(`<!DOCTYPE html><html><head><title>miniblogs</title><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#0c0d10;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;}</style><script>
-                const token = localStorage.getItem('auth_token');
-                if (token) {
-                    const isSecure = window.location.protocol === 'https:' ? '; Secure' : '';
-                    document.cookie = 'auth_token=' + encodeURIComponent(token) + '; path=/; max-age=31536000; SameSite=Lax' + isSecure;
-                    fetch('/api/auth/session', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: token })
-                    }).then(r => r.json()).then(d => {
-                        if (d && d.success) {
-                            window.location.replace('/');
-                        } else {
-                            localStorage.removeItem('auth_token');
-                            window.location.replace('/login');
-                        }
-                    }).catch(() => {
-                        window.location.replace('/');
-                    });
-                } else {
-                    window.location.replace('/login');
-                }
-            </script></head><body>Loading miniblogs...</body></html>`);
+            return res.redirect("/login");
         }
 
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");

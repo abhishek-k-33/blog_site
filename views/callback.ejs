@@ -125,7 +125,6 @@
 
         async function createServerSession(accessToken, refreshToken) {
             try {
-                // Store in localStorage and client cookie immediately
                 localStorage.setItem('auth_token', accessToken);
                 if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
                 
@@ -139,13 +138,12 @@
                     await fetch('/api/auth/session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
                         body: JSON.stringify({ token: accessToken, refreshToken: refreshToken || '' })
                     });
                 } catch (e) {}
 
-                setTimeout(() => {
-                    window.location.replace('/');
-                }, 150);
+                window.location.replace('/');
                 return true;
             } catch (err) {
                 window.location.replace('/');
