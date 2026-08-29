@@ -144,9 +144,9 @@ const parseDeviceInfo = (userAgent, ip) => {
 const SESSION_COOKIE_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 365 days in ms
 
 const setSessionCookies = (res, accessToken, refreshToken = null) => {
-    const isProd = process.env.NODE_ENV === "production";
+    const isProd = process.env.NODE_ENV === "production" && Boolean(process.env.VERCEL);
     res.cookie("auth_token", accessToken, {
-        httpOnly: true,
+        httpOnly: false,
         secure: isProd,
         maxAge: SESSION_COOKIE_MAX_AGE,
         sameSite: "lax",
@@ -154,7 +154,7 @@ const setSessionCookies = (res, accessToken, refreshToken = null) => {
     });
     if (refreshToken) {
         res.cookie("refresh_token", refreshToken, {
-            httpOnly: true,
+            httpOnly: false,
             secure: isProd,
             maxAge: SESSION_COOKIE_MAX_AGE,
             sameSite: "lax",
@@ -1382,7 +1382,13 @@ app.all(["/logout", "/api/auth/logout"], (req, res) => {
     if (req.xhr || req.headers.accept?.includes("json")) {
         return res.json({ success: true, message: "Logged out." });
     }
-    res.redirect("/login");
+    res.send(`<!DOCTYPE html><html><head><script>
+        try {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('refresh_token');
+        } catch (e) {}
+        window.location.replace('/login');
+    </script></head><body>Logging out...</body></html>`);
 });
 
 // POST /api/auth/forgot-password

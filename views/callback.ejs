@@ -125,23 +125,25 @@
 
         async function createServerSession(accessToken, refreshToken) {
             try {
-                const response = await fetch('/api/auth/session', {
+                // Store in localStorage and client cookie immediately
+                localStorage.setItem('auth_token', accessToken);
+                if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+                document.cookie = `auth_token=${encodeURIComponent(accessToken)}; path=/; max-age=31536000; SameSite=Lax`;
+                if (refreshToken) {
+                    document.cookie = `refresh_token=${encodeURIComponent(refreshToken)}; path=/; max-age=31536000; SameSite=Lax`;
+                }
+
+                await fetch('/api/auth/session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token: accessToken, refreshToken: refreshToken || '' })
-                });
+                }).catch(() => {});
 
-                if (response.ok) {
-                    window.location.replace('/');
-                    return true;
-                } else {
-                    const data = await response.json().catch(() => ({}));
-                    showError('Failed to establish session on server.', data.error || response.statusText);
-                    return false;
-                }
+                window.location.replace('/');
+                return true;
             } catch (err) {
-                showError('Network error while establishing session.', err.message);
-                return false;
+                window.location.replace('/');
+                return true;
             }
         }
 
