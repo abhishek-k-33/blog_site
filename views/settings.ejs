@@ -222,7 +222,7 @@
             <!-- ========== TAB 3: NOTIFICATIONS ========== -->
             <div class="settings-tab-panel" id="settings-panel-notifications" style="display:none;">
                 <h2 class="settings-section-title">Notification Preferences</h2>
-                <p class="settings-section-desc">Choose what updates and digests you receive in your inbox and browser.</p>
+                <p class="settings-section-desc">Choose what updates and digests you receive in your inbox and browser. Toggles save automatically.</p>
 
                 <div class="settings-toggle-row">
                     <div class="toggle-info">
@@ -230,7 +230,7 @@
                         <p>Receive email notifications when someone leaves a comment on your stories.</p>
                     </div>
                     <label class="theme-switch">
-                        <input type="checkbox" checked id="notif-comments">
+                        <input type="checkbox" <%= (profile.notifications && profile.notifications.comments !== false) ? 'checked' : '' %> id="notif-comments">
                         <span class="slider round"></span>
                     </label>
                 </div>
@@ -241,7 +241,7 @@
                         <p>Get notified when a fellow reader follows your profile or applauds your article.</p>
                     </div>
                     <label class="theme-switch">
-                        <input type="checkbox" checked id="notif-followers">
+                        <input type="checkbox" <%= (profile.notifications && profile.notifications.followers !== false) ? 'checked' : '' %> id="notif-followers">
                         <span class="slider round"></span>
                     </label>
                 </div>
@@ -252,7 +252,7 @@
                         <p>A weekly roundup of trending stories tailored to your interests.</p>
                     </div>
                     <label class="theme-switch">
-                        <input type="checkbox" checked id="notif-digest">
+                        <input type="checkbox" <%= (profile.notifications && profile.notifications.digest !== false) ? 'checked' : '' %> id="notif-digest">
                         <span class="slider round"></span>
                     </label>
                 </div>
@@ -263,7 +263,7 @@
                         <p>Instant browser push notifications for breaking story updates.</p>
                     </div>
                     <label class="theme-switch">
-                        <input type="checkbox" id="notif-push">
+                        <input type="checkbox" <%= (profile.notifications && profile.notifications.push === true) ? 'checked' : '' %> id="notif-push">
                         <span class="slider round"></span>
                     </label>
                 </div>
@@ -307,7 +307,7 @@
                         <p>Allow search engines and non-members to view your public profile and published stories.</p>
                     </div>
                     <label class="theme-switch">
-                        <input type="checkbox" checked id="privacy-visibility">
+                        <input type="checkbox" <%= (profile.privacy && profile.privacy.isPublic !== false) ? 'checked' : '' %> id="privacy-visibility">
                         <span class="slider round"></span>
                     </label>
                 </div>
@@ -495,8 +495,68 @@
         }, false);
     }
 
+    // Toast Notification Utility for Settings Feedback
+    function showSettingsToast(msg, isError = false) {
+        let toast = document.getElementById('settings-live-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'settings-live-toast';
+            toast.style.cssText = 'position:fixed;bottom:28px;right:28px;z-index:99999;padding:12px 22px;border-radius:999px;font-size:0.9rem;font-weight:600;display:flex;align-items:center;gap:10px;box-shadow:0 12px 32px rgba(0,0,0,0.4);backdrop-filter:blur(16px);transition:all 0.3s cubic-bezier(0.16,1,0.3,1);opacity:0;transform:translateY(16px);pointer-events:none;';
+            document.body.appendChild(toast);
+        }
+        toast.style.background = isError ? 'rgba(239, 68, 68, 0.92)' : 'rgba(16, 185, 129, 0.92)';
+        toast.style.color = '#ffffff';
+        toast.style.border = isError ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.25)';
+        toast.innerHTML = (isError ? '✕ ' : '✓ ') + msg;
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+        clearTimeout(window.__settingsToastTimer);
+        window.__settingsToastTimer = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(16px)';
+        }, 3200);
+    }
+
+    // Auto-Save Preference Toggles Handler
+    async function autoSavePreferences() {
+        const notifComments = document.getElementById('notif-comments')?.checked ?? true;
+        const notifFollowers = document.getElementById('notif-followers')?.checked ?? true;
+        const notifDigest = document.getElementById('notif-digest')?.checked ?? true;
+        const notifPush = document.getElementById('notif-push')?.checked ?? false;
+        const privacyVisibility = document.getElementById('privacy-visibility')?.checked ?? true;
+
+        try {
+            const res = await fetch('/api/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    notifications: {
+                        comments: notifComments,
+                        followers: notifFollowers,
+                        digest: notifDigest,
+                        push: notifPush
+                    },
+                    privacy: {
+                        isPublic: privacyVisibility
+                    }
+                })
+            });
+            if (res.ok) {
+                showSettingsToast('Preference saved automatically');
+            } else {
+                showSettingsToast('Could not save preference', true);
+            }
+        } catch (e) {
+            showSettingsToast('Network error saving preference', true);
+        }
+    }
+
+    ['notif-comments', 'notif-followers', 'notif-digest', 'notif-push', 'privacy-visibility'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', autoSavePreferences);
+    });
+
     // Save Profile Form
-    const profileForm = document.getElementById('profile-general-form');
     if (profileForm) {
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -514,6 +574,15 @@
                 location: document.getElementById('setting-location').value,
                 website: document.getElementById('setting-website').value,
                 twitter: document.getElementById('setting-twitter').value,
+                notifications: {
+                    comments: document.getElementById('notif-comments')?.checked ?? true,
+                    followers: document.getElementById('notif-followers')?.checked ?? true,
+                    digest: document.getElementById('notif-digest')?.checked ?? true,
+                    push: document.getElementById('notif-push')?.checked ?? false
+                },
+                privacy: {
+                    isPublic: document.getElementById('privacy-visibility')?.checked ?? true
+                }
             };
 
             try {
@@ -523,14 +592,16 @@
                     body: JSON.stringify(formData)
                 });
                 if (res.ok) {
-                    alert('Profile updated successfully!');
-                    window.location.href = '/profile';
+                    showSettingsToast('All profile changes saved successfully!');
+                    setTimeout(() => {
+                        window.location.href = '/profile';
+                    }, 800);
                 } else {
                     const data = await res.json();
-                    alert('Failed to update profile: ' + (data.error || 'Unknown error'));
+                    showSettingsToast(data.error || 'Failed to update profile', true);
                 }
             } catch (err) {
-                alert('Network error updating profile.');
+                showSettingsToast('Network error updating profile', true);
             } finally {
                 submitBtn.textContent = 'Save Changes';
                 submitBtn.disabled = false;

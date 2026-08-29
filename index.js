@@ -1124,10 +1124,10 @@ app.post("/api/profile/sessions/revoke-others", requireAuth, async (req, res) =>
     }
 });
 
-// POST /api/profile: Update user profile info
+// POST /api/profile: Update user profile info & preferences
 app.post("/api/profile", requireAuth, async (req, res) => {
     try {
-        const { name, username, phone, bio, avatar, cover, location, website, twitter, github } = req.body;
+        const { name, username, phone, bio, avatar, cover, location, website, twitter, notifications, privacy } = req.body;
         const profiles = await readProfiles();
         let profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
 
@@ -1135,24 +1135,41 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             profile = await getOrCreateProfile(req.user);
         }
 
-        if (name && name.trim()) profile.name = name.trim();
-        if (username && username.trim()) profile.username = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
-        profile.phone = phone ? phone.trim() : "";
-        profile.bio = bio ? bio.trim() : "";
-        profile.avatar = avatar ? avatar.trim() : profile.avatar;
-        profile.cover = cover ? cover.trim() : null;
-        profile.location = location ? location.trim() : "";
-        profile.website = website ? website.trim() : "";
-        profile.social = {
-            twitter: twitter ? twitter.trim() : ""
-        };
+        if (name !== undefined && name.trim()) profile.name = name.trim();
+        if (username !== undefined && username.trim()) profile.username = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+        if (phone !== undefined) profile.phone = phone ? phone.trim() : "";
+        if (bio !== undefined) profile.bio = bio ? bio.trim() : "";
+        if (avatar !== undefined) profile.avatar = avatar ? avatar.trim() : null;
+        if (cover !== undefined) profile.cover = cover ? cover.trim() : null;
+        if (location !== undefined) profile.location = location ? location.trim() : "";
+        if (website !== undefined) profile.website = website ? website.trim() : "";
+        if (twitter !== undefined) {
+            profile.social = {
+                ...(profile.social || {}),
+                twitter: twitter ? twitter.trim() : ""
+            };
+        }
+        if (notifications && typeof notifications === "object") {
+            profile.notifications = {
+                ...(profile.notifications || { comments: true, followers: true, digest: true, push: false }),
+                ...notifications
+            };
+        }
+        if (privacy && typeof privacy === "object") {
+            profile.privacy = {
+                ...(profile.privacy || { isPublic: true, showBookmarks: true }),
+                ...privacy
+            };
+        }
 
-        // Also update local users file
-        const users = await readLocalUsers();
-        const userIdx = users.findIndex(u => u.id === req.user.id || (req.user.email && u.email.toLowerCase() === req.user.email.toLowerCase()));
-        if (userIdx >= 0) {
-            users[userIdx].name = profile.name;
-            await writeLocalUsers(users);
+        // Also update local users file if name changed
+        if (name !== undefined) {
+            const users = await readLocalUsers();
+            const userIdx = users.findIndex(u => u.id === req.user.id || (req.user.email && u.email.toLowerCase() === req.user.email.toLowerCase()));
+            if (userIdx >= 0) {
+                users[userIdx].name = profile.name;
+                await writeLocalUsers(users);
+            }
         }
 
         // Save updated profiles list
@@ -1163,6 +1180,13 @@ app.post("/api/profile", requireAuth, async (req, res) => {
             profiles.push(profile);
         }
         await writeProfiles(profiles);
+
+        // Update live user session reference immediately
+        if (req.user) {
+            if (profile.name) req.user.name = profile.name;
+            if (profile.avatar !== undefined) req.user.avatar = profile.avatar;
+            if (profile.username) req.user.username = profile.username;
+        }
 
         res.json({ success: true, profile });
     } catch (e) {
