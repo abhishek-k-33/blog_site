@@ -176,7 +176,25 @@
                 return;
             }
 
-            // 4. If Supabase client SDK is available, check for session or exchange code
+            // 4. Check if auth code is in query string (?code=...) and exchange it via client SDK
+            const codeParam = searchParams.get('code') || hashParams.get('code');
+            if (codeParam && window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+                try {
+                    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    const { data, error } = await client.auth.exchangeCodeForSession(codeParam);
+                    if (data?.session?.access_token) {
+                        await createServerSession(data.session.access_token, data.session.refresh_token);
+                        return;
+                    }
+                    if (error) {
+                        console.warn('Client exchangeCodeForSession notice:', error.message);
+                    }
+                } catch (e) {
+                    console.warn('Client exchangeCodeForSession exception:', e);
+                }
+            }
+
+            // 5. If Supabase client SDK is available, check for active session
             if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
                 try {
                     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -194,9 +212,9 @@
                 }
             }
 
-            // 5. Fallback: If no tokens found after a moment, inform user
+            // 6. Fallback: If no tokens found after a moment, inform user
             setTimeout(() => {
-                showError('No authentication token received.', 'Please try signing in again.');
+                showError('No authentication token received.', 'Please try signing in again with Google.');
             }, 3000);
         })();
     </script>

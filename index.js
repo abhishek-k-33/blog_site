@@ -1393,8 +1393,9 @@ app.get("/api/auth/oauth/:provider", async (req, res) => {
         });
     }
 
-    const host = req.get("host");
-    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const host = req.headers["x-forwarded-host"] || req.get("host");
+    const isLocal = host && host.includes("localhost");
+    const protocol = isLocal ? (req.protocol || "http") : (req.headers["x-forwarded-proto"] || "https");
     const redirectTo = `${protocol}://${host}/auth/callback`;
 
     try {
@@ -1478,7 +1479,10 @@ app.get("/login", (req, res) => {
     if (req.user) {
         return res.redirect("/");
     }
-    res.render("login.ejs");
+    res.render("login.ejs", {
+        supabaseUrl: supabaseUrl || "",
+        supabaseAnonKey: supabaseKey || ""
+    });
 });
 
 // GET /signup: Redirect to login page with signup tab active

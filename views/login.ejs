@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="dark-mode auth-body">
     <script>
@@ -587,6 +588,46 @@
                 if (group) { group.classList.remove('auth-field--error'); const err = group.querySelector('.auth-error-msg'); if (err) err.textContent = ''; }
             });
         });
+
+        // Google OAuth Integration
+        const SUPABASE_URL = "<%= typeof supabaseUrl !== 'undefined' ? supabaseUrl : '' %>";
+        const SUPABASE_ANON_KEY = "<%= typeof supabaseAnonKey !== 'undefined' ? supabaseAnonKey : '' %>";
+        const btnGoogleSignIn = document.getElementById('google-signin-btn');
+        const btnGoogleSignUp = document.getElementById('signup-google-btn');
+
+        async function handleGoogleOAuth(e) {
+            if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+                e.preventDefault();
+                try {
+                    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    const redirectUrl = window.location.origin + '/auth/callback';
+                    const { data, error } = await client.auth.signInWithOAuth({
+                        provider: 'google',
+                        options: {
+                            redirectTo: redirectUrl,
+                            queryParams: {
+                                access_type: 'offline',
+                                prompt: 'consent'
+                            }
+                        }
+                    });
+                    if (data?.url) {
+                        window.location.href = data.url;
+                        return;
+                    }
+                    if (error) {
+                        console.warn('Client OAuth notice, falling back to server route:', error.message);
+                        window.location.href = '/api/auth/oauth/google';
+                    }
+                } catch (err) {
+                    console.warn('OAuth client error, falling back:', err);
+                    window.location.href = '/api/auth/oauth/google';
+                }
+            }
+        }
+
+        if (btnGoogleSignIn) btnGoogleSignIn.addEventListener('click', handleGoogleOAuth);
+        if (btnGoogleSignUp) btnGoogleSignUp.addEventListener('click', handleGoogleOAuth);
     })();
     </script>
 </body>
