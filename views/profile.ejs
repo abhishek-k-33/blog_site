@@ -61,7 +61,9 @@
             </div>
 
             <!-- Author Bio -->
-            <p class="profile-bio"><%= profile.bio || 'Exploring life, technology, and storytelling through thoughtful writing on miniblogs.' %></p>
+            <% if (profile.bio) { %>
+                <p class="profile-bio"><%= profile.bio %></p>
+            <% } %>
 
             <!-- Metadata Chips (Location, Website, Phone, Social) -->
             <div class="profile-meta-chips">
