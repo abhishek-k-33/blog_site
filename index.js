@@ -311,6 +311,22 @@ app.use(async (req, res, next) => {
                 }
             }
         }
+
+        // Enrich authenticated user with their up-to-date saved profile information (name, avatar, username)
+        if (req.user) {
+            try {
+                const profiles = await readProfiles();
+                const profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
+                if (profile) {
+                    if (profile.name) req.user.name = profile.name;
+                    if (profile.avatar) req.user.avatar = profile.avatar;
+                    if (profile.username) req.user.username = profile.username;
+                }
+                res.locals.user = req.user;
+            } catch (err) {
+                console.error("Error syncing profile info into req.user:", err);
+            }
+        }
     }
     next();
 });
