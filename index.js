@@ -5,7 +5,12 @@ const fs = require("fs").promises;
 const fsSync = require("fs");
 const crypto = require("crypto");
 const cookieParser = require("cookie-parser");
-const sanitizeHtml = require("sanitize-html");
+let sanitizeHtml = null;
+try {
+    sanitizeHtml = require("sanitize-html");
+} catch (e) {
+    console.warn("sanitize-html load fallback:", e.message);
+}
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -922,15 +927,25 @@ const sanitizePostContentOptions = {
 
 const sanitizePostContent = (dirty) => {
     if (!dirty || typeof dirty !== "string") return "";
-    return sanitizeHtml(dirty, sanitizePostContentOptions);
+    if (typeof sanitizeHtml === "function") {
+        return sanitizeHtml(dirty, sanitizePostContentOptions);
+    }
+    return dirty
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/javascript:/gi, "")
+        .replace(/onerror=/gi, "blocked=")
+        .replace(/onload=/gi, "blocked=");
 };
 
 const sanitizePlainText = (str) => {
     if (!str || typeof str !== "string") return "";
-    return sanitizeHtml(str, {
-        allowedTags: [],
-        allowedAttributes: {}
-    }).trim();
+    if (typeof sanitizeHtml === "function") {
+        return sanitizeHtml(str, {
+            allowedTags: [],
+            allowedAttributes: {}
+        }).trim();
+    }
+    return str.replace(/<[^>]+>/g, "").trim();
 };
 
 const sanitizeUrl = (url) => {
