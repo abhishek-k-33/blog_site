@@ -5,6 +5,7 @@ const fs = require("fs").promises;
 const fsSync = require("fs");
 const crypto = require("crypto");
 const cookieParser = require("cookie-parser");
+const sanitizeHtml = require("sanitize-html");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -870,6 +871,68 @@ const extractTags = (post) => {
     return inferred;
 };
 
+// --- ROBUST HTML SANITIZATION & SECURITY HELPERS ---
+const sanitizePostContentOptions = {
+    allowedTags: [
+        "p", "br", "hr",
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "blockquote", "pre", "code",
+        "b", "i", "strong", "em", "strike", "s", "u", "mark", "small", "del", "ins",
+        "ul", "ol", "li",
+        "a", "img",
+        "figure", "figcaption",
+        "table", "thead", "tbody", "tr", "th", "td",
+        "div", "span"
+    ],
+    allowedAttributes: {
+        a: ["href", "name", "target", "rel", "title"],
+        img: ["src", "alt", "title", "loading", "decoding", "class", "width", "height"],
+        figure: ["class"],
+        figcaption: ["class", "data-placeholder"],
+        div: ["class"],
+        span: ["class"],
+        p: ["class"],
+        pre: ["class"],
+        code: ["class"],
+        blockquote: ["class"]
+    },
+    allowedSchemes: ["http", "https", "mailto", "data"],
+    allowedSchemesByTag: {
+        img: ["http", "https", "data"],
+        a: ["http", "https", "mailto"]
+    },
+    transformTags: {
+        a: (tagName, attribs) => {
+            if (attribs.target === "_blank") {
+                attribs.rel = "noopener noreferrer";
+            }
+            return { tagName, attribs };
+        }
+    }
+};
+
+const sanitizePostContent = (dirty) => {
+    if (!dirty || typeof dirty !== "string") return "";
+    return sanitizeHtml(dirty, sanitizePostContentOptions);
+};
+
+const sanitizePlainText = (str) => {
+    if (!str || typeof str !== "string") return "";
+    return sanitizeHtml(str, {
+        allowedTags: [],
+        allowedAttributes: {}
+    }).trim();
+};
+
+const sanitizeUrl = (url) => {
+    if (!url || typeof url !== "string") return undefined;
+    const trimmed = url.trim();
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/") || trimmed.startsWith("data:image/")) {
+        return trimmed;
+    }
+    return undefined;
+};
+
 // Helper: Extract cover image and clean content + author metadata
 const extractCoverAndCleanContent = (rawContent) => {
     if (!rawContent) return { cleanContent: "", coverImage: null, authorId: null, authorEmail: null, authorUsername: null };
@@ -929,16 +992,18 @@ const formatPost = (post) => {
         }
     }
     const { cleanContent, coverImage: embeddedCover, authorId: embeddedAuthorId, authorEmail: embeddedAuthorEmail, authorUsername: embeddedAuthorUsername } = extractCoverAndCleanContent(post.content || "");
-    const words = cleanContent ? cleanContent.trim().split(/\s+/).filter(Boolean).length : 0;
+    const safeContent = sanitizePostContent(cleanContent);
+    const words = safeContent ? safeContent.trim().split(/\s+/).filter(Boolean).length : 0;
     const readingTime = Math.max(1, Math.ceil(words / 180));
     const tags = extractTags(post);
-    const imgMatch = cleanContent ? cleanContent.match(/<img[^>]+src=["']([^"']+)["']/i) : null;
-    const thumbnail = post.coverImage || post.cover_image || embeddedCover || (imgMatch ? imgMatch[1] : null);
+    const imgMatch = safeContent ? safeContent.match(/<img[^>]+src=["']([^"']+)["']/i) : null;
+    const rawThumbnail = post.coverImage || post.cover_image || embeddedCover || (imgMatch ? imgMatch[1] : null);
+    const thumbnail = sanitizeUrl(rawThumbnail);
     const primaryTag = (tags && tags.length > 0) ? tags[0].toLowerCase() : "thoughts";
 
     return {
         ...post,
-        content: cleanContent,
+        content: safeContent,
         rawContent: post.content || "",
         author_id: post.author_id || post.authorId || embeddedAuthorId || null,
         author_email: post.author_email || post.authorEmail || embeddedAuthorEmail || null,
@@ -1065,10 +1130,14 @@ const getPostById = async (id) => {
 };
 
 const createPost = async ({ title, content, excerpt, author, tags, coverImage, authorId, authorEmail, authorUsername }) => {
-    const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
-    const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
+    const rawTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
+    const cleanTags = rawTags.map(t => sanitizePlainText(t)).filter(Boolean);
+    const cleanCover = sanitizeUrl(coverImage);
+    const safeTitle = sanitizePlainText(title);
+    const safeAuthor = sanitizePlainText(author);
+    const safeContent = sanitizePostContent(content || "");
 
-    let contentWithMetadata = content || "";
+    let contentWithMetadata = safeContent;
     if (authorId) {
         contentWithMetadata = `<!-- AUTHOR_ID: ${authorId} -->\n` + contentWithMetadata;
     }
@@ -1086,7 +1155,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title, content: contentWithMetadata, excerpt, author, tags: cleanTags, cover_image: cleanCover, author_id: authorId }])
+                .insert([{ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor, tags: cleanTags, cover_image: cleanCover, author_id: authorId }])
                 .select()
                 .single();
             if (!error && data) return formatPost(data);
@@ -1095,7 +1164,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title, content: contentWithMetadata, excerpt, author, tags: cleanTags, cover_image: cleanCover }])
+                .insert([{ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor, tags: cleanTags, cover_image: cleanCover }])
                 .select()
                 .single();
             if (!error && data) return formatPost(data);
@@ -1104,7 +1173,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title, content: contentWithMetadata, excerpt, author, tags: cleanTags }])
+                .insert([{ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor, tags: cleanTags }])
                 .select()
                 .single();
             if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
@@ -1112,7 +1181,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
 
         const { data, error } = await supabase
             .from("posts")
-            .insert([{ title, content: contentWithMetadata, excerpt, author }])
+            .insert([{ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor }])
             .select()
             .single();
         invalidatePostsCache();
@@ -1122,10 +1191,10 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
     const localPosts = await readLocalPosts();
     const newPost = {
         id: generateId(),
-        title,
+        title: safeTitle,
         content: contentWithMetadata,
         excerpt,
-        author,
+        author: safeAuthor,
         author_id: authorId,
         author_email: authorEmail,
         author_username: authorUsername,
@@ -1141,10 +1210,14 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
 };
 
 const updatePost = async (id, { title, content, excerpt, author, tags, coverImage, authorId, authorEmail, authorUsername }) => {
-    const cleanTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
-    const cleanCover = coverImage && typeof coverImage === "string" && coverImage.trim() ? coverImage.trim() : undefined;
+    const rawTags = Array.isArray(tags) ? tags : (typeof tags === "string" ? tags.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean) : []);
+    const cleanTags = rawTags.map(t => sanitizePlainText(t)).filter(Boolean);
+    const cleanCover = sanitizeUrl(coverImage);
+    const safeTitle = sanitizePlainText(title);
+    const safeAuthor = sanitizePlainText(author);
+    const safeContent = sanitizePostContent(content || "");
 
-    let contentWithMetadata = content || "";
+    let contentWithMetadata = safeContent;
     if (authorId) {
         contentWithMetadata = `<!-- AUTHOR_ID: ${authorId} -->\n` + contentWithMetadata;
     }
@@ -1162,7 +1235,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .update({ title, content: contentWithMetadata, excerpt, author, tags: cleanTags, cover_image: cleanCover, author_id: authorId })
+                .update({ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor, tags: cleanTags, cover_image: cleanCover, author_id: authorId })
                 .eq("id", id)
                 .select()
                 .single();
@@ -1238,15 +1311,8 @@ const deletePost = async (id) => {    if (supabase) {
     return true;
 };;
 
-// Simple HTML sanitizer to prevent basic XSS
-const simpleSanitize = (str) => {
-    if (!str || typeof str !== "string") return "";
-    return str
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-        .replace(/javascript:/gi, "")
-        .replace(/onerror=/gi, "blocked=")
-        .replace(/onload=/gi, "blocked=");
-};
+// Backwards-compatible alias that uses robust plain-text sanitization
+const simpleSanitize = (str) => sanitizePlainText(str);
 
 // Helper: Generate a short excerpt from markdown/HTML content
 const generateExcerpt = (content) => {
@@ -2303,15 +2369,15 @@ app.post("/posts", requireAuth, async (req, res, next) => {
         }
 
         await createPost({
-            title: simpleSanitize(title.trim()),
-            content: content.trim(),
+            title: sanitizePlainText(title.trim()),
+            content: sanitizePostContent(content.trim()),
             excerpt: generateExcerpt(content.trim()),
-            author: simpleSanitize(author.trim()),
+            author: sanitizePlainText(author.trim()),
             authorId: req.user?.id || null,
             authorEmail: req.user?.email || null,
             authorUsername: profile?.username || req.user?.username || null,
-            tags: tags ? simpleSanitize(tags.trim()) : undefined,
-            coverImage: coverImage ? simpleSanitize(coverImage.trim()) : undefined,
+            tags: tags ? sanitizePlainText(tags.trim()) : undefined,
+            coverImage: coverImage ? sanitizeUrl(coverImage.trim()) : undefined,
         });
 
         res.redirect("/");
@@ -2409,15 +2475,15 @@ app.post("/update/:id", requireAuth, async (req, res, next) => {
         }
 
         const updated = await updatePost(req.params.id, {
-            title: simpleSanitize(title.trim()),
-            content: content.trim(),
+            title: sanitizePlainText(title.trim()),
+            content: sanitizePostContent(content.trim()),
             excerpt: generateExcerpt(content.trim()),
-            author: simpleSanitize(author.trim()),
+            author: sanitizePlainText(author.trim()),
             authorId: post.author_id || req.user.id,
             authorEmail: post.author_email || req.user.email,
             authorUsername: post.author_username || profile?.username,
-            tags: tags ? simpleSanitize(tags.trim()) : undefined,
-            coverImage: coverImage ? simpleSanitize(coverImage.trim()) : undefined,
+            tags: tags ? sanitizePlainText(tags.trim()) : undefined,
+            coverImage: coverImage ? sanitizeUrl(coverImage.trim()) : undefined,
         });
 
         if (updated) {
