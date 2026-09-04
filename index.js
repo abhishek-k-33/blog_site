@@ -10,7 +10,10 @@ const sanitizeHtml = require("sanitize-html");
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.set("views", path.join(__dirname, "views"));
+const viewsDir = fsSync.existsSync(path.join(__dirname, "views"))
+    ? path.join(__dirname, "views")
+    : path.join(process.cwd(), "views");
+app.set("views", viewsDir);
 app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public"), { maxAge: "1d" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -19,14 +22,19 @@ app.use(cookieParser());
 
 // --- DATABASE LAYER (Supabase PostgreSQL / Local Fallback) ---
 let supabase = null;
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+const supabaseUrl = (process.env.SUPABASE_URL || "").trim();
+const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "";
+const supabaseKey = typeof rawKey === "string" ? rawKey.trim().replace(/[\r\n\t]/g, "") : "";
 
 if (supabaseUrl && supabaseKey) {
-    const { createClient } = require("@supabase/supabase-js");
-    supabase = createClient(supabaseUrl, supabaseKey);
-    const keyType = process.env.SUPABASE_SERVICE_ROLE_KEY ? "Service Role (Admin)" : "Anon (RLS Protected)";
-    console.log(`Connected to Supabase (PostgreSQL) using ${keyType} key.`);
+    try {
+        const { createClient } = require("@supabase/supabase-js");
+        supabase = createClient(supabaseUrl, supabaseKey);
+        const keyType = process.env.SUPABASE_SERVICE_ROLE_KEY ? "Service Role (Admin)" : "Anon (RLS Protected)";
+        console.log(`Connected to Supabase (PostgreSQL) using ${keyType} key.`);
+    } catch (e) {
+        console.error("Supabase client initialization notice:", e.message);
+    }
 } else {
     console.log("Supabase credentials not found. Using local JSON file fallback.");
 }
@@ -2525,7 +2533,17 @@ app.use((req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
     console.error("Unhandled error:", err);
-    res.status(500).render("404.ejs", { message: "An unexpected error occurred. Please try again later.", user: req.user });
+    try {
+        res.status(500).render("404.ejs", { message: "An unexpected error occurred. Please try again later.", user: req.user });
+    } catch (renderErr) {
+        res.status(500).type("text/html").send(`
+            <!DOCTYPE html>
+            <html>
+            <head><title>500 - Server Error</title><style>body{font-family:sans-serif;background:#0d0e11;color:#eee;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}</style></head>
+            <body><div style="text-align:center;"><h1>500 - Server Error</h1><p>An unexpected error occurred. Please try again later.</p><a href="/" style="color:#f59e0b;">Return to Home</a></div></body>
+            </html>
+        `);
+    }
 });
 
 // Only listen locally — on Vercel, the app is exported for serverless
