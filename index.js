@@ -20,12 +20,13 @@ app.use(cookieParser());
 // --- DATABASE LAYER (Supabase PostgreSQL / Local Fallback) ---
 let supabase = null;
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
 if (supabaseUrl && supabaseKey) {
     const { createClient } = require("@supabase/supabase-js");
     supabase = createClient(supabaseUrl, supabaseKey);
-    console.log("Connected to Supabase (PostgreSQL).");
+    const keyType = process.env.SUPABASE_SERVICE_ROLE_KEY ? "Service Role (Admin)" : "Anon (RLS Protected)";
+    console.log(`Connected to Supabase (PostgreSQL) using ${keyType} key.`);
 } else {
     console.log("Supabase credentials not found. Using local JSON file fallback.");
 }
