@@ -36,7 +36,10 @@
         <div class="auth-hero-exact" id="auth-hero">
             <!-- Center Glowing Inkwell Artwork -->
             <div class="auth-hero-visual-box">
-                <img src="/images/login-hero.jpg" alt="Miniblogs Golden Inkwell Story Magic" class="auth-inkpot-img" id="hero-img">
+                <picture>
+                    <source srcset="/images/login-hero.webp" type="image/webp">
+                    <img src="/images/login-hero.jpg" alt="Miniblogs Golden Inkwell Story Magic" class="auth-inkpot-img" id="hero-img" width="700" height="700" fetchpriority="high" decoding="async">
+                </picture>
                 <canvas id="auth-particle-canvas"></canvas>
             </div>
 

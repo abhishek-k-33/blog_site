@@ -30,7 +30,7 @@
 
             <% if (post.coverImage || post.thumbnail) { %>
                 <div class="article-lead-cover-wrapper">
-                    <img src="<%= post.coverImage || post.thumbnail %>" alt="<%= post.title %>" class="article-lead-cover-img" loading="eager">
+                    <img src="<%= post.coverImage || post.thumbnail %>" alt="<%= post.title %>" class="article-lead-cover-img" loading="eager" fetchpriority="high" decoding="async">
                 </div>
             <% } %>
 

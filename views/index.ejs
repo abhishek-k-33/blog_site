@@ -68,7 +68,7 @@
                 <div class="featured-card-cover-wrapper">
                     <% if (featuredPost.thumbnail) { %>
                         <a href="/posts/<%= featuredPost.id %>" class="featured-cover-link">
-                            <img src="<%= featuredPost.thumbnail %>" alt="<%= featuredPost.title %>" class="featured-cover-img" loading="lazy" decoding="async">
+                            <img src="<%= featuredPost.thumbnail %>" alt="<%= featuredPost.title %>" class="featured-cover-img" loading="eager" fetchpriority="high" decoding="async">
                         </a>
                     <% } else { %>
                         <!-- Dynamic Generative Gradient Mesh Artwork -->

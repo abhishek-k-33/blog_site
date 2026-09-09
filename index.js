@@ -5,6 +5,7 @@ const fs = require("fs").promises;
 const fsSync = require("fs");
 const crypto = require("crypto");
 const cookieParser = require("cookie-parser");
+const compression = require("compression");
 let sanitizeHtml = null;
 try {
     sanitizeHtml = require("sanitize-html");
@@ -14,13 +15,35 @@ try {
 
 const app = express();
 const port = process.env.PORT || 5000;
+const isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+
+// HTTP Compression (Gzip / Brotli) - reduces HTML/CSS/JS payload by up to 80%
+app.use(compression({
+    threshold: 1024,
+    filter: (req, res) => {
+        if (req.headers["x-no-compression"]) {
+            return false;
+        }
+        return compression.filter(req, res);
+    }
+}));
 
 const viewsDir = fsSync.existsSync(path.join(__dirname, "views"))
     ? path.join(__dirname, "views")
     : path.join(process.cwd(), "views");
 app.set("views", viewsDir);
 app.set("view engine", "ejs");
-app.use(express.static(path.join(__dirname, "public"), { maxAge: "1d" }));
+if (isProduction) {
+    app.enable("view cache");
+}
+
+// Tuned Static Asset Caching with ETags and Last-Modified validation
+const staticMaxAge = isProduction ? "7d" : "1h";
+app.use(express.static(path.join(__dirname, "public"), {
+    maxAge: staticMaxAge,
+    etag: true,
+    lastModified: true
+}));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
@@ -2352,7 +2375,7 @@ app.get("/", async (req, res, next) => {
             return res.redirect("/login");
         }
 
-        res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+        res.set("Cache-Control", "private, no-cache, must-revalidate");
         const allPosts = await getAllPosts();
         const selectedTag = req.query.tag ? req.query.tag.trim() : null;
 
