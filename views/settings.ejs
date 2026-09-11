@@ -32,6 +32,7 @@
                 <p class="settings-section-desc">Update your public identity, bio, social presence, and visual assets.</p>
 
                 <form id="profile-general-form" action="/api/profile" method="POST">
+                    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <div class="settings-form-grid">
                         <div>
                             <label class="settings-label" for="setting-name">Display Name</label>

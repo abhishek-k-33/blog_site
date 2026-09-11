@@ -11,7 +11,35 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+    <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <link rel="stylesheet" href="/styles/style.css">
+    <script>
+        // Automatic CSRF token injection for client-side fetch requests
+        (function() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            const token = meta ? meta.getAttribute('content') : '';
+            if (token && window.fetch) {
+                const originalFetch = window.fetch;
+                window.fetch = function(url, options = {}) {
+                    options = options || {};
+                    const method = (options.method || 'GET').toUpperCase();
+                    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                        options.headers = options.headers || {};
+                        if (options.headers instanceof Headers) {
+                            if (!options.headers.has('x-csrf-token')) options.headers.set('x-csrf-token', token);
+                        } else if (Array.isArray(options.headers)) {
+                            options.headers.push(['x-csrf-token', token]);
+                        } else {
+                            if (!options.headers['x-csrf-token'] && !options.headers['X-CSRF-Token']) {
+                                options.headers['x-csrf-token'] = token;
+                            }
+                        }
+                    }
+                    return originalFetch(url, options);
+                };
+            }
+        })();
+    </script>
 </head>
 <body class="dark-mode">
     <script>

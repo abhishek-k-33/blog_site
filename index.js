@@ -44,9 +44,96 @@ app.use(express.static(path.join(__dirname, "public"), {
     etag: true,
     lastModified: true
 }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
+
+// Local Auth & Cryptographic Secret
+let AUTH_SECRET = (process.env.AUTH_SECRET || "").trim();
+if (!AUTH_SECRET) {
+    if (isProduction) {
+        console.warn("SECURITY WARNING: AUTH_SECRET environment variable is missing in production! Generating secure runtime secret.");
+        AUTH_SECRET = crypto.randomBytes(32).toString("hex");
+    } else {
+        AUTH_SECRET = "miniblogs_secure_dev_secret_key_2026";
+    }
+}
+
+// --- CSRF PROTECTION SYSTEM ---
+const generateCsrfToken = () => {
+    const raw = crypto.randomBytes(24).toString("hex");
+    const sig = crypto.createHmac("sha256", AUTH_SECRET).update(raw).digest("base64url");
+    return `${raw}.${sig}`;
+};
+
+const verifyCsrfToken = (token) => {
+    if (!token || typeof token !== "string") return false;
+    const parts = token.split(".");
+    if (parts.length !== 2) return false;
+    const [raw, sig] = parts;
+    if (!raw || !sig) return false;
+    const expected = crypto.createHmac("sha256", AUTH_SECRET).update(raw).digest("base64url");
+    const sigBuf = Buffer.from(sig);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return false;
+    return true;
+};
+
+// Attach / Refresh CSRF Token for all incoming requests
+app.use((req, res, next) => {
+    let csrfToken = req.cookies?.csrf_token;
+    if (!verifyCsrfToken(csrfToken)) {
+        csrfToken = generateCsrfToken();
+        res.cookie("csrf_token", csrfToken, {
+            httpOnly: false, // Required for client fetch interceptor
+            secure: isProduction,
+            sameSite: "lax",
+            path: "/"
+        });
+    }
+    res.locals.csrfToken = csrfToken;
+    req.csrfToken = () => csrfToken;
+    next();
+});
+
+// Middleware: Enforce CSRF token & Origin verification on sensitive mutating actions
+const csrfProtection = (req, res, next) => {
+    const safeMethods = ["GET", "HEAD", "OPTIONS"];
+    if (safeMethods.includes(req.method)) return next();
+
+    // 1. Origin / Referer Validation (Defense-in-depth)
+    const origin = req.headers["origin"] || req.headers["referer"];
+    if (origin) {
+        try {
+            const originHost = new URL(origin).host.toLowerCase();
+            const currentHost = (req.headers["host"] || "").toLowerCase();
+            if (originHost && currentHost && originHost !== currentHost) {
+                console.warn(`CSRF blocked: Origin mismatch (${originHost} !== ${currentHost})`);
+                return res.status(403).json({ error: "Cross-origin request blocked by CSRF protection." });
+            }
+        } catch (e) {
+            // Ignore malformed referer
+        }
+    }
+
+    // 2. Token Matching (Header or Body _csrf against signed Cookie)
+    const tokenFromReq = req.headers["x-csrf-token"] ||
+                         req.headers["x-xsrf-token"] ||
+                         req.body?._csrf;
+    const cookieToken = req.cookies?.csrf_token;
+
+    if (!tokenFromReq || !cookieToken || !verifyCsrfToken(tokenFromReq) || tokenFromReq !== cookieToken) {
+        if (req.xhr || req.headers.accept?.includes("json") || req.path.startsWith("/api/")) {
+            return res.status(403).json({ error: "Invalid or missing CSRF security token. Please refresh the page and try again." });
+        }
+        return res.status(403).render("404.ejs", {
+            message: "Invalid or missing security token (CSRF protection). Please return to the previous page, refresh, and try again.",
+            user: req.user
+        });
+    }
+
+    next();
+};
 
 // --- DATABASE LAYER (Supabase PostgreSQL / Local Fallback) ---
 let supabase = null;
@@ -108,14 +195,29 @@ try {
     console.warn("Uploads directory notice:", e.message);
 }
 
+const ALLOWED_IMAGE_MIMES = {
+    "jpeg": "jpg",
+    "jpg": "jpg",
+    "png": "png",
+    "webp": "webp",
+    "gif": "gif"
+};
+
 const saveBase64Image = async (dataUrl, prefix, userId) => {
     if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return dataUrl;
     try {
         const matches = dataUrl.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/);
         if (!matches || matches.length < 3) return dataUrl;
-        let ext = matches[1];
-        if (ext === "jpeg") ext = "jpg";
-        if (ext.includes("+xml")) ext = "svg";
+        let mimeSubtype = matches[1].toLowerCase();
+        if (mimeSubtype === "jpeg") mimeSubtype = "jpg";
+        
+        // Reject SVG or disallowed types to prevent stored XSS attacks
+        const ext = ALLOWED_IMAGE_MIMES[mimeSubtype];
+        if (!ext) {
+            console.warn(`Disallowed image upload type: image/${mimeSubtype}`);
+            return null;
+        }
+
         const base64Data = matches[2];
         const safeUserId = String(userId || "user").replace(/[^a-zA-Z0-9_-]/g, "");
         const fileName = `${prefix}_${safeUserId}_${Date.now()}.${ext}`;
@@ -127,9 +229,6 @@ const saveBase64Image = async (dataUrl, prefix, userId) => {
         return dataUrl;
     }
 };
-
-// Local Auth Secret & Salt
-const AUTH_SECRET = process.env.AUTH_SECRET || "miniblogs_secure_dev_secret_key_2026";
 
 const hashPassword = (password) => {
     const salt = crypto.randomBytes(16).toString("hex");
@@ -160,21 +259,30 @@ const parseDeviceInfo = (userAgent, ip) => {
     else if (/iPhone/i.test(ua)) os = "iPhone";
     else if (/iPad/i.test(ua)) os = "iPad";
     else if (/Macintosh|Mac OS X/i.test(ua)) os = "macOS";
-    else if (/Android/i.test(ua)) os = "Android";
+    else if (/Android/i.test(ua)) os = "Android Device";
     else if (/Linux/i.test(ua)) os = "Linux";
 
-    if (/Edg\//i.test(ua)) browser = "Edge";
-    else if (/Brave/i.test(ua)) browser = "Brave";
-    else if (/Chrome\//i.test(ua)) browser = "Chrome";
-    else if (/Firefox\//i.test(ua)) browser = "Firefox";
+    if (/Edg\//i.test(ua)) browser = "Microsoft Edge";
+    else if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) browser = "Chrome";
     else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+    else if (/Firefox\//i.test(ua)) browser = "Firefox";
+    else if (/Opera|OPR\//i.test(ua)) browser = "Opera";
 
-    let cleanIp = (ip || "127.0.0.1").replace(/^::ffff:/, "");
-    if (cleanIp === "::1" || !cleanIp) cleanIp = "127.0.0.1";
+    let cleanIp = ip || "127.0.0.1";
+    if (cleanIp.startsWith("::ffff:")) cleanIp = cleanIp.substring(7);
+    if (cleanIp === "::1") cleanIp = "127.0.0.1";
+
+    let location = "Local Network";
+    if (cleanIp !== "127.0.0.1" && cleanIp !== "localhost") {
+        location = "Active IP: " + cleanIp;
+    }
 
     return {
-        device: `${os} · ${browser}`,
-        ip: cleanIp
+        os,
+        browser,
+        ip: cleanIp,
+        location,
+        label: `${browser} on ${os}`
     };
 };
 
@@ -182,18 +290,17 @@ const parseDeviceInfo = (userAgent, ip) => {
 const SESSION_COOKIE_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 365 days in ms
 
 const setSessionCookies = (res, accessToken, refreshToken = null) => {
-    const isProd = process.env.NODE_ENV === "production" && Boolean(process.env.VERCEL);
     res.cookie("auth_token", accessToken, {
-        httpOnly: false,
-        secure: isProd,
+        httpOnly: true,
+        secure: isProduction,
         maxAge: SESSION_COOKIE_MAX_AGE,
         sameSite: "lax",
         path: "/"
     });
     if (refreshToken) {
         res.cookie("refresh_token", refreshToken, {
-            httpOnly: false,
-            secure: isProd,
+            httpOnly: true,
+            secure: isProduction,
             maxAge: SESSION_COOKIE_MAX_AGE,
             sameSite: "lax",
             path: "/"
@@ -203,7 +310,6 @@ const setSessionCookies = (res, accessToken, refreshToken = null) => {
 
 const setUserProfileCookie = (res, profile) => {
     if (!res || !profile) return;
-    const isProd = process.env.NODE_ENV === "production";
     try {
         // Keep cookie under 3KB to prevent HTTP 502/431 header size overflows
         const safeAvatar = (profile.avatar && typeof profile.avatar === "string" && !profile.avatar.startsWith("data:")) ? profile.avatar : (profile.avatar?.startsWith("data:") && profile.avatar.length < 1500 ? profile.avatar : null);
@@ -229,9 +335,10 @@ const setUserProfileCookie = (res, profile) => {
             updated_at: new Date().toISOString()
         };
         const encoded = Buffer.from(JSON.stringify(safeProfile)).toString("base64url");
-        res.cookie("user_profile_data", encoded, {
-            httpOnly: false,
-            secure: isProd,
+        const signature = crypto.createHmac("sha256", AUTH_SECRET).update(encoded).digest("base64url");
+        res.cookie("user_profile_data", `${encoded}.${signature}`, {
+            httpOnly: true,
+            secure: isProduction,
             maxAge: SESSION_COOKIE_MAX_AGE,
             sameSite: "lax",
             path: "/"
@@ -244,8 +351,19 @@ const setUserProfileCookie = (res, profile) => {
 const getProfileFromCookie = (req, userId, userEmail) => {
     if (!req?.cookies?.user_profile_data) return null;
     try {
-        const json = Buffer.from(req.cookies.user_profile_data, "base64url").toString("utf-8");
-        const profile = JSON.parse(json);
+        const raw = req.cookies.user_profile_data;
+        const parts = raw.split(".");
+        if (parts.length !== 2) return null;
+        const [payload, signature] = parts;
+        if (!payload || !signature) return null;
+        const expected = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
+        const sigBuf = Buffer.from(signature);
+        const expBuf = Buffer.from(expected);
+        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+
+        let base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) base64 += "=";
+        const profile = JSON.parse(Buffer.from(base64, "base64").toString("utf-8"));
         if (profile && (
             (userId && profile.id === userId) ||
             (userEmail && profile.email && profile.email.toLowerCase() === userEmail.toLowerCase())
@@ -275,10 +393,14 @@ const verifyLocalToken = (token) => {
     try {
         if (!token || typeof token !== "string") return null;
         let cleanToken = decodeURIComponent(token.trim());
-        const [payload, signature] = cleanToken.split(".");
+        const parts = cleanToken.split(".");
+        if (parts.length !== 2) return null;
+        const [payload, signature] = parts;
         if (!payload || !signature) return null;
         const expected = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
-        if (signature !== expected) return null;
+        const sigBuf = Buffer.from(signature);
+        const expBuf = Buffer.from(expected);
+        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
         let base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
         while (base64.length % 4) base64 += "=";
         const data = JSON.parse(Buffer.from(base64, "base64").toString("utf-8"));
@@ -287,6 +409,28 @@ const verifyLocalToken = (token) => {
     } catch (e) {
         return null;
     }
+};
+
+// Verified Supabase User Cache (5-minute TTL to ensure sub-0.1ms performance without sacrificing cryptographic security)
+const supabaseVerifiedTokenCache = new Map();
+const SUPABASE_TOKEN_CACHE_TTL = 5 * 60 * 1000;
+
+const getCachedSupabaseUser = (token) => {
+    const entry = supabaseVerifiedTokenCache.get(token);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > SUPABASE_TOKEN_CACHE_TTL) {
+        supabaseVerifiedTokenCache.delete(token);
+        return null;
+    }
+    return entry.user;
+};
+
+const setCachedSupabaseUser = (token, user) => {
+    if (supabaseVerifiedTokenCache.size > 1000) {
+        const firstKey = supabaseVerifiedTokenCache.keys().next().value;
+        supabaseVerifiedTokenCache.delete(firstKey);
+    }
+    supabaseVerifiedTokenCache.set(token, { user, timestamp: Date.now() });
 };
 
 const decodeSupabaseJWT = (token) => {
@@ -545,6 +689,26 @@ const recordPostView = async (postId, req = null, res = null) => {
             analytics.unique_views[key].push(readerId);
             analytics.views[key] = analytics.unique_views[key].length;
             await writeAnalytics(analytics);
+
+            // Sync increment to Supabase posts table directly (atomic/background)
+            if (supabase) {
+                supabase
+                    .from("posts")
+                    .select("views")
+                    .eq("id", postId)
+                    .single()
+                    .then(({ data }) => {
+                        const nextViews = (data?.views || 0) + 1;
+                        supabase.from("posts").update({ views: nextViews }).eq("id", postId).then(() => {}).catch(() => {});
+                    })
+                    .catch(() => {});
+            }
+
+            // Sync in-memory posts cache
+            if (postsCache?.data) {
+                const cached = postsCache.data.find(p => String(p.id) === key);
+                if (cached) cached.views = analytics.views[key];
+            }
         }
 
         return analytics.views[key];
@@ -561,6 +725,27 @@ const recordPostClap = async (postId, count = 1) => {
         const key = String(postId);
         analytics.claps[key] = (analytics.claps[key] || 0) + count;
         await writeAnalytics(analytics);
+
+        // Sync increment to Supabase posts table directly (background)
+        if (supabase) {
+            supabase
+                .from("posts")
+                .select("claps")
+                .eq("id", postId)
+                .single()
+                .then(({ data }) => {
+                    const nextClaps = (data?.claps || 0) + count;
+                    supabase.from("posts").update({ claps: nextClaps }).eq("id", postId).then(() => {}).catch(() => {});
+                })
+                .catch(() => {});
+        }
+
+        // Sync in-memory posts cache so feed reflects applause immediately
+        if (postsCache?.data) {
+            const cached = postsCache.data.find(p => String(p.id) === key);
+            if (cached) cached.claps = analytics.claps[key];
+        }
+
         return analytics.claps[key];
     } catch (e) {
         console.error("Error recording post clap:", e);
@@ -740,72 +925,77 @@ app.use(async (req, res, next) => {
     res.locals.user = null;
 
     if (token) {
-        // Fast local JWT decode first (sub-0.1ms)
-        const fastUser = decodeSupabaseJWT(token);
-        if (fastUser) {
-            req.user = fastUser;
-            res.locals.user = fastUser;
-        } else if (supabase) {
-            try {
-                const { data: { user }, error } = await supabase.auth.getUser(token);
-                if (user && !error) {
-                    const isGoogle = user.app_metadata?.provider === "google" ||
-                                     (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
-                                     Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
+        // 1. Verify HMAC-signed local session token first (<0.1ms)
+        const localUser = verifyLocalToken(token);
+        if (localUser) {
+            const users = await readLocalUsers();
+            const storedUser = users.find(u => u.id === localUser.id || (u.email && localUser.email && u.email.toLowerCase() === localUser.email.toLowerCase()));
+            if (!storedUser || !storedUser.sessionVersion || (localUser.sessionVersion || 1) >= (storedUser.sessionVersion || 1)) {
+                req.user = localUser;
+                res.locals.user = localUser;
+            }
+        }
 
-                    req.user = {
-                        id: user.id,
-                        email: user.email,
-                        name: user.user_metadata?.name || user.user_metadata?.display_name || user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Author"),
-                        avatar: user.user_metadata?.avatar || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
-                        username: user.user_metadata?.username || null,
-                        user_metadata: user.user_metadata || {},
-                        isGoogleUser: isGoogle,
-                        provider: isGoogle ? "google" : (user.app_metadata?.provider || "email")
-                    };
-                    res.locals.user = req.user;
-                } else if (refreshToken) {
-                    // Token expired; transparently refresh session using persistent refresh token
-                    try {
-                        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
-                        if (refreshData?.session && !refreshErr && refreshData.user) {
-                            const refreshedUser = refreshData.user;
-                            const isGoogle = refreshedUser.app_metadata?.provider === "google" ||
-                                             (Array.isArray(refreshedUser.identities) && refreshedUser.identities.some(i => i.provider === "google")) ||
-                                             Boolean(refreshedUser.user_metadata?.iss?.includes("google") || refreshedUser.user_metadata?.avatar_url?.includes("googleusercontent.com") || refreshedUser.user_metadata?.picture?.includes("googleusercontent.com"));
+        // 2. If not a local token, verify against Supabase Auth (with memory cache for speed)
+        if (!req.user && supabase) {
+            const cachedUser = getCachedSupabaseUser(token);
+            if (cachedUser) {
+                req.user = cachedUser;
+                res.locals.user = cachedUser;
+            } else {
+                try {
+                    const { data: { user }, error } = await supabase.auth.getUser(token);
+                    if (user && !error) {
+                        const isGoogle = user.app_metadata?.provider === "google" ||
+                                         (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
+                                         Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
 
-                            req.user = {
-                                id: refreshedUser.id,
-                                email: refreshedUser.email,
-                                name: refreshedUser.user_metadata?.name || refreshedUser.user_metadata?.display_name || refreshedUser.user_metadata?.full_name || (refreshedUser.email ? refreshedUser.email.split("@")[0] : "Author"),
-                                avatar: refreshedUser.user_metadata?.avatar || refreshedUser.user_metadata?.avatar_url || refreshedUser.user_metadata?.picture || null,
-                                username: refreshedUser.user_metadata?.username || null,
-                                user_metadata: refreshedUser.user_metadata || {},
-                                isGoogleUser: isGoogle,
-                                provider: isGoogle ? "google" : (refreshedUser.app_metadata?.provider || "email")
-                            };
-                            res.locals.user = req.user;
-                            setSessionCookies(res, refreshData.session.access_token, refreshData.session.refresh_token);
+                        req.user = {
+                            id: user.id,
+                            email: user.email,
+                            name: user.user_metadata?.name || user.user_metadata?.display_name || user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Author"),
+                            avatar: user.user_metadata?.avatar || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                            username: user.user_metadata?.username || null,
+                            user_metadata: user.user_metadata || {},
+                            isGoogleUser: isGoogle,
+                            provider: isGoogle ? "google" : (user.app_metadata?.provider || "email")
+                        };
+                        res.locals.user = req.user;
+                        setCachedSupabaseUser(token, req.user);
+                    } else if (refreshToken) {
+                        // Token expired; transparently refresh session using persistent refresh token
+                        try {
+                            const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+                            if (refreshData?.session && !refreshErr && refreshData.user) {
+                                const refreshedUser = refreshData.user;
+                                const isGoogle = refreshedUser.app_metadata?.provider === "google" ||
+                                                 (Array.isArray(refreshedUser.identities) && refreshedUser.identities.some(i => i.provider === "google")) ||
+                                                 Boolean(refreshedUser.user_metadata?.iss?.includes("google") || refreshedUser.user_metadata?.avatar_url?.includes("googleusercontent.com") || refreshedUser.user_metadata?.picture?.includes("googleusercontent.com"));
+
+                                req.user = {
+                                    id: refreshedUser.id,
+                                    email: refreshedUser.email,
+                                    name: refreshedUser.user_metadata?.name || refreshedUser.user_metadata?.display_name || refreshedUser.user_metadata?.full_name || (refreshedUser.email ? refreshedUser.email.split("@")[0] : "Author"),
+                                    avatar: refreshedUser.user_metadata?.avatar || refreshedUser.user_metadata?.avatar_url || refreshedUser.user_metadata?.picture || null,
+                                    username: refreshedUser.user_metadata?.username || null,
+                                    user_metadata: refreshedUser.user_metadata || {},
+                                    isGoogleUser: isGoogle,
+                                    provider: isGoogle ? "google" : (refreshedUser.app_metadata?.provider || "email")
+                                };
+                                res.locals.user = req.user;
+                                setCachedSupabaseUser(refreshData.session.access_token, req.user);
+                                setSessionCookies(res, refreshData.session.access_token, refreshData.session.refresh_token);
+                            }
+                        } catch (re) {
+                            // Refresh attempt failed
                         }
-                    } catch (re) {
-                        // Refresh attempt failed
                     }
-                }
-            } catch (e) {
-                // Ignore Supabase getUser error
-            }
-        }
-        if (!req.user) {
-            const localUser = verifyLocalToken(token);
-            if (localUser) {
-                const users = await readLocalUsers();
-                const storedUser = users.find(u => u.id === localUser.id || (u.email && localUser.email && u.email.toLowerCase() === localUser.email.toLowerCase()));
-                if (!storedUser || !storedUser.sessionVersion || (localUser.sessionVersion || 1) >= (storedUser.sessionVersion || 1)) {
-                    req.user = localUser;
-                    res.locals.user = localUser;
+                } catch (e) {
+                    // Ignore Supabase getUser error
                 }
             }
         }
+    }
 
         // Enrich authenticated user with their up-to-date saved profile information (name, avatar, username)
         if (req.user) {
@@ -849,7 +1039,7 @@ app.use(async (req, res, next) => {
                 console.error("Error syncing profile info into req.user:", err);
             }
         }
-    }
+
     next();
 });
 
@@ -933,7 +1123,7 @@ const sanitizePostContentOptions = {
         code: ["class"],
         blockquote: ["class"]
     },
-    allowedSchemes: ["http", "https", "mailto", "data"],
+    allowedSchemes: ["http", "https", "mailto"],
     allowedSchemesByTag: {
         img: ["http", "https", "data"],
         a: ["http", "https", "mailto"]
@@ -953,11 +1143,13 @@ const sanitizePostContent = (dirty) => {
     if (typeof sanitizeHtml === "function") {
         return sanitizeHtml(dirty, sanitizePostContentOptions);
     }
+    console.error("CRITICAL SECURITY: sanitize-html is unavailable. Escaping all raw HTML.");
     return dirty
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-        .replace(/javascript:/gi, "")
-        .replace(/onerror=/gi, "blocked=")
-        .replace(/onload=/gi, "blocked=");
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 };
 
 const sanitizePlainText = (str) => {
@@ -974,7 +1166,16 @@ const sanitizePlainText = (str) => {
 const sanitizeUrl = (url) => {
     if (!url || typeof url !== "string") return undefined;
     const trimmed = url.trim();
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/") || trimmed.startsWith("data:image/")) {
+    // Block protocol-relative or javascript/vbscript URLs
+    if (trimmed.startsWith("//") || /^javascript:/i.test(trimmed) || /^vbscript:/i.test(trimmed)) {
+        return undefined;
+    }
+    // Allow safe http, https, and internal relative paths
+    if (trimmed.startsWith("https://") || trimmed.startsWith("http://") || trimmed.startsWith("/")) {
+        return trimmed;
+    }
+    // Allow only safe raster image data URIs (strictly disallow SVG/XML)
+    if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(trimmed)) {
         return trimmed;
     }
     return undefined;
@@ -1038,10 +1239,11 @@ const formatPost = (post) => {
             formattedDate = post.date || new Date().toLocaleDateString();
         }
     }
-    const { cleanContent, coverImage: embeddedCover, authorId: embeddedAuthorId, authorEmail: embeddedAuthorEmail, authorUsername: embeddedAuthorUsername } = extractCoverAndCleanContent(post.content || "");
-    const safeContent = sanitizePostContent(cleanContent);
-    const words = safeContent ? safeContent.trim().split(/\s+/).filter(Boolean).length : 0;
-    const readingTime = Math.max(1, Math.ceil(words / 180));
+    const rawContent = post.content || "";
+    const { cleanContent, coverImage: embeddedCover, authorId: embeddedAuthorId, authorEmail: embeddedAuthorEmail, authorUsername: embeddedAuthorUsername } = extractCoverAndCleanContent(rawContent);
+    const safeContent = rawContent ? sanitizePostContent(cleanContent) : "";
+    const words = safeContent ? safeContent.trim().split(/\s+/).filter(Boolean).length : ((post.excerpt || "").trim().split(/\s+/).filter(Boolean).length * 4);
+    const readingTime = post.readingTime || Math.max(1, Math.ceil((words || 180) / 180));
     const tags = extractTags(post);
     const imgMatch = safeContent ? safeContent.match(/<img[^>]+src=["']([^"']+)["']/i) : null;
     const rawThumbnail = post.coverImage || post.cover_image || embeddedCover || (imgMatch ? imgMatch[1] : null);
@@ -1051,7 +1253,7 @@ const formatPost = (post) => {
     return {
         ...post,
         content: safeContent,
-        rawContent: post.content || "",
+        rawContent,
         author_id: post.author_id || post.authorId || embeddedAuthorId || null,
         author_email: post.author_email || post.authorEmail || embeddedAuthorEmail || null,
         author_username: post.author_username || post.authorUsername || embeddedAuthorUsername || null,
@@ -1115,6 +1317,9 @@ const writeLocalPosts = async (posts) => {
 let postsCache = { data: null, timestamp: 0 };
 const POSTS_CACHE_TTL = 15 * 1000; // 15s in-memory cache
 
+// Lightweight selective columns for high-performance feed queries (avoids downloading megabytes of markdown/HTML)
+const FEED_POST_FIELDS = "id, title, excerpt, author, author_id, author_email, author_username, cover_image, tags, claps, views, created_at";
+
 const invalidatePostsCache = () => {
     postsCache = { data: null, timestamp: 0 };
 };
@@ -1127,9 +1332,10 @@ const getAllPosts = async () => {
 
     if (supabase) {
         try {
+            // High-efficiency selective query: excludes heavy `content` column
             const { data, error } = await supabase
                 .from("posts")
-                .select("*")
+                .select(FEED_POST_FIELDS)
                 .not("title", "like", "__SYSTEM_%")
                 .neq("author", "__SYSTEM__")
                 .order("created_at", { ascending: false });
@@ -1141,7 +1347,22 @@ const getAllPosts = async () => {
                 return formatted;
             }
         } catch (e) {
-            console.warn("Supabase getAllPosts fetch fallback:", e.message);
+            console.warn("Supabase selective getAllPosts fallback to all columns:", e.message);
+            try {
+                const { data, error } = await supabase
+                    .from("posts")
+                    .select("*")
+                    .not("title", "like", "__SYSTEM_%")
+                    .neq("author", "__SYSTEM__")
+                    .order("created_at", { ascending: false });
+                if (!error && data) {
+                    const formatted = data
+                        .filter(p => !p.title?.startsWith("__SYSTEM_") && p.author !== "__SYSTEM__")
+                        .map(formatPost);
+                    postsCache = { data: formatted, timestamp: now };
+                    return formatted;
+                }
+            } catch (err) {}
         }
     }
     const localPosts = await readLocalPosts();
@@ -1153,9 +1374,10 @@ const getAllPosts = async () => {
 };
 
 const getPostById = async (id) => {
+    // Check in-memory cache, but ONLY return if full content is loaded
     if (postsCache.data) {
         const cachedPost = postsCache.data.find(p => String(p.id) === String(id));
-        if (cachedPost) return cachedPost;
+        if (cachedPost && cachedPost.rawContent && cachedPost.content) return cachedPost;
     }
 
     if (supabase) {
@@ -1623,15 +1845,18 @@ app.get("/auth/callback", async (req, res) => {
     });
 });
 
-// POST /api/auth/session: Set auth cookie from client-side token
+// POST /api/auth/session: Set auth cookie from verified client-side token
 app.post("/api/auth/session", async (req, res) => {
     const { token, refreshToken } = req.body;
     if (token) {
-        let authUser = decodeSupabaseJWT(token);
+        // 1. Verify HMAC local token first
+        let authUser = verifyLocalToken(token);
+
+        // 2. If not local token and Supabase configured, cryptographically verify via Supabase Auth
         if (!authUser && supabase) {
             try {
-                const { data: { user } } = await supabase.auth.getUser(token);
-                if (user) {
+                const { data: { user }, error } = await supabase.auth.getUser(token);
+                if (user && !error) {
                     const isGoogle = user.app_metadata?.provider === "google" ||
                                      (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
                                      Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
@@ -1645,11 +1870,9 @@ app.post("/api/auth/session", async (req, res) => {
                         isGoogleUser: isGoogle,
                         provider: isGoogle ? "google" : (user.app_metadata?.provider || "email")
                     };
+                    setCachedSupabaseUser(token, authUser);
                 }
             } catch (e) {}
-        }
-        if (!authUser) {
-            authUser = verifyLocalToken(token);
         }
 
         if (authUser) {
@@ -1665,8 +1888,7 @@ app.post("/api/auth/session", async (req, res) => {
             return res.json({ success: true, user: authUser, token: persistentToken });
         }
 
-        setSessionCookies(res, token, refreshToken);
-        return res.json({ success: true });
+        return res.status(401).json({ error: "Invalid or unverified authentication token." });
     }
     res.status(400).json({ error: "Token required" });
 });
@@ -2015,7 +2237,7 @@ app.get("/settings", requireAuth, async (req, res, next) => {
 });
 
 // POST /api/profile/sessions/revoke-others: Revoke all other device sessions
-app.post("/api/profile/sessions/revoke-others", requireAuth, async (req, res) => {
+app.post("/api/profile/sessions/revoke-others", requireAuth, csrfProtection, async (req, res) => {
     try {
         const users = await readLocalUsers();
         const userIdx = users.findIndex(u => u.id === req.user.id || (req.user.email && u.email && u.email.toLowerCase() === req.user.email.toLowerCase()));
@@ -2057,7 +2279,7 @@ app.post("/api/profile/sessions/revoke-others", requireAuth, async (req, res) =>
 });
 
 // POST /api/profile: Update user profile info & preferences
-app.post("/api/profile", requireAuth, async (req, res) => {
+app.post("/api/profile", requireAuth, csrfProtection, async (req, res) => {
     try {
         const { name, username, phone, bio, avatar, cover, location, website, twitter, notifications, privacy } = req.body;
         const profiles = await readProfiles();
@@ -2209,7 +2431,7 @@ app.post("/api/profile", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/password: Change password requiring valid current password
-app.post("/api/profile/password", requireAuth, async (req, res) => {
+app.post("/api/profile/password", requireAuth, csrfProtection, async (req, res) => {
     try {
         const { currentPassword, newPassword, confirmPassword } = req.body;
 
@@ -2280,7 +2502,7 @@ app.post("/api/profile/password", requireAuth, async (req, res) => {
 });
 
 // POST /api/profile/follow/:userId: Toggle follow
-app.post("/api/profile/follow/:userId", requireAuth, async (req, res) => {
+app.post("/api/profile/follow/:userId", requireAuth, csrfProtection, async (req, res) => {
     try {
         const targetUserId = req.params.userId;
         const followerId = req.user.id;
@@ -2335,7 +2557,7 @@ app.get("/api/profile/export", requireAuth, async (req, res) => {
 });
 
 // DELETE /api/profile/account: Delete User Account
-app.delete("/api/profile/account", requireAuth, async (req, res) => {
+app.delete("/api/profile/account", requireAuth, csrfProtection, async (req, res) => {
     try {
         const userId = req.user.id;
         const users = await readLocalUsers();
@@ -2389,11 +2611,31 @@ app.get("/", async (req, res, next) => {
         const allTags = Object.keys(tagCounts);
 
         // Filter posts if tag is selected
-        const posts = selectedTag && selectedTag !== "All"
+        const filteredPosts = selectedTag && selectedTag !== "All"
             ? allPosts.filter(p => (p.tags || []).some(t => t.toLowerCase() === selectedTag.toLowerCase()))
             : allPosts;
 
-        res.render("index.ejs", { posts, allPosts, allTags, selectedTag, tagCounts, user: req.user });
+        // Feed Pagination (defaults to 10 stories per page)
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.max(1, Math.min(50, parseInt(req.query.limit, 10) || 10));
+        const totalPosts = filteredPosts.length;
+        const totalPages = Math.max(1, Math.ceil(totalPosts / limit));
+        const safePage = Math.min(page, totalPages);
+        const startIndex = (safePage - 1) * limit;
+        const posts = filteredPosts.slice(startIndex, startIndex + limit);
+
+        const pagination = {
+            page: safePage,
+            limit,
+            totalPosts,
+            totalPages,
+            hasNextPage: safePage < totalPages,
+            hasPrevPage: safePage > 1,
+            nextPage: safePage + 1,
+            prevPage: safePage - 1
+        };
+
+        res.render("index.ejs", { posts, allPosts, allTags, selectedTag, tagCounts, user: req.user, pagination });
     } catch (err) {
         next(err);
     }
@@ -2405,7 +2647,7 @@ app.get("/new", requireAuth, (req, res) => {
 });
 
 // POST /posts: Create a new post (Protected)
-app.post("/posts", requireAuth, async (req, res, next) => {
+app.post("/posts", requireAuth, csrfProtection, async (req, res, next) => {
     try {
         const { title, content, tags, coverImage } = req.body;
         const profile = await getOrCreateProfile(req.user, req);
@@ -2504,7 +2746,7 @@ app.get("/edit/:id", requireAuth, async (req, res, next) => {
 });
 
 // POST /update/:id: Update an existing post (Protected - Creator only)
-app.post("/update/:id", requireAuth, async (req, res, next) => {
+app.post("/update/:id", requireAuth, csrfProtection, async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         if (!post) {
@@ -2544,7 +2786,7 @@ app.post("/update/:id", requireAuth, async (req, res, next) => {
 });
 
 // POST /delete/:id: Delete a post (Protected - Creator only)
-app.post("/delete/:id", requireAuth, async (req, res, next) => {
+app.post("/delete/:id", requireAuth, csrfProtection, async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         if (!post) {

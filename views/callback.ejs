@@ -125,15 +125,6 @@
 
         async function createServerSession(accessToken, refreshToken) {
             try {
-                localStorage.setItem('auth_token', accessToken);
-                if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
-                
-                const isSecure = window.location.protocol === 'https:' ? '; Secure' : '';
-                document.cookie = `auth_token=${encodeURIComponent(accessToken)}; path=/; max-age=31536000; SameSite=Lax${isSecure}`;
-                if (refreshToken) {
-                    document.cookie = `refresh_token=${encodeURIComponent(refreshToken)}; path=/; max-age=31536000; SameSite=Lax${isSecure}`;
-                }
-
                 try {
                     const resp = await fetch('/api/auth/session', {
                         method: 'POST',
@@ -144,7 +135,6 @@
                     const data = await resp.json();
                     if (data && data.token) {
                         localStorage.setItem('auth_token', data.token);
-                        document.cookie = `auth_token=${encodeURIComponent(data.token)}; path=/; max-age=31536000; SameSite=Lax${isSecure}`;
                     }
                 } catch (e) {}
 

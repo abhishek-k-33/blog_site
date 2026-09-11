@@ -83,6 +83,7 @@
 
     <!-- Medium Writing Canvas Form -->
     <form action="/posts" method="POST" id="medium-story-form" class="medium-story-form">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <input type="hidden" name="content" id="hidden-content">
 
         <div class="medium-canvas-wrapper">
