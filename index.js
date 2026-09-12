@@ -502,147 +502,200 @@ const authenticateLocalUser = async (email, password) => {
 // --- LIGHTNING-FAST HIGH-PERFORMANCE CACHE & PERSISTENCE ENGINE ---
 const memoryCache = new Map();
 const CACHE_TTL_MS = 60 * 1000; // 60s memory cache TTL
+
+// General safe system state reader (memory cache + local JSON fallback)
 const readSystemState = async (key, fallback = []) => {
     const filename = `${key.toLowerCase()}.json`;
     const now = Date.now();
 
-    // 1. Instant RAM Cache Hit (< 0.1ms)
     const cached = memoryCache.get(key);
     if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
         return cached.data;
     }
 
-    // 2. Fetch from Supabase (resilient to multiple rows)
+    const localData = await readJSONSafe(filename, fallback);
+    memoryCache.set(key, { data: localData, timestamp: now });
+    return localData;
+};
+
+// General safe system state writer (memory cache + local disk write)
+const writeSystemState = async (key, data) => {
+    const filename = `${key.toLowerCase()}.json`;
+    memoryCache.set(key, { data, timestamp: Date.now() });
+    await writeJSONSafe(filename, data).catch(() => {});
+};
+
+// --- DEDICATED RELATIONAL HELPERS (FOLLOWS, BOOKMARKS, PROFILES) ---
+
+const readFollows = async () => {
+    const now = Date.now();
+    const cached = memoryCache.get("FOLLOWS");
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+    }
+
     if (supabase) {
         try {
-            const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
             const { data, error } = await supabase
-                .from("posts")
-                .select("id, content")
-                .eq("title", systemTitle)
-                .order("created_at", { ascending: false });
-
-            if (!error && data && data.length > 0 && data[0]?.content) {
-                const parsed = JSON.parse(data[0].content);
-                memoryCache.set(key, { data: parsed, timestamp: Date.now() });
-                await writeJSONSafe(filename, parsed);
-                return parsed;
+                .from("follows")
+                .select("follower_id, following_id, created_at");
+            if (!error && data) {
+                const mapped = data.map(r => ({
+                    followerId: r.follower_id,
+                    followingId: r.following_id,
+                    createdAt: r.created_at
+                }));
+                memoryCache.set("FOLLOWS", { data: mapped, timestamp: now });
+                writeJSONSafe("follows.json", mapped).catch(() => {});
+                return mapped;
             }
         } catch (e) {
-            console.warn(`Supabase readSystemState fetch error for ${key}:`, e.message);
+            console.warn("Supabase readFollows fetch error:", e.message);
         }
     }
 
-    // 3. Fall back to local JSON cache
-    const localData = await readJSONSafe(filename, null);
-    if (localData !== null && localData !== undefined) {
-        memoryCache.set(key, { data: localData, timestamp: now });
-        return localData;
-    }
-
-    const finalData = fallback;
-    memoryCache.set(key, { data: finalData, timestamp: now });
-    return finalData;
-};
-
-const writeSystemState = async (key, data) => {
-    const filename = `${key.toLowerCase()}.json`;
-    // 1. Instant RAM update (< 0.1ms)
-    memoryCache.set(key, { data, timestamp: Date.now() });
-
-    // 2. Fast local disk write (non-blocking)
-    writeJSONSafe(filename, data).catch(() => {});
-
-    // 3. Non-blocking asynchronous Supabase sync in background
-    if (supabase) {
-        setImmediate(async () => {
-            try {
-                const systemTitle = `__SYSTEM_${key.toUpperCase()}__`;
-                const { data: existingRows } = await supabase
-                    .from("posts")
-                    .select("id")
-                    .eq("title", systemTitle)
-                    .order("created_at", { ascending: false });
-
-                if (existingRows && existingRows.length > 0) {
-                    const [keep, ...deleteRows] = existingRows;
-                    await supabase
-                        .from("posts")
-                        .update({
-                            content: JSON.stringify(data),
-                            excerpt: `System ${key} State`,
-                            author: "__SYSTEM__"
-                        })
-                        .eq("id", keep.id);
-                    for (const d of deleteRows) {
-                        await supabase.from("posts").delete().eq("id", d.id).catch(() => {});
-                    }
-                } else {
-                    await supabase
-                        .from("posts")
-                        .insert([{
-                            title: systemTitle,
-                            content: JSON.stringify(data),
-                            excerpt: `System ${key} State`,
-                            author: "__SYSTEM__"
-                        }]);
-                }
-            } catch (e) {
-                console.warn(`Background Supabase writeSystemState error for ${key}:`, e.message);
-            }
-        });
-    }
-};;
-
-const readFollows = async () => {
-    return readSystemState("FOLLOWS", []);
+    const localData = await readJSONSafe("follows.json", []);
+    memoryCache.set("FOLLOWS", { data: localData, timestamp: now });
+    return localData;
 };
 
 const writeFollows = async (follows) => {
-    return writeSystemState("FOLLOWS", follows);
+    memoryCache.set("FOLLOWS", { data: follows, timestamp: Date.now() });
+    await writeJSONSafe("follows.json", follows);
 };
 
 const readBookmarks = async () => {
-    return readSystemState("BOOKMARKS", []);
+    const now = Date.now();
+    const cached = memoryCache.get("BOOKMARKS");
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+    }
+
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("bookmarks")
+                .select("user_id, post_id, created_at");
+            if (!error && data) {
+                const mapped = data.map(r => ({
+                    userId: r.user_id,
+                    postId: r.post_id,
+                    createdAt: r.created_at
+                }));
+                memoryCache.set("BOOKMARKS", { data: mapped, timestamp: now });
+                writeJSONSafe("bookmarks.json", mapped).catch(() => {});
+                return mapped;
+            }
+        } catch (e) {
+            console.warn("Supabase readBookmarks fetch error:", e.message);
+        }
+    }
+
+    const localData = await readJSONSafe("bookmarks.json", []);
+    memoryCache.set("BOOKMARKS", { data: localData, timestamp: now });
+    return localData;
 };
 
 const writeBookmarks = async (bookmarks) => {
-    return writeSystemState("BOOKMARKS", bookmarks);
+    memoryCache.set("BOOKMARKS", { data: bookmarks, timestamp: Date.now() });
+    await writeJSONSafe("bookmarks.json", bookmarks);
 };
 
 const readAnalytics = async () => {
-    const data = await readSystemState("ANALYTICS", { views: {}, claps: {}, unique_views: {} });
-    return {
-        views: data.views || {},
-        claps: data.claps || {},
-        unique_views: data.unique_views || {}
+    const now = Date.now();
+    const cached = memoryCache.get("ANALYTICS");
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+    }
+
+    const localData = await readJSONSafe("analytics.json", { views: {}, claps: {}, unique_views: {} });
+    const formatted = {
+        views: localData.views || {},
+        claps: localData.claps || {},
+        unique_views: localData.unique_views || {}
     };
+    memoryCache.set("ANALYTICS", { data: formatted, timestamp: now });
+    return formatted;
 };
 
 const writeAnalytics = async (analytics) => {
-    return writeSystemState("ANALYTICS", analytics);
+    memoryCache.set("ANALYTICS", { data: analytics, timestamp: Date.now() });
+    await writeJSONSafe("analytics.json", analytics);
 };
 
-// --- PROFILES, SOCIAL & BOOKMARKS HELPERS ---
+// --- PROFILES DIRECT DB HELPERS ---
+
 const readProfiles = async () => {
-    return readSystemState("PROFILES", []);
+    const now = Date.now();
+    const cached = memoryCache.get("PROFILES");
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+    }
+
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("profiles")
+                .select("id, data, updated_at");
+            if (!error && data) {
+                const mapped = data.map(r => ({
+                    ...(r.data || {}),
+                    id: r.id,
+                    updated_at: r.updated_at
+                }));
+                memoryCache.set("PROFILES", { data: mapped, timestamp: now });
+                writeJSONSafe("profiles.json", mapped).catch(() => {});
+                return mapped;
+            }
+        } catch (e) {
+            console.warn("Supabase readProfiles fetch error:", e.message);
+        }
+    }
+
+    const localData = await readJSONSafe("profiles.json", []);
+    memoryCache.set("PROFILES", { data: localData, timestamp: now });
+    return localData;
 };
 
 const writeProfiles = async (profiles) => {
-    return writeSystemState("PROFILES", profiles);
+    memoryCache.set("PROFILES", { data: profiles, timestamp: Date.now() });
+    await writeJSONSafe("profiles.json", profiles);
 };
-
-// --- Supabase DB profile persistence (works across Vercel instances) ---
-let profilesTableExists = null; // null = unknown, true/false = cached result
 
 const readProfileFromDB = async (userId) => {
     if (!userId) return null;
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("profiles")
+                .select("id, data, updated_at")
+                .eq("id", userId)
+                .single();
+            if (!error && data?.data) {
+                return { ...data.data, id: data.id, updated_at: data.updated_at };
+            }
+        } catch (e) {}
+    }
     const profiles = await readProfiles();
     return profiles.find(p => p.id === userId || (p.email && p.email.toLowerCase() === String(userId).toLowerCase())) || null;
 };
 
 const writeProfileToDB = async (profile) => {
     if (!profile?.id) return false;
+    if (supabase) {
+        try {
+            const { error } = await supabase
+                .from("profiles")
+                .upsert({
+                    id: profile.id,
+                    data: profile,
+                    updated_at: new Date().toISOString()
+                });
+            if (error) console.warn("Supabase writeProfileToDB error:", error.message);
+        } catch (e) {
+            console.warn("Supabase writeProfileToDB exception:", e.message);
+        }
+    }
     const profiles = await readProfiles();
     const idx = profiles.findIndex(p => p.id === profile.id || (profile.email && p.email && p.email.toLowerCase() === profile.email.toLowerCase()));
     if (idx >= 0) {
@@ -654,13 +707,12 @@ const writeProfileToDB = async (profile) => {
     return true;
 };
 
+// --- VIEWS & CLAPS WITH ATOMIC DATABASE RPCS ---
+
 const recordPostView = async (postId, req = null, res = null) => {
     if (!postId) return 0;
     try {
-        const analytics = await readAnalytics();
         const key = String(postId);
-        if (!analytics.views[key]) analytics.views[key] = 0;
-        if (!analytics.unique_views[key]) analytics.unique_views[key] = [];
 
         // Determine unique reader identifier (User ID > User Email > Persistent Browser Reader ID)
         let readerId = req?.user?.id || req?.user?.email;
@@ -683,32 +735,44 @@ const recordPostView = async (postId, req = null, res = null) => {
             }
         }
 
-        // Only count read if this person has not viewed this story yet
+        let updatedViews = null;
+
+        // Atomic PostgreSQL RPC increment (inserts into post_views table & updates posts.views)
+        if (supabase) {
+            try {
+                const { data, error } = await supabase.rpc("increment_post_views", {
+                    p_post_id: postId,
+                    p_reader_id: String(readerId)
+                });
+                if (!error && typeof data === "number") {
+                    updatedViews = data;
+                }
+            } catch (rpcErr) {
+                // Fallback to local or direct query if RPC not yet migrated
+            }
+        }
+
+        // Local analytics update (capped unique set to prevent unbounded JSON growth)
+        const analytics = await readAnalytics();
+        if (!analytics.views[key]) analytics.views[key] = 0;
+        if (!analytics.unique_views[key]) analytics.unique_views[key] = [];
+
         const alreadyViewed = analytics.unique_views[key].includes(readerId);
         if (!alreadyViewed) {
+            if (analytics.unique_views[key].length >= 1000) {
+                analytics.unique_views[key].shift(); // cap to recent 1000 readers per post
+            }
             analytics.unique_views[key].push(readerId);
-            analytics.views[key] = analytics.unique_views[key].length;
+            analytics.views[key] = (updatedViews !== null) ? updatedViews : (analytics.views[key] + 1);
             await writeAnalytics(analytics);
+        } else if (updatedViews !== null) {
+            analytics.views[key] = updatedViews;
+        }
 
-            // Sync increment to Supabase posts table directly (atomic/background)
-            if (supabase) {
-                supabase
-                    .from("posts")
-                    .select("views")
-                    .eq("id", postId)
-                    .single()
-                    .then(({ data }) => {
-                        const nextViews = (data?.views || 0) + 1;
-                        supabase.from("posts").update({ views: nextViews }).eq("id", postId).then(() => {}).catch(() => {});
-                    })
-                    .catch(() => {});
-            }
-
-            // Sync in-memory posts cache
-            if (postsCache?.data) {
-                const cached = postsCache.data.find(p => String(p.id) === key);
-                if (cached) cached.views = analytics.views[key];
-            }
+        // Sync in-memory posts cache
+        if (postsCache?.data) {
+            const cached = postsCache.data.find(p => String(p.id) === key);
+            if (cached) cached.views = analytics.views[key];
         }
 
         return analytics.views[key];
@@ -720,33 +784,36 @@ const recordPostView = async (postId, req = null, res = null) => {
 
 const recordPostClap = async (postId, count = 1) => {
     if (!postId) return 0;
+    const key = String(postId);
+    let currentClaps = 0;
     try {
-        const analytics = await readAnalytics();
-        const key = String(postId);
-        analytics.claps[key] = (analytics.claps[key] || 0) + count;
-        await writeAnalytics(analytics);
-
-        // Sync increment to Supabase posts table directly (background)
+        // Atomic PostgreSQL RPC increment to prevent race conditions
         if (supabase) {
-            supabase
-                .from("posts")
-                .select("claps")
-                .eq("id", postId)
-                .single()
-                .then(({ data }) => {
-                    const nextClaps = (data?.claps || 0) + count;
-                    supabase.from("posts").update({ claps: nextClaps }).eq("id", postId).then(() => {}).catch(() => {});
-                })
-                .catch(() => {});
+            try {
+                const { data, error } = await supabase.rpc("increment_post_claps", {
+                    p_post_id: postId,
+                    p_amount: count
+                });
+                if (!error && typeof data === "number") {
+                    currentClaps = data;
+                }
+            } catch (rpcErr) {
+                console.warn("Supabase RPC increment_post_claps error:", rpcErr.message);
+            }
         }
+
+        const analytics = await readAnalytics();
+        analytics.claps[key] = (currentClaps > 0) ? currentClaps : ((analytics.claps[key] || 0) + count);
+        currentClaps = analytics.claps[key];
+        await writeAnalytics(analytics);
 
         // Sync in-memory posts cache so feed reflects applause immediately
         if (postsCache?.data) {
             const cached = postsCache.data.find(p => String(p.id) === key);
-            if (cached) cached.claps = analytics.claps[key];
+            if (cached) cached.claps = currentClaps;
         }
 
-        return analytics.claps[key];
+        return currentClaps;
     } catch (e) {
         console.error("Error recording post clap:", e);
         return 0;
@@ -1406,51 +1473,48 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
     const safeAuthor = sanitizePlainText(author);
     const safeContent = sanitizePostContent(content || "");
 
-    let contentWithMetadata = safeContent;
-    if (authorId) {
-        contentWithMetadata = `<!-- AUTHOR_ID: ${authorId} -->\n` + contentWithMetadata;
-    }
-    if (authorEmail) {
-        contentWithMetadata = `<!-- AUTHOR_EMAIL: ${authorEmail} -->\n` + contentWithMetadata;
-    }
-    if (authorUsername) {
-        contentWithMetadata = `<!-- AUTHOR_USERNAME: ${authorUsername} -->\n` + contentWithMetadata;
-    }
-    if (cleanCover) {
-        contentWithMetadata = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithMetadata;
-    }
-
     if (supabase) {
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor, tags: cleanTags, cover_image: cleanCover, author_id: authorId }])
+                .insert([{
+                    title: safeTitle,
+                    content: safeContent,
+                    excerpt,
+                    author: safeAuthor,
+                    tags: cleanTags,
+                    cover_image: cleanCover,
+                    author_id: authorId,
+                    author_email: authorEmail,
+                    author_username: authorUsername
+                }])
                 .select()
                 .single();
+            invalidatePostsCache();
             if (!error && data) return formatPost(data);
         } catch (e) {}
 
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .insert([{ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor, tags: cleanTags, cover_image: cleanCover }])
+                .insert([{
+                    title: safeTitle,
+                    content: safeContent,
+                    excerpt,
+                    author: safeAuthor,
+                    tags: cleanTags,
+                    cover_image: cleanCover,
+                    author_id: authorId
+                }])
                 .select()
                 .single();
+            invalidatePostsCache();
             if (!error && data) return formatPost(data);
-        } catch (e) {}
-
-        try {
-            const { data, error } = await supabase
-                .from("posts")
-                .insert([{ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor, tags: cleanTags }])
-                .select()
-                .single();
-            if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
         } catch (e) {}
 
         const { data, error } = await supabase
             .from("posts")
-            .insert([{ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor }])
+            .insert([{ title: safeTitle, content: safeContent, excerpt, author: safeAuthor, tags: cleanTags, cover_image: cleanCover }])
             .select()
             .single();
         invalidatePostsCache();
@@ -1461,7 +1525,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
     const newPost = {
         id: generateId(),
         title: safeTitle,
-        content: contentWithMetadata,
+        content: safeContent,
         excerpt,
         author: safeAuthor,
         author_id: authorId,
@@ -1469,6 +1533,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
         author_username: authorUsername,
         tags: cleanTags.length > 0 ? cleanTags : undefined,
         coverImage: cleanCover,
+        cover_image: cleanCover,
         created_at: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
     };
@@ -1486,25 +1551,21 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
     const safeAuthor = sanitizePlainText(author);
     const safeContent = sanitizePostContent(content || "");
 
-    let contentWithMetadata = safeContent;
-    if (authorId) {
-        contentWithMetadata = `<!-- AUTHOR_ID: ${authorId} -->\n` + contentWithMetadata;
-    }
-    if (authorEmail) {
-        contentWithMetadata = `<!-- AUTHOR_EMAIL: ${authorEmail} -->\n` + contentWithMetadata;
-    }
-    if (authorUsername) {
-        contentWithMetadata = `<!-- AUTHOR_USERNAME: ${authorUsername} -->\n` + contentWithMetadata;
-    }
-    if (cleanCover) {
-        contentWithMetadata = `<!-- COVER_IMAGE: ${cleanCover} -->\n` + contentWithMetadata;
-    }
-
     if (supabase) {
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .update({ title: safeTitle, content: contentWithMetadata, excerpt, author: safeAuthor, tags: cleanTags, cover_image: cleanCover, author_id: authorId })
+                .update({
+                    title: safeTitle,
+                    content: safeContent,
+                    excerpt,
+                    author: safeAuthor,
+                    tags: cleanTags,
+                    cover_image: cleanCover,
+                    author_id: authorId,
+                    author_email: authorEmail,
+                    author_username: authorUsername
+                })
                 .eq("id", id)
                 .select()
                 .single();
@@ -1515,28 +1576,25 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
         try {
             const { data, error } = await supabase
                 .from("posts")
-                .update({ title, content: contentWithMetadata, excerpt, author, tags: cleanTags, cover_image: cleanCover })
+                .update({
+                    title: safeTitle,
+                    content: safeContent,
+                    excerpt,
+                    author: safeAuthor,
+                    tags: cleanTags,
+                    cover_image: cleanCover,
+                    author_id: authorId
+                })
                 .eq("id", id)
                 .select()
                 .single();
             invalidatePostsCache();
             if (!error && data) return formatPost(data);
-        } catch (e) {}
-
-        try {
-            const { data, error } = await supabase
-                .from("posts")
-                .update({ title, content: contentWithMetadata, excerpt, author, tags: cleanTags })
-                .eq("id", id)
-                .select()
-                .single();
-            invalidatePostsCache();
-            if (!error && data) return formatPost({ ...data, coverImage: cleanCover });
         } catch (e) {}
 
         const { data, error } = await supabase
             .from("posts")
-            .update({ title, content: contentWithMetadata, excerpt, author })
+            .update({ title: safeTitle, content: safeContent, excerpt, author: safeAuthor, tags: cleanTags, cover_image: cleanCover })
             .eq("id", id)
             .select()
             .single();
@@ -1549,15 +1607,16 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
     if (index !== -1) {
         localPosts[index] = {
             ...localPosts[index],
-            title,
-            content: contentWithMetadata,
+            title: safeTitle,
+            content: safeContent,
             excerpt,
-            author,
+            author: safeAuthor,
             author_id: authorId || localPosts[index].author_id,
             author_email: authorEmail || localPosts[index].author_email,
             author_username: authorUsername || localPosts[index].author_username,
             tags: cleanTags.length > 0 ? cleanTags : undefined,
             coverImage: cleanCover,
+            cover_image: cleanCover,
         };
         await writeLocalPosts(localPosts);
         invalidatePostsCache();
@@ -2518,9 +2577,29 @@ app.post("/api/profile/follow/:userId", requireAuth, csrfProtection, async (req,
         if (existingIdx >= 0) {
             follows.splice(existingIdx, 1);
             isFollowing = false;
+            if (supabase) {
+                try {
+                    await supabase
+                        .from("follows")
+                        .delete()
+                        .match({ follower_id: followerId, following_id: targetUserId });
+                } catch (err) {
+                    console.warn("Supabase unfollow error:", err.message);
+                }
+            }
         } else {
-            follows.push({ followerId, followingId: targetUserId, createdAt: new Date().toISOString() });
+            const nowIso = new Date().toISOString();
+            follows.push({ followerId, followingId: targetUserId, createdAt: nowIso });
             isFollowing = true;
+            if (supabase) {
+                try {
+                    await supabase
+                        .from("follows")
+                        .upsert({ follower_id: followerId, following_id: targetUserId, created_at: nowIso });
+                } catch (err) {
+                    console.warn("Supabase follow upsert error:", err.message);
+                }
+            }
         }
 
         await writeFollows(follows);
@@ -2529,6 +2608,53 @@ app.post("/api/profile/follow/:userId", requireAuth, csrfProtection, async (req,
     } catch (e) {
         console.error("Follow error:", e);
         res.status(500).json({ error: "Could not update follow status." });
+    }
+});
+
+// POST /api/posts/:id/bookmark: Toggle bookmark
+app.post("/api/posts/:id/bookmark", requireAuth, csrfProtection, async (req, res) => {
+    try {
+        const postId = req.params.id;
+        const userId = req.user.id;
+
+        let bookmarks = await readBookmarks();
+        const existingIdx = bookmarks.findIndex(b => b.userId === userId && String(b.postId) === String(postId));
+        let isBookmarked = false;
+
+        if (existingIdx >= 0) {
+            bookmarks.splice(existingIdx, 1);
+            isBookmarked = false;
+            if (supabase) {
+                try {
+                    await supabase
+                        .from("bookmarks")
+                        .delete()
+                        .match({ user_id: userId, post_id: postId });
+                } catch (err) {
+                    console.warn("Supabase delete bookmark error:", err.message);
+                }
+            }
+        } else {
+            const nowIso = new Date().toISOString();
+            bookmarks.push({ userId, postId, createdAt: nowIso });
+            isBookmarked = true;
+            if (supabase) {
+                try {
+                    await supabase
+                        .from("bookmarks")
+                        .upsert({ user_id: userId, post_id: postId, created_at: nowIso });
+                } catch (err) {
+                    console.warn("Supabase bookmark upsert error:", err.message);
+                }
+            }
+        }
+
+        await writeBookmarks(bookmarks);
+        const userBookmarksCount = bookmarks.filter(b => b.userId === userId).length;
+        res.json({ success: true, isBookmarked, userBookmarksCount });
+    } catch (e) {
+        console.error("Bookmark error:", e);
+        res.status(500).json({ error: "Could not update bookmark status." });
     }
 });
 
@@ -2678,8 +2804,9 @@ app.post("/posts", requireAuth, csrfProtection, async (req, res, next) => {
 // POST /api/posts/:id/clap: Record applause / clap
 app.post("/api/posts/:id/clap", async (req, res) => {
     try {
-        const totalClaps = await recordPostClap(req.params.id, 1);
-        res.json({ success: true, totalClaps });
+        const count = Math.max(1, Math.min(50, parseInt(req.body?.count, 10) || 1));
+        const totalClaps = await recordPostClap(req.params.id, count);
+        res.json({ success: true, totalClaps, claps: totalClaps });
     } catch (e) {
         res.status(500).json({ error: "Could not record applause." });
     }
@@ -2826,8 +2953,8 @@ app.use((err, req, res, next) => {
     }
 });
 
-// Only listen locally — on Vercel, the app is exported for serverless
-if (!process.env.VERCEL) {
+// Only listen locally if run directly — on Vercel or when imported by tests, the app is exported
+if (!process.env.VERCEL && require.main === module) {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
     });

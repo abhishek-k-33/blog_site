@@ -226,6 +226,9 @@
             if (bookmarkDrawer && bookmarkDrawer.classList.contains('is-open')) {
                 renderBookmarkDrawer();
             }
+
+            // Sync bookmark state to database if user is signed in
+            fetch(`/api/posts/${encodeURIComponent(id)}/bookmark`, { method: 'POST' }).catch(() => {});
         });
 
         if (bookmarksBtn && bookmarkDrawer) {

@@ -117,3 +117,146 @@ CREATE POLICY "Allow user delete own profile"
     ON profiles FOR DELETE
     TO authenticated
     USING (auth.uid()::text = id);
+
+-- ==========================================================
+-- FOLLOWS TABLE (social network graph)
+-- ==========================================================
+
+-- 10. Create follows table
+CREATE TABLE IF NOT EXISTS follows (
+    follower_id TEXT NOT NULL,
+    following_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    PRIMARY KEY (follower_id, following_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows (follower_id);
+CREATE INDEX IF NOT EXISTS idx_follows_following ON follows (following_id);
+
+ALTER TABLE follows ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read follows" ON follows;
+DROP POLICY IF EXISTS "Allow user follow" ON follows;
+DROP POLICY IF EXISTS "Allow user unfollow" ON follows;
+
+CREATE POLICY "Allow public read follows"
+    ON follows FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow user follow"
+    ON follows FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid()::text = follower_id);
+
+CREATE POLICY "Allow user unfollow"
+    ON follows FOR DELETE
+    TO authenticated
+    USING (auth.uid()::text = follower_id);
+
+-- ==========================================================
+-- BOOKMARKS TABLE (saved stories)
+-- ==========================================================
+
+-- 11. Create bookmarks table
+CREATE TABLE IF NOT EXISTS bookmarks (
+    user_id TEXT NOT NULL,
+    post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    PRIMARY KEY (user_id, post_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks (user_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_post ON bookmarks (post_id);
+
+ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow user read bookmarks" ON bookmarks;
+DROP POLICY IF EXISTS "Allow user insert bookmark" ON bookmarks;
+DROP POLICY IF EXISTS "Allow user delete bookmark" ON bookmarks;
+
+CREATE POLICY "Allow user read bookmarks"
+    ON bookmarks FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow user insert bookmark"
+    ON bookmarks FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Allow user delete bookmark"
+    ON bookmarks FOR DELETE
+    TO authenticated
+    USING (auth.uid()::text = user_id);
+
+-- ==========================================================
+-- POST VIEWS DEDUPLICATION TABLE
+-- ==========================================================
+
+-- 12. Create post_views table
+CREATE TABLE IF NOT EXISTS post_views (
+    post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    reader_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    PRIMARY KEY (post_id, reader_id)
+);
+
+ALTER TABLE post_views ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow read post_views" ON post_views;
+DROP POLICY IF EXISTS "Allow insert post_views" ON post_views;
+
+CREATE POLICY "Allow read post_views"
+    ON post_views FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow insert post_views"
+    ON post_views FOR INSERT
+    WITH CHECK (true);
+
+-- ==========================================================
+-- ATOMIC METRIC INCREMENT RPC FUNCTIONS
+-- ==========================================================
+
+-- 13. Atomic post applause / clap increment (avoids read-modify-write race conditions)
+CREATE OR REPLACE FUNCTION increment_post_claps(p_post_id UUID, p_amount INT DEFAULT 1)
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    new_claps INT;
+BEGIN
+    UPDATE posts
+    SET claps = COALESCE(claps, 0) + p_amount
+    WHERE id = p_post_id
+    RETURNING claps INTO new_claps;
+    RETURN COALESCE(new_claps, 0);
+END;
+$$;
+
+-- 14. Atomic unique post view increment (with deduplication)
+CREATE OR REPLACE FUNCTION increment_post_views(p_post_id UUID, p_reader_id TEXT DEFAULT NULL)
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    new_views INT;
+    already_viewed BOOLEAN := false;
+BEGIN
+    IF p_reader_id IS NOT NULL AND p_reader_id <> '' THEN
+        INSERT INTO post_views (post_id, reader_id)
+        VALUES (p_post_id, p_reader_id)
+        ON CONFLICT (post_id, reader_id) DO NOTHING;
+        GET DIAGNOSTICS new_views = ROW_COUNT;
+        IF new_views = 0 THEN
+            already_viewed := true;
+        END IF;
+    END IF;
+
+    IF NOT already_viewed THEN
+        UPDATE posts
+        SET views = COALESCE(views, 0) + 1
+        WHERE id = p_post_id
+        RETURNING views INTO new_views;
+        RETURN COALESCE(new_views, 0);
+    ELSE
+        SELECT COALESCE(views, 0) INTO new_views FROM posts WHERE id = p_post_id;
+        RETURN COALESCE(new_views, 0);
+    END IF;
+END;
+$$;
