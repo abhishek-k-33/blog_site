@@ -37,6 +37,95 @@ if (isProduction) {
     app.enable("view cache");
 }
 
+// --- PRODUCTION STRUCTURED LOGGER ---
+const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+const CURRENT_LOG_LEVEL = process.env.LOG_LEVEL ? (LOG_LEVELS[process.env.LOG_LEVEL.toLowerCase()] ?? 1) : 1;
+
+const logger = {
+    format(level, msg, meta = {}) {
+        const timestamp = new Date().toISOString();
+        const safeMeta = { ...meta };
+        delete safeMeta.password;
+        delete safeMeta.token;
+        delete safeMeta.auth_token;
+        delete safeMeta.secret;
+        const metaStr = Object.keys(safeMeta).length > 0 ? " " + JSON.stringify(safeMeta) : "";
+        return `[${timestamp}] [${level.toUpperCase()}] ${msg}${metaStr}`;
+    },
+    debug(msg, meta) {
+        if (CURRENT_LOG_LEVEL <= LOG_LEVELS.debug) console.log(this.format("debug", msg, meta));
+    },
+    info(msg, meta) {
+        if (CURRENT_LOG_LEVEL <= LOG_LEVELS.info) console.log(this.format("info", msg, meta));
+    },
+    warn(msg, meta) {
+        if (CURRENT_LOG_LEVEL <= LOG_LEVELS.warn) console.warn(this.format("warn", msg, meta));
+    },
+    error(msg, errOrMeta, meta = {}) {
+        if (CURRENT_LOG_LEVEL <= LOG_LEVELS.error) {
+            let actualErr = null;
+            let actualMeta = meta;
+            if (errOrMeta instanceof Error) {
+                actualErr = errOrMeta;
+            } else if (typeof errOrMeta === "object" && errOrMeta !== null) {
+                actualMeta = { ...errOrMeta, ...meta };
+            } else if (typeof errOrMeta === "string") {
+                actualErr = { message: errOrMeta };
+            }
+            const errMeta = {
+                ...actualMeta,
+                ...(actualErr ? {
+                    errorMessage: actualErr.message,
+                    stack: (process.env.NODE_ENV !== "production" && actualErr.stack) ? actualErr.stack : undefined
+                } : {})
+            };
+            console.error(this.format("error", msg, errMeta));
+        }
+    }
+};
+
+// --- STANDARDIZED API ERROR & SUCCESS RESPONSES ---
+const sendApiError = (res, statusCode, message, errorCode = "BAD_REQUEST", details = null) => {
+    const response = {
+        success: false,
+        error: message,
+        code: errorCode,
+        requestId: res.req?.id || res.req?.requestId || undefined
+    };
+    if (details) response.details = details;
+    return res.status(statusCode).json(response);
+};
+
+const sendApiSuccess = (res, data = {}, statusCode = 200) => {
+    return res.status(statusCode).json({
+        success: true,
+        ...data
+    });
+};
+
+// --- REQUEST TRACING & PERFORMANCE LATENCY TRACKING ---
+app.use((req, res, next) => {
+    const rawId = req.headers["x-request-id"];
+    const requestId = (typeof rawId === "string" && rawId.trim()) ? rawId.trim() : "req_" + crypto.randomBytes(8).toString("hex");
+    req.id = requestId;
+    req.requestId = requestId;
+    res.setHeader("X-Request-Id", requestId);
+
+    const startTime = Date.now();
+    res.on("finish", () => {
+        const duration = Date.now() - startTime;
+        const status = res.statusCode;
+        if (!req.path.startsWith("/css/") && !req.path.startsWith("/js/") && !req.path.startsWith("/images/") && req.path !== "/favicon.ico") {
+            const level = status >= 500 ? "error" : (status >= 400 ? "warn" : "info");
+            logger[level](`${req.method} ${req.originalUrl || req.url} ${status} (${duration}ms)`, {
+                requestId,
+                ip: req.ip || req.headers["x-forwarded-for"] || "127.0.0.1"
+            });
+        }
+    });
+    next();
+});
+
 // Tuned Static Asset Caching with ETags and Last-Modified validation
 const staticMaxAge = isProduction ? "7d" : "1h";
 app.use(express.static(path.join(__dirname, "public"), {
@@ -108,8 +197,8 @@ const csrfProtection = (req, res, next) => {
             const originHost = new URL(origin).host.toLowerCase();
             const currentHost = (req.headers["host"] || "").toLowerCase();
             if (originHost && currentHost && originHost !== currentHost) {
-                console.warn(`CSRF blocked: Origin mismatch (${originHost} !== ${currentHost})`);
-                return res.status(403).json({ error: "Cross-origin request blocked by CSRF protection." });
+                logger.warn(`CSRF blocked: Origin mismatch (${originHost} !== ${currentHost})`, { requestId: req.id });
+                return sendApiError(res, 403, "Cross-origin request blocked by CSRF protection.", "CSRF_ORIGIN_MISMATCH");
             }
         } catch (e) {
             // Ignore malformed referer
@@ -124,7 +213,7 @@ const csrfProtection = (req, res, next) => {
 
     if (!tokenFromReq || !cookieToken || !verifyCsrfToken(tokenFromReq) || tokenFromReq !== cookieToken) {
         if (req.xhr || req.headers.accept?.includes("json") || req.path.startsWith("/api/")) {
-            return res.status(403).json({ error: "Invalid or missing CSRF security token. Please refresh the page and try again." });
+            return sendApiError(res, 403, "Invalid or missing CSRF security token. Please refresh the page and try again.", "CSRF_INVALID_TOKEN");
         }
         return res.status(403).render("404.ejs", {
             message: "Invalid or missing security token (CSRF protection). Please return to the previous page, refresh, and try again.",
@@ -1167,8 +1256,8 @@ app.use(async (req, res, next) => {
 // Middleware: Route Protection
 const requireAuth = (req, res, next) => {
     if (!req.user) {
-        if (req.xhr || req.headers.accept?.includes("json")) {
-            return res.status(401).json({ error: "Authentication required to perform this action." });
+        if (req.path.startsWith("/api/") || req.xhr || req.headers.accept?.includes("json")) {
+            return sendApiError(res, 401, "Authentication required to perform this action.", "UNAUTHORIZED");
         }
         return res.redirect(`/login?redirect=${encodeURIComponent(req.originalUrl)}`);
     }
@@ -3018,16 +3107,90 @@ app.post("/delete/:id", requireAuth, csrfProtection, async (req, res, next) => {
     }
 });
 
+// GET /health & GET /api/health: Diagnostics and system health check
+app.get(["/health", "/api/health"], async (req, res) => {
+    const startTime = Date.now();
+    let dbStatus = "connected";
+    let dbLatencyMs = 0;
+    let dbError = null;
+
+    if (supabase) {
+        try {
+            const { data, error } = await supabase.from("posts").select("id").limit(1);
+            dbLatencyMs = Date.now() - startTime;
+            if (error) {
+                dbStatus = "degraded";
+                dbError = error.message;
+            }
+        } catch (e) {
+            dbStatus = "error";
+            dbError = e.message;
+            dbLatencyMs = Date.now() - startTime;
+        }
+    } else {
+        dbStatus = "local_storage";
+    }
+
+    const mem = process.memoryUsage();
+    const isHealthy = dbStatus === "connected" || dbStatus === "local_storage";
+    const payload = {
+        status: isHealthy ? "healthy" : "degraded",
+        timestamp: new Date().toISOString(),
+        uptimeSeconds: Math.floor(process.uptime()),
+        environment: process.env.NODE_ENV || "development",
+        database: {
+            status: dbStatus,
+            latencyMs: dbLatencyMs,
+            ...(dbError ? { error: dbError } : {})
+        },
+        system: {
+            memoryMB: {
+                rss: Math.round(mem.rss / 1024 / 1024),
+                heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+                heapTotal: Math.round(mem.heapTotal / 1024 / 1024)
+            },
+            nodeVersion: process.version
+        },
+        requestId: req.requestId
+    };
+
+    return res.status(isHealthy ? 200 : 503).json(payload);
+});
+
 // Fallback 404 handler for unknown routes
 app.use((req, res) => {
+    logger.warn(`404 Not Found: ${req.method} ${req.originalUrl}`);
+    if (req.path.startsWith("/api/") || req.xhr || req.headers.accept?.includes("json")) {
+        return sendApiError(res, 404, `Route ${req.method} ${req.originalUrl} not found.`, "NOT_FOUND");
+    }
     res.status(404).render("404.ejs", { message: "Page not found.", user: req.user });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error("Unhandled error:", err);
+    logger.error("Unhandled error in request pipeline", err, {
+        method: req.method,
+        url: req.originalUrl,
+        requestId: req.requestId
+    });
+
+    if (res.headersSent) {
+        return next(err);
+    }
+
+    if (req.path.startsWith("/api/") || req.xhr || req.headers.accept?.includes("json")) {
+        const statusCode = (typeof err.status === "number" && err.status >= 400 && err.status < 600) ? err.status : 500;
+        return sendApiError(
+            res,
+            statusCode,
+            statusCode === 500 && process.env.NODE_ENV === "production" ? "An internal server error occurred." : (err.message || "An internal server error occurred."),
+            err.code || (statusCode === 500 ? "INTERNAL_SERVER_ERROR" : "BAD_REQUEST"),
+            process.env.NODE_ENV !== "production" ? { stack: err.stack } : undefined
+        );
+    }
+
     try {
-        res.status(500).render("404.ejs", { message: "An unexpected error occurred. Please try again later.", user: req.user });
+        res.status(err.status || 500).render("404.ejs", { message: "An unexpected error occurred. Please try again later.", user: req.user });
     } catch (renderErr) {
         res.status(500).type("text/html").send(`
             <!DOCTYPE html>
@@ -3039,11 +3202,43 @@ app.use((err, req, res, next) => {
     }
 });
 
-// Only listen locally if run directly — on Vercel or when imported by tests, the app is exported
+// Process lifecycle management and graceful shutdown
+let serverInstance = null;
+
 if (!process.env.VERCEL && require.main === module) {
-    app.listen(port, () => {
-        console.log(`Server running on port ${port}`);
+    serverInstance = app.listen(port, () => {
+        logger.info(`Server running on port ${port}`, { env: process.env.NODE_ENV || "development" });
     });
+
+    const gracefulShutdown = (signal) => {
+        logger.info(`Received ${signal}, initiating graceful shutdown...`);
+        if (serverInstance) {
+            serverInstance.close(() => {
+                logger.info("HTTP server closed successfully.");
+                process.exit(0);
+            });
+            setTimeout(() => {
+                logger.error("Graceful shutdown timeout exceeded, forcing exit.");
+                process.exit(1);
+            }, 5000).unref();
+        } else {
+            process.exit(0);
+        }
+    };
+
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 }
+
+process.on("unhandledRejection", (reason, promise) => {
+    logger.error("Unhandled Rejection at Promise", reason instanceof Error ? reason : new Error(String(reason)));
+});
+
+process.on("uncaughtException", (error) => {
+    logger.error("Uncaught Exception thrown", error);
+    if (process.env.NODE_ENV === "production") {
+        process.exit(1);
+    }
+});
 
 module.exports = app;
