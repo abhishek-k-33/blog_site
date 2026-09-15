@@ -260,3 +260,52 @@ BEGIN
     END IF;
 END;
 $$;
+
+-- ==========================================================
+-- COMMENTS TABLE (hierarchical discussion threads)
+-- ==========================================================
+
+-- 15. Create comments table
+CREATE TABLE IF NOT EXISTS comments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    author_id TEXT NOT NULL,
+    author_name TEXT NOT NULL,
+    author_username TEXT,
+    author_avatar TEXT,
+    content TEXT NOT NULL,
+    parent_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 16. Indexes for fast post and thread lookups
+CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments (post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON comments (parent_id);
+CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments (created_at ASC);
+
+-- 17. Enable Row Level Security (RLS) on comments
+ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+
+-- 18. RLS Policies for comments
+DROP POLICY IF EXISTS "Allow public read comments" ON comments;
+DROP POLICY IF EXISTS "Allow authenticated insert comments" ON comments;
+DROP POLICY IF EXISTS "Allow author delete comments" ON comments;
+
+-- Public can read all comments on published stories
+CREATE POLICY "Allow public read comments"
+    ON comments FOR SELECT
+    USING (true);
+
+-- Authenticated users can insert comments under their own ID
+CREATE POLICY "Allow authenticated insert comments"
+    ON comments FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid()::text = author_id);
+
+-- Authors can delete their own comments
+CREATE POLICY "Allow author delete comments"
+    ON comments FOR DELETE
+    TO authenticated
+    USING (auth.uid()::text = author_id);
+

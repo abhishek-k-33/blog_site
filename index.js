@@ -662,7 +662,9 @@ const writeSystemState = async (key, data) => {
                         })
                         .eq("id", keep.id);
                     for (const d of deleteRows) {
-                        await supabase.from("posts").delete().eq("id", d.id).catch(() => {});
+                        try {
+                            await supabase.from("posts").delete().eq("id", d.id);
+                        } catch (delErr) {}
                     }
                 } else {
                     await supabase
@@ -765,6 +767,159 @@ const readAnalytics = async () => {
 
 const writeAnalytics = async (analytics) => {
     return writeSystemState("ANALYTICS", analytics);
+};
+
+// --- COMMENTS DIRECT DB & LOCAL HELPERS ---
+
+const readRawComments = async () => {
+    const now = Date.now();
+    const cached = memoryCache.get("COMMENTS");
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+    }
+
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from("comments")
+                .select("id, post_id, author_id, author_name, author_username, author_avatar, content, parent_id, created_at, updated_at")
+                .order("created_at", { ascending: true });
+            if (!error && data) {
+                const mapped = data.map(r => ({
+                    id: r.id,
+                    postId: r.post_id,
+                    authorId: r.author_id,
+                    authorName: r.author_name,
+                    authorUsername: r.author_username,
+                    authorAvatar: r.author_avatar,
+                    content: r.content,
+                    parentId: r.parent_id || null,
+                    createdAt: r.created_at,
+                    updatedAt: r.updated_at
+                }));
+                memoryCache.set("COMMENTS", { data: mapped, timestamp: now });
+                writeJSONSafe("comments.json", mapped).catch(() => {});
+                return mapped;
+            }
+        } catch (e) {
+            // Supabase comments table fallback
+        }
+    }
+
+    const localComments = await readJSONSafe("comments.json", []);
+    memoryCache.set("COMMENTS", { data: localComments, timestamp: now });
+    return localComments;
+};
+
+const writeRawComments = async (comments) => {
+    memoryCache.set("COMMENTS", { data: comments, timestamp: Date.now() });
+    await writeJSONSafe("comments.json", comments).catch(() => {});
+};
+
+const getCommentsByPostId = async (postId) => {
+    const allComments = await readRawComments();
+    const postComments = allComments.filter(c => String(c.postId) === String(postId));
+
+    // Build hierarchical comment tree (top-level comments + nested replies)
+    const commentMap = new Map();
+    const topLevel = [];
+
+    postComments.forEach(c => {
+        commentMap.set(c.id, { ...c, replies: [] });
+    });
+
+    postComments.forEach(c => {
+        const item = commentMap.get(c.id);
+        if (c.parentId && commentMap.has(c.parentId)) {
+            commentMap.get(c.parentId).replies.push(item);
+        } else {
+            topLevel.push(item);
+        }
+    });
+
+    return {
+        comments: topLevel,
+        count: postComments.length
+    };
+};
+
+const createComment = async ({ postId, authorId, authorName, authorUsername, authorAvatar, content, parentId = null }) => {
+    const newId = crypto.randomUUID ? crypto.randomUUID() : ("c_" + crypto.randomBytes(8).toString("hex"));
+    const nowIso = new Date().toISOString();
+
+    const newComment = {
+        id: newId,
+        postId: String(postId),
+        authorId: String(authorId),
+        authorName: String(authorName || "Anonymous").trim(),
+        authorUsername: authorUsername ? String(authorUsername).trim() : undefined,
+        authorAvatar: authorAvatar ? String(authorAvatar).trim() : undefined,
+        content: String(content).trim(),
+        parentId: parentId ? String(parentId) : null,
+        createdAt: nowIso,
+        updatedAt: nowIso
+    };
+
+    if (supabase) {
+        try {
+            await supabase.from("comments").insert({
+                id: newComment.id,
+                post_id: newComment.postId,
+                author_id: newComment.authorId,
+                author_name: newComment.authorName,
+                author_username: newComment.authorUsername,
+                author_avatar: newComment.authorAvatar,
+                content: newComment.content,
+                parent_id: newComment.parentId,
+                created_at: newComment.createdAt,
+                updated_at: newComment.updatedAt
+            });
+        } catch (e) {
+            logger.warn("Supabase comment insert fallback:", e.message);
+        }
+    }
+
+    const allComments = await readRawComments();
+    allComments.push(newComment);
+    await writeRawComments(allComments);
+
+    return newComment;
+};
+
+const deleteComment = async (commentId, requesterId, postAuthorId = null) => {
+    const allComments = await readRawComments();
+    const target = allComments.find(c => c.id === commentId);
+    if (!target) return false;
+
+    // Check authorization: must be comment author OR post author
+    if (target.authorId !== requesterId && postAuthorId !== requesterId) {
+        return false;
+    }
+
+    // Collect IDs to delete: target and all descendant replies
+    const idsToDelete = new Set([commentId]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        allComments.forEach(c => {
+            if (c.parentId && idsToDelete.has(c.parentId) && !idsToDelete.has(c.id)) {
+                idsToDelete.add(c.id);
+                changed = true;
+            }
+        });
+    }
+
+    if (supabase) {
+        try {
+            await supabase.from("comments").delete().in("id", Array.from(idsToDelete));
+        } catch (e) {
+            logger.warn("Supabase comment delete fallback:", e.message);
+        }
+    }
+
+    const remaining = allComments.filter(c => !idsToDelete.has(c.id));
+    await writeRawComments(remaining);
+    return true;
 };
 
 // --- PROFILES DIRECT DB HELPERS ---
@@ -2987,6 +3142,93 @@ app.post("/api/posts/:id/clap", async (req, res) => {
     }
 });
 
+// --- COMMENTS API ENDPOINTS ---
+
+// GET /api/posts/:id/comments: Fetch all comments for a post in hierarchical structure
+app.get("/api/posts/:id/comments", async (req, res, next) => {
+    try {
+        const postId = req.params.id;
+        const { comments, count } = await getCommentsByPostId(postId);
+        return sendApiSuccess(res, { comments, count });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /api/posts/:id/comments: Add a comment or nested reply (Protected)
+app.post("/api/posts/:id/comments", requireAuth, csrfProtection, async (req, res, next) => {
+    try {
+        const postId = req.params.id;
+        const post = await getPostById(postId);
+        if (!post) {
+            return sendApiError(res, 404, "The story you are commenting on could not be found.", "NOT_FOUND");
+        }
+
+        const { content, parentId } = req.body;
+        if (!content || typeof content !== "string" || !content.trim()) {
+            return sendApiError(res, 400, "Comment content cannot be empty.", "BAD_REQUEST");
+        }
+
+        const trimmed = content.trim();
+        if (trimmed.length > 2000) {
+            return sendApiError(res, 400, "Comment exceeds maximum allowed length of 2,000 characters.", "BAD_REQUEST");
+        }
+
+        const profile = await getOrCreateProfile(req.user, req);
+        const authorName = profile?.name || req.user.name || req.user.email?.split("@")[0] || "User";
+        const authorUsername = profile?.username || req.user.username;
+        const authorAvatar = profile?.avatar;
+
+        const sanitized = sanitizePostContent(trimmed);
+
+        const newComment = await createComment({
+            postId,
+            authorId: req.user.id,
+            authorName,
+            authorUsername,
+            authorAvatar,
+            content: sanitized,
+            parentId: parentId || null
+        });
+
+        logger.info(`Comment added to post ${postId} by user ${req.user.id}`, {
+            commentId: newComment.id,
+            postId,
+            authorId: req.user.id
+        });
+
+        return sendApiSuccess(res, { comment: newComment }, 201);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// DELETE /api/comments/:id: Delete comment (Protected - author or post author only)
+app.delete("/api/comments/:id", requireAuth, csrfProtection, async (req, res, next) => {
+    try {
+        const commentId = req.params.id;
+        const allComments = await readRawComments();
+        const comment = allComments.find(c => c.id === commentId);
+
+        if (!comment) {
+            return sendApiError(res, 404, "Comment not found.", "NOT_FOUND");
+        }
+
+        const post = await getPostById(comment.postId);
+        const postAuthorId = post?.author_id;
+
+        const deleted = await deleteComment(commentId, req.user.id, postAuthorId);
+        if (!deleted) {
+            return sendApiError(res, 403, "Permission denied: You can only delete your own comments.", "FORBIDDEN");
+        }
+
+        logger.info(`Comment ${commentId} deleted by user ${req.user.id}`);
+        return sendApiSuccess(res, { message: "Comment deleted successfully." });
+    } catch (err) {
+        next(err);
+    }
+});
+
 // GET /posts/:id: View a single post
 app.get("/posts/:id", async (req, res, next) => {
     try {
@@ -2995,13 +3237,16 @@ app.get("/posts/:id", async (req, res, next) => {
             // Record real unique reader view (non-blocking in background)
             recordPostView(post.id, req, res).catch(() => {});
 
-            const [analytics, allPosts] = await Promise.all([
+            const [analytics, allPosts, commentsData] = await Promise.all([
                 readAnalytics(),
-                getAllPosts()
+                getAllPosts(),
+                getCommentsByPostId(post.id)
             ]);
 
             post.views = analytics.views?.[String(post.id)] || 1;
             post.claps = analytics.claps?.[String(post.id)] || 0;
+            const comments = commentsData.comments || [];
+            const commentsCount = commentsData.count || 0;
 
             const postTags = (post.tags || []).map(t => t.toLowerCase());
             const relatedPosts = allPosts
@@ -3019,7 +3264,14 @@ app.get("/posts/:id", async (req, res, next) => {
                 isAuthor = isUserPostAuthor(req.user, post, profile);
             }
 
-            res.render("post.ejs", { post, relatedPosts, user: req.user, isAuthor });
+            res.render("post.ejs", {
+                post,
+                relatedPosts,
+                user: req.user,
+                isAuthor,
+                comments,
+                commentsCount
+            });
         } else {
             res.status(404).render("404.ejs", { message: "The requested post could not be found.", user: req.user });
         }
