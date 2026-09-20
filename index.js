@@ -41,6 +41,15 @@ if (isProduction) {
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
 const CURRENT_LOG_LEVEL = process.env.LOG_LEVEL ? (LOG_LEVELS[process.env.LOG_LEVEL.toLowerCase()] ?? 1) : 1;
 
+// Warn-once helper: avoids spamming the log every request when a
+// Supabase table (e.g. responses) hasn't been migrated yet.
+const warnedOnce = new Set();
+const warnOnce = (key, msg, meta) => {
+    if (warnedOnce.has(key)) return;
+    warnedOnce.add(key);
+    logger.warn(msg, meta);
+};
+
 const logger = {
     format(level, msg, meta = {}) {
         const timestamp = new Date().toISOString();
@@ -2998,7 +3007,7 @@ const readRawResponses = async () => {
                 if (mapped.length > 0) writeJSONSafe("responses.json", mapped).catch(() => {});
                 return mapped;
             }
-            if (error) logger.warn("Supabase responses read fallback:", error.message || error.details || error.hint || JSON.stringify(error));
+            if (error) warnOnce("responses-table", "Supabase responses table missing — running on local fallback. Run supabase-schema.sql sections 15-16 in Supabase Dashboard → SQL Editor.", { code: error.code });
         } catch (e) { logger.warn("Supabase responses read fallback:", e.message); }
     }
     const local = await readSystemState("RESPONSES", []);
@@ -3048,6 +3057,29 @@ const getPostDiscussionSetting = async (postId) => {
     const all = await readSystemState("POST_SETTINGS", {});
     const s = all?.[String(postId)];
     return { closed: !!s?.closed, hidden: !!s?.hidden };
+};
+
+// Boot-time migration check: verifies the Medium-style Responses tables
+// (supabase-schema.sql sections 15-16) exist so data persists to cloud.
+// Non-blocking; app keeps running on local fallback if they are missing.
+const checkResponsesMigration = async () => {
+    if (!supabase) {
+        logger.info("Supabase not configured — Responses running on local JSON fallback.");
+        return { ok: false, reason: "no-supabase" };
+    }
+    const missing = [];
+    for (const t of ["responses", "post_settings"]) {
+        try {
+            const { error } = await supabase.from(t).select("id").limit(1);
+            if (error) missing.push(t);
+        } catch (e) { missing.push(t); }
+    }
+    if (missing.length === 0) {
+        logger.info("Responses cloud persistence ready (tables: responses, post_settings).");
+        return { ok: true };
+    }
+    logger.warn(`Responses tables missing in Supabase: ${missing.join(", ")} — running on local fallback. To persist to cloud, open Supabase Dashboard → SQL Editor and run supabase-schema.sql sections 15-16.`);
+    return { ok: false, missing };
 };
 
 const setPostDiscussionSetting = async (postId, patch) => {
@@ -3434,6 +3466,7 @@ let serverInstance = null;
 if (!process.env.VERCEL && require.main === module) {
     serverInstance = app.listen(port, () => {
         logger.info(`Server running on port ${port}`, { env: process.env.NODE_ENV || "development" });
+        checkResponsesMigration().catch((e) => logger.warn("Responses migration check failed:", e.message));
     });
 
     const gracefulShutdown = (signal) => {
