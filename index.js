@@ -2976,6 +2976,91 @@ app.post("/posts", requireAuth, csrfProtection, async (req, res, next) => {
     }
 });
 
+// --- MEDIUM-STYLE RESPONSES (comments as mini-posts, claps only, no dislikes) ---
+const readRawResponses = async () => {
+    const now = Date.now();
+    const cached = memoryCache.get("RESPONSES");
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) return cached.data;
+    if (supabase) {
+        try {
+            const { data, error } = await supabase.from("responses")
+                .select("id, post_id, author_id, author_name, author_username, author_avatar, content, quoted_text, parent_id, claps, clapped_by, is_hidden, created_at, updated_at")
+                .order("created_at", { ascending: true });
+            if (!error && data) {
+                const mapped = data.filter(r => !r.is_hidden).map(r => ({
+                    id: r.id, postId: String(r.post_id), authorId: String(r.author_id),
+                    authorName: r.author_name, authorUsername: r.author_username, authorAvatar: r.author_avatar,
+                    content: r.content, quotedText: r.quoted_text || null, parentId: r.parent_id ? String(r.parent_id) : null,
+                    claps: r.claps || 0, clappedBy: Array.isArray(r.clapped_by) ? r.clapped_by : [],
+                    createdAt: r.created_at, updatedAt: r.updated_at
+                }));
+                memoryCache.set("RESPONSES", { data: mapped, timestamp: now });
+                if (mapped.length > 0) writeJSONSafe("responses.json", mapped).catch(() => {});
+                return mapped;
+            }
+            if (error) logger.warn("Supabase responses read fallback:", error.message);
+        } catch (e) { logger.warn("Supabase responses read fallback:", e.message); }
+    }
+    const local = await readSystemState("RESPONSES", []);
+    const normalized = (local || []).filter(r => !r.is_hidden).map(r => ({
+        id: String(r.id), postId: String(r.postId), authorId: String(r.authorId),
+        authorName: r.authorName, authorUsername: r.authorUsername, authorAvatar: r.authorAvatar,
+        content: r.content, quotedText: r.quotedText || null, parentId: r.parentId ? String(r.parentId) : null,
+        claps: r.claps || 0, clappedBy: Array.isArray(r.clappedBy) ? r.clappedBy : [],
+        createdAt: r.createdAt, updatedAt: r.updatedAt
+    }));
+    memoryCache.set("RESPONSES", { data: normalized, timestamp: now });
+    return normalized;
+};
+
+const writeRawResponses = async (responses) => {
+    memoryCache.set("RESPONSES", { data: responses, timestamp: Date.now() });
+    await writeSystemState("RESPONSES", responses);
+    if (supabase) {
+        // best-effort cloud sync is handled per-operation below; system-state covers fallback
+    }
+};
+
+const getResponsesByPostId = async (postId, sort = "relevant", userId = null) => {
+    const all = await readRawResponses();
+    const list = all.filter(r => String(r.postId) === String(postId));
+    const map = new Map(); const tops = [];
+    list.forEach(r => map.set(String(r.id), { ...r, userClapped: userId ? (r.clappedBy || []).includes(String(userId)) : false, replies: [] }));
+    list.forEach(r => {
+        const node = map.get(String(r.id));
+        if (r.parentId && map.has(String(r.parentId))) map.get(String(r.parentId)).replies.push(node);
+        else tops.push(node);
+    });
+    tops.forEach(t => t.replies.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
+    const score = (c) => (c.claps || 0) * 2 + (c.replies?.length || 0) * 3;
+    tops.sort((a, b) => sort === "newest" ? new Date(b.createdAt) - new Date(a.createdAt)
+        : (score(b) - score(a)) || (new Date(b.createdAt) - new Date(a.createdAt)));
+    return { responses: tops, count: list.length };
+};
+
+const getPostDiscussionSetting = async (postId) => {
+    if (supabase) {
+        try {
+            const { data } = await supabase.from("post_settings").select("discussion_closed, responses_hidden").eq("post_id", postId).single();
+            if (data) return { closed: !!data.discussion_closed, hidden: !!data.responses_hidden };
+        } catch (e) {}
+    }
+    const all = await readSystemState("POST_SETTINGS", {});
+    const s = all?.[String(postId)];
+    return { closed: !!s?.closed, hidden: !!s?.hidden };
+};
+
+const setPostDiscussionSetting = async (postId, patch) => {
+    if (supabase) {
+        try {
+            await supabase.from("post_settings").upsert({ post_id: postId, discussion_closed: !!patch.closed, responses_hidden: !!patch.hidden, updated_at: new Date().toISOString() });
+        } catch (e) { logger.warn("Supabase post_settings fallback:", e.message); }
+    }
+    const all = await readSystemState("POST_SETTINGS", {});
+    all[String(postId)] = { ...(all[String(postId)] || {}), ...patch };
+    await writeSystemState("POST_SETTINGS", all);
+};
+
 // POST /api/posts/:id/clap: Record applause / clap
 app.post("/api/posts/:id/clap", async (req, res) => {
     try {
@@ -2987,6 +3072,144 @@ app.post("/api/posts/:id/clap", async (req, res) => {
     }
 });
 
+// --- Medium-style Responses API ---
+app.get("/api/posts/:id/responses", async (req, res, next) => {
+    try {
+        const sort = req.query.sort === "newest" ? "newest" : "relevant";
+        const setting = await getPostDiscussionSetting(req.params.id);
+        if (setting.hidden) return sendApiSuccess(res, { responses: [], count: 0, sort, closed: setting.closed, hidden: true });
+        const { responses, count } = await getResponsesByPostId(req.params.id, sort, req.user?.id);
+        return sendApiSuccess(res, { responses, count, sort, closed: setting.closed });
+    } catch (err) { next(err); }
+});
+
+app.post("/api/posts/:id/responses", requireAuth, csrfProtection, async (req, res, next) => {
+    try {
+        const post = await getPostById(req.params.id);
+        if (!post) return sendApiError(res, 404, "Story not found.", "NOT_FOUND");
+        const setting = await getPostDiscussionSetting(req.params.id);
+        if (setting.closed) return sendApiError(res, 403, "Discussion is closed for this story.", "DISCUSSION_CLOSED");
+        const { content, parentId, quoted_text, quotedText } = req.body || {};
+        const text = sanitizePlainText(String(content || ""));
+        if (!text) return sendApiError(res, 400, "Response cannot be empty.", "BAD_REQUEST");
+        if (text.length > 2000) return sendApiError(res, 400, "Response exceeds 2,000 characters.", "BAD_REQUEST");
+        const quote = sanitizePlainText(String(quoted_text || quotedText || "")).slice(0, 500) || null;
+        let parent = null;
+        if (parentId) {
+            const all = await readRawResponses();
+            parent = all.find(r => String(r.id) === String(parentId) && String(r.postId) === String(req.params.id));
+            if (!parent) return sendApiError(res, 404, "Parent response not found.", "NOT_FOUND");
+            if (parent.parentId) return sendApiError(res, 400, "Only one level of replies is supported.", "BAD_REQUEST");
+        }
+        const profile = await getOrCreateProfile(req.user, req);
+        const nowIso = new Date().toISOString();
+        const id = crypto.randomUUID ? crypto.randomUUID() : ("r_" + crypto.randomBytes(8).toString("hex"));
+        const row = { id, postId: String(req.params.id), authorId: String(req.user.id),
+            authorName: profile?.name || req.user.name || "User", authorUsername: profile?.username || req.user.username || null,
+            authorAvatar: profile?.avatar || null, content: text, quotedText: quote,
+            parentId: parent ? String(parent.id) : null, claps: 0, clappedBy: [], createdAt: nowIso, updatedAt: nowIso };
+        if (supabase) {
+            try {
+                const { error } = await supabase.from("responses").insert({ id: row.id, post_id: row.postId, author_id: row.authorId, author_name: row.authorName, author_username: row.authorUsername, author_avatar: row.authorAvatar, content: row.content, quoted_text: row.quotedText, parent_id: row.parentId, claps: 0, clapped_by: [], created_at: nowIso, updated_at: nowIso });
+                if (error) logger.warn("Supabase response insert fallback:", error.message);
+            } catch (e) { logger.warn("Supabase response insert fallback:", e.message); }
+        }
+        const all = await readRawResponses();
+        all.push(row);
+        await writeRawResponses(all);
+        logger.info(`Response added to post ${row.postId}`, { responseId: id });
+        return sendApiSuccess(res, { response: { ...row, userClapped: false, replies: [] } }, 201);
+    } catch (err) { next(err); }
+});
+
+app.post("/api/responses/:id/clap", requireAuth, csrfProtection, async (req, res, next) => {
+    try {
+        const all = await readRawResponses();
+        const r = all.find(x => String(x.id) === String(req.params.id));
+        if (!r) return sendApiError(res, 404, "Response not found.", "NOT_FOUND");
+        const uid = String(req.user.id);
+        r.clappedBy = Array.isArray(r.clappedBy) ? r.clappedBy.map(String) : [];
+        const has = r.clappedBy.includes(uid);
+        // Medium allows up to 50 claps; here toggle single clap for simplicity, repeated claps via count
+        const count = Math.max(1, Math.min(50, parseInt(req.body?.count, 10) || 1));
+        if (has) r.clappedBy = r.clappedBy.filter(x => x !== uid);
+        else for (let i = 0; i < count && r.clappedBy.filter(x => x === uid).length < 50; i++) r.clappedBy.push(uid);
+        // collapse to unique count of claps? keep total pushes capped at 50 per user
+        const userClaps = r.clappedBy.filter(x => x === uid).length;
+        r.claps = r.clappedBy.length;
+        r.updatedAt = new Date().toISOString();
+        if (supabase) {
+            try {
+                const { error } = await supabase.from("responses").update({ claps: r.claps, clapped_by: r.clappedBy, updated_at: r.updatedAt }).eq("id", r.id);
+                if (error) logger.warn("Supabase response clap fallback:", error.message);
+            } catch (e) { logger.warn("Supabase response clap fallback:", e.message); }
+        }
+        await writeRawResponses(all);
+        return sendApiSuccess(res, { claps: r.claps, userClapped: r.clappedBy.includes(uid), userClaps });
+    } catch (err) { next(err); }
+});
+
+app.post("/api/responses/:id/hide", requireAuth, csrfProtection, async (req, res, next) => {
+    try {
+        const all = await readRawResponses();
+        const r = all.find(x => String(x.id) === String(req.params.id));
+        if (!r) return sendApiError(res, 404, "Response not found.", "NOT_FOUND");
+        const post = await getPostById(r.postId);
+        const profile = await getOrCreateProfile(req.user, req);
+        if (!isUserPostAuthor(req.user, post, profile)) return sendApiError(res, 403, "Only the story author can hide responses.", "FORBIDDEN");
+        const ids = new Set([String(r.id)]);
+        let changed = true;
+        while (changed) { changed = false; all.forEach(c => { if (c.parentId && ids.has(String(c.parentId)) && !ids.has(String(c.id))) { ids.add(String(c.id)); changed = true; } }); }
+        if (supabase) {
+            try {
+                const { error } = await supabase.from("responses").update({ is_hidden: true }).in("id", Array.from(ids));
+                if (error) logger.warn("Supabase response hide fallback:", error.message);
+            } catch (e) { logger.warn("Supabase response hide fallback:", e.message); }
+        }
+        const remaining = all.filter(c => !ids.has(String(c.id)));
+        await writeRawResponses(remaining);
+        memoryCache.delete("RESPONSES");
+        return sendApiSuccess(res, { hidden: true });
+    } catch (err) { next(err); }
+});
+
+app.post("/api/posts/:id/discussion", requireAuth, csrfProtection, async (req, res, next) => {
+    try {
+        const post = await getPostById(req.params.id);
+        if (!post) return sendApiError(res, 404, "Story not found.", "NOT_FOUND");
+        const profile = await getOrCreateProfile(req.user, req);
+        if (!isUserPostAuthor(req.user, post, profile)) return sendApiError(res, 403, "Only the story author can manage discussion.", "FORBIDDEN");
+        const closed = !!req.body?.closed;
+        const hidden = !!req.body?.hidden;
+        await setPostDiscussionSetting(String(req.params.id), { closed, hidden });
+        return sendApiSuccess(res, { closed, hidden });
+    } catch (err) { next(err); }
+});
+
+app.delete("/api/responses/:id", requireAuth, csrfProtection, async (req, res, next) => {
+    try {
+        const all = await readRawResponses();
+        const r = all.find(x => String(x.id) === String(req.params.id));
+        if (!r) return sendApiError(res, 404, "Response not found.", "NOT_FOUND");
+        const post = await getPostById(r.postId);
+        const profile = await getOrCreateProfile(req.user, req);
+        const own = String(r.authorId) === String(req.user.id);
+        if (!own && !isUserPostAuthor(req.user, post, profile)) return sendApiError(res, 403, "You can only delete your own responses.", "FORBIDDEN");
+        const ids = new Set([String(r.id)]);
+        let changed = true;
+        while (changed) { changed = false; all.forEach(c => { if (c.parentId && ids.has(String(c.parentId)) && !ids.has(String(c.id))) { ids.add(String(c.id)); changed = true; } }); }
+        if (supabase) {
+            try {
+                const { error } = await supabase.from("responses").delete().in("id", Array.from(ids));
+                if (error) logger.warn("Supabase response delete fallback:", error.message);
+            } catch (e) { logger.warn("Supabase response delete fallback:", e.message); }
+        }
+        await writeRawResponses(all.filter(c => !ids.has(String(c.id))));
+        memoryCache.delete("RESPONSES");
+        return sendApiSuccess(res, { deleted: true });
+    } catch (err) { next(err); }
+});
+
 // GET /posts/:id: View a single post
 app.get("/posts/:id", async (req, res, next) => {
     try {
@@ -2995,9 +3218,11 @@ app.get("/posts/:id", async (req, res, next) => {
             // Record real unique reader view (non-blocking in background)
             recordPostView(post.id, req, res).catch(() => {});
 
-            const [analytics, allPosts] = await Promise.all([
+            const [analytics, allPosts, responsesData, discussionSetting] = await Promise.all([
                 readAnalytics(),
-                getAllPosts()
+                getAllPosts(),
+                getResponsesByPostId(post.id, "relevant", req.user?.id),
+                getPostDiscussionSetting(post.id)
             ]);
 
             post.views = analytics.views?.[String(post.id)] || 1;
@@ -3019,7 +3244,9 @@ app.get("/posts/:id", async (req, res, next) => {
                 isAuthor = isUserPostAuthor(req.user, post, profile);
             }
 
-            res.render("post.ejs", { post, relatedPosts, user: req.user, isAuthor });
+            res.render("post.ejs", { post, relatedPosts, user: req.user, isAuthor,
+                responses: responsesData.responses, responsesCount: responsesData.count,
+                discussionClosed: discussionSetting.closed, responsesHidden: discussionSetting.hidden });
         } else {
             res.status(404).render("404.ejs", { message: "The requested post could not be found.", user: req.user });
         }

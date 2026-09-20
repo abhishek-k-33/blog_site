@@ -93,6 +93,178 @@
                     <% } %>
                 </div>
             </div>
+
+            <!-- Medium-style Responses -->
+            <section class="responses-section" id="responses" aria-label="Responses">
+                <div class="responses-head">
+                    <h2>Responses <span class="responses-count" id="responses-count"><%= typeof responsesCount !== 'undefined' ? responsesCount : 0 %></span></h2>
+                    <div class="responses-sort">
+                        <span>Sort:</span>
+                        <button type="button" class="sort-pill active" id="sort-relevant">Most relevant</button>
+                        <button type="button" class="sort-pill" id="sort-newest">Newest</button>
+                        <% if (typeof isAuthor !== 'undefined' && isAuthor) { %>
+                        <button type="button" class="sort-pill" id="manage-discussion">⋯ Manage</button>
+                        <% } %>
+                    </div>
+                </div>
+                <% if (typeof discussionClosed !== 'undefined' && discussionClosed) { %>
+                <div class="responses-closed">Discussion is closed for this story. Existing responses remain visible.</div>
+                <% } %>
+                <% if (typeof user !== 'undefined' && user && !(typeof discussionClosed !== 'undefined' && discussionClosed)) { %>
+                <div class="response-composer">
+                    <div class="composer-who"><span class="avatar-init"><%= (user.name || user.email || 'U').charAt(0).toUpperCase() %></span><span><%= user.name || 'You' %></span></div>
+                    <div class="quote-preview" id="quote-preview" style="display:none"></div>
+                    <textarea id="response-text" placeholder="What are your thoughts?" rows="3" maxlength="2000"></textarea>
+                    <div class="composer-row"><span id="response-count">0 / 2000</span><button type="button" class="btn btn-primary" id="submit-response" data-post-id="<%= post.id %>">Respond</button></div>
+                </div>
+                <% } else if (!(typeof user !== 'undefined' && user)) { %>
+                <div class="response-login"><a href="/login?redirect=<%= encodeURIComponent('/posts/' + post.id + '#responses') %>">Sign in</a> to respond.</div>
+                <% } %>
+                <div id="responses-list" data-post-id="<%= post.id %>" data-author="<%= post.author %>" data-is-author="<%= typeof isAuthor !== 'undefined' && isAuthor ? 'true' : 'false' %>" data-user-id="<%= typeof user !== 'undefined' && user ? user.id : '' %>">
+                    <% (typeof responses !== 'undefined' ? responses : []).forEach(function(r) { %>
+                    <div class="response-card" id="response-<%= r.id %>" data-id="<%= r.id %>">
+                        <div class="r-head"><span class="avatar-init"><%= (r.authorName || 'U').charAt(0).toUpperCase() %></span><b><%= r.authorName %></b><% if (r.authorUsername) { %><span class="handle">@<%= r.authorUsername %></span><% } %><% if (typeof isAuthor !== 'undefined' && (r.authorName === post.author)) { %><span class="author-badge">Author</span><% } %><span class="time"><%= new Date(r.createdAt).toLocaleDateString(undefined, {month:'short', day:'numeric'}) %></span><% if (typeof isAuthor !== 'undefined' && isAuthor) { %><button type="button" class="hide-btn" data-id="<%= r.id %>" title="Hide response">⋯</button><% } %></div>
+                        <% if (r.quotedText) { %><blockquote class="r-quote"><%= r.quotedText %></blockquote><% } %>
+                        <div class="r-body"><%= r.content %></div>
+                        <div class="r-foot"><button type="button" class="clap-btn <%= r.userClapped ? 'active' : '' %>" data-id="<%= r.id %>">👏 <span><%= r.claps || 0 %></span></button><button type="button" class="reply-btn" data-id="<%= r.id %>" data-post="<%= post.id %>">Reply</button><% if (r.replies && r.replies.length) { %><button type="button" class="toggle-replies" data-id="<%= r.id %>"><%= r.replies.length %> <%= r.replies.length === 1 ? 'reply' : 'replies' %></button><% } %></div>
+                        <% if (r.replies && r.replies.length) { %>
+                        <div class="replies" id="replies-<%= r.id %>" style="display:none">
+                            <% r.replies.forEach(function(rep) { %>
+                            <div class="response-card reply" id="response-<%= rep.id %>" data-id="<%= rep.id %>">
+                                <div class="r-head"><span class="avatar-init sm"><%= (rep.authorName || 'U').charAt(0).toUpperCase() %></span><b><%= rep.authorName %></b><% if (typeof isAuthor !== 'undefined' && (rep.authorName === post.author)) { %><span class="author-badge">Author</span><% } %><span class="time"><%= new Date(rep.createdAt).toLocaleDateString(undefined, {month:'short', day:'numeric'}) %></span></div>
+                                <div class="r-body"><%= rep.content %></div>
+                                <div class="r-foot"><button type="button" class="clap-btn <%= rep.userClapped ? 'active' : '' %>" data-id="<%= rep.id %>">👏 <span><%= rep.claps || 0 %></span></button></div>
+                            </div>
+                            <% }) %>
+                        </div>
+                        <% } %>
+                        <div class="reply-box" id="replybox-<%= r.id %>" style="display:none"><textarea placeholder="Write a reply..." rows="2" maxlength="2000"></textarea><div class="composer-row"><button type="button" class="btn btn-secondary cancel-reply" data-id="<%= r.id %>">Cancel</button><button type="button" class="btn btn-primary send-reply" data-post="<%= post.id %>" data-parent="<%= r.id %>">Reply</button></div></div>
+                    </div>
+                    <% }) %>
+                    <% if (!(typeof responses !== 'undefined' && responses.length)) { %><div class="responses-empty">No responses yet. Be the first to share your thoughts.</div><% } %>
+                </div>
+            </section>
+            <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const list = document.getElementById('responses-list');
+                if (!list) return;
+                const postId = list.getAttribute('data-post-id');
+                const getCsrf = () => (document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/) || [])[1] ? decodeURIComponent(document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)[1]) : '';
+                const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                let sort = 'relevant';
+                const ta = document.getElementById('response-text');
+                const cc = document.getElementById('response-count');
+                if (ta && cc) ta.addEventListener('input', () => cc.textContent = ta.value.length + ' / 2000');
+                async function reload(mode) {
+                    sort = mode || sort;
+                    document.getElementById('sort-relevant')?.classList.toggle('active', sort === 'relevant');
+                    document.getElementById('sort-newest')?.classList.toggle('active', sort === 'newest');
+                    try {
+                        const res = await fetch('/api/posts/' + postId + '/responses?sort=' + (sort === 'newest' ? 'newest' : 'relevant'));
+                        const data = await res.json();
+                        if (res.ok && data.success) renderAll(data.responses || [], data.count || 0);
+                    } catch (e) {}
+                }
+                document.getElementById('sort-relevant')?.addEventListener('click', () => reload('relevant'));
+                document.getElementById('sort-newest')?.addEventListener('click', () => reload('newest'));
+                function card(r, isReply) {
+                    return '<div class="response-card' + (isReply ? ' reply' : '') + '" id="response-' + r.id + '" data-id="' + r.id + '">'
+                        + '<div class="r-head"><span class="avatar-init' + (isReply ? ' sm' : '') + '">' + esc((r.authorName || 'U')[0].toUpperCase()) + '</span><b>' + esc(r.authorName) + '</b>'
+                        + (r.authorUsername ? '<span class="handle">@' + esc(r.authorUsername) + '</span>' : '')
+                        + '<span class="time">' + new Date(r.createdAt).toLocaleDateString(undefined, {month:'short', day:'numeric'}) + '</span></div>'
+                        + (r.quotedText ? '<blockquote class="r-quote">' + esc(r.quotedText) + '</blockquote>' : '')
+                        + '<div class="r-body">' + esc(r.content) + '</div>'
+                        + '<div class="r-foot"><button type="button" class="clap-btn' + (r.userClapped ? ' active' : '') + '" data-id="' + r.id + '">👏 <span>' + (r.claps || 0) + '</span></button>'
+                        + (!isReply ? '<button type="button" class="reply-btn" data-id="' + r.id + '">Reply</button>' : '')
+                        + (!isReply && r.replies && r.replies.length ? '<button type="button" class="toggle-replies" data-id="' + r.id + '">' + r.replies.length + ' replies</button>' : '') + '</div>'
+                        + (!isReply && r.replies && r.replies.length ? '<div class="replies" id="replies-' + r.id + '" style="display:none">' + r.replies.map(x => card(x, true)).join('') + '</div>' : '')
+                        + (!isReply ? '<div class="reply-box" id="replybox-' + r.id + '" style="display:none"><textarea rows="2" maxlength="2000"></textarea><div class="composer-row"><button type="button" class="btn btn-secondary cancel-reply" data-id="' + r.id + '">Cancel</button><button type="button" class="btn btn-primary send-reply" data-post="' + postId + '" data-parent="' + r.id + '">Reply</button></div></div>' : '')
+                        + '</div>';
+                }
+                function renderAll(items, count) {
+                    document.getElementById('responses-count').textContent = count;
+                    list.innerHTML = items.length ? items.map(x => card(x, false)).join('') : '<div class="responses-empty">No responses yet. Be the first to share your thoughts.</div>';
+                }
+                document.getElementById('submit-response')?.addEventListener('click', async (e) => {
+                    const btn = e.currentTarget; const text = ta.value.trim();
+                    if (!text) { ta.focus(); return; }
+                    btn.disabled = true;
+                    try {
+                        const res = await fetch('/api/posts/' + postId + '/responses', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrf() }, body: JSON.stringify({ content: text, quoted_text: ta.dataset.quote || null }) });
+                        const data = await res.json();
+                        if (res.ok && data.success) { ta.value = ''; delete ta.dataset.quote; const qp = document.getElementById('quote-preview'); if (qp) qp.style.display = 'none'; cc.textContent = '0 / 2000'; reload(sort); }
+                        else alert(data.error || 'Could not publish response.');
+                    } catch (err) { alert('Network error.'); }
+                    btn.disabled = false;
+                });
+                list.addEventListener('click', async (e) => {
+                    const clap = e.target.closest('.clap-btn');
+                    if (clap) {
+                        const id = clap.getAttribute('data-id');
+                        try {
+                            const res = await fetch('/api/responses/' + id + '/clap', { method: 'POST', headers: { 'x-csrf-token': getCsrf() } });
+                            const data = await res.json();
+                            if (res.ok && data.success) { clap.querySelector('span').textContent = data.claps; clap.classList.toggle('active', data.userClapped); }
+                            else if (res.status === 401) window.location.href = '/login?redirect=' + encodeURIComponent(location.pathname + '#responses');
+                        } catch (err) {}
+                        return;
+                    }
+                    const tg = e.target.closest('.toggle-replies');
+                    if (tg) {
+                        const box = document.getElementById('replies-' + tg.getAttribute('data-id'));
+                        if (box) { const open = box.style.display !== 'none'; box.style.display = open ? 'none' : 'block'; tg.textContent = open ? tg.textContent.replace('Hide', '').trim() || box.children.length + ' replies' : 'Hide replies'; }
+                        return;
+                    }
+                    const rb = e.target.closest('.reply-btn');
+                    if (rb) {
+                        const box = document.getElementById('replybox-' + rb.getAttribute('data-id'));
+                        if (box) { box.style.display = box.style.display === 'none' ? 'block' : 'none'; box.querySelector('textarea')?.focus(); }
+                        return;
+                    }
+                    const cb = e.target.closest('.cancel-reply');
+                    if (cb) { document.getElementById('replybox-' + cb.getAttribute('data-id')).style.display = 'none'; return; }
+                    const sr = e.target.closest('.send-reply');
+                    if (sr) {
+                        const pid = sr.getAttribute('data-parent');
+                        const box = document.getElementById('replybox-' + pid);
+                        const txt = box.querySelector('textarea').value.trim();
+                        if (!txt) return;
+                        sr.disabled = true;
+                        try {
+                            const res = await fetch('/api/posts/' + postId + '/responses', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrf() }, body: JSON.stringify({ content: txt, parentId: pid }) });
+                            const data = await res.json();
+                            if (res.ok && data.success) reload(sort); else alert(data.error || 'Could not publish reply.');
+                        } catch (err) { alert('Network error.'); }
+                        sr.disabled = false;
+                        return;
+                    }
+                    const hb = e.target.closest('.hide-btn');
+                    if (hb) {
+                        if (!confirm('Hide this response?')) return;
+                        try {
+                            const res = await fetch('/api/responses/' + hb.getAttribute('data-id') + '/hide', { method: 'POST', headers: { 'x-csrf-token': getCsrf() } });
+                            const data = await res.json();
+                            if (res.ok && data.success) reload(sort); else alert(data.error || 'Could not hide.');
+                        } catch (err) {}
+                    }
+                });
+                // Inline quote-to-response: select story text shows quote in composer
+                try {
+                    const body = document.getElementById('story-content-body');
+                    const qp = document.getElementById('quote-preview');
+                    body?.addEventListener('mouseup', () => {
+                        const sel = window.getSelection()?.toString().trim();
+                        if (sel && sel.length > 10 && sel.length < 500 && qp && ta) {
+                            qp.style.display = 'block';
+                            qp.innerHTML = '<b>Quoting:</b> ' + esc(sel) + ' <button type="button" id="quote-use">Use quote</button> <button type="button" id="quote-clear">×</button>';
+                            document.getElementById('quote-use').onclick = () => { ta.focus(); ta.dataset.quote = sel; document.getElementById('responses')?.scrollIntoView({behavior:'smooth'}); };
+                            document.getElementById('quote-clear').onclick = () => { qp.style.display = 'none'; delete ta.dataset.quote; };
+                        }
+                    });
+                    const origSubmit = document.getElementById('submit-response');
+                } catch (e) {}
+            });
+            </script>
         </article>
 
         <!-- Sticky Reading Companion Sidebar (Desktop) -->

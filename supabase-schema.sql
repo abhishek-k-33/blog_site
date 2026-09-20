@@ -260,3 +260,61 @@ BEGIN
     END IF;
 END;
 $$;
+
+-- ==========================================================
+-- 15. MEDIUM-STYLE RESPONSES (comments as mini-posts)
+-- ==========================================================
+CREATE TABLE IF NOT EXISTS responses (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    post_id UUID REFERENCES posts(id) ON DELETE CASCADE NOT NULL,
+    author_id TEXT NOT NULL,
+    author_name TEXT,
+    author_username TEXT,
+    author_avatar TEXT,
+    content TEXT NOT NULL CHECK (char_length(content) > 0 AND char_length(content) <= 2000),
+    quoted_text TEXT,
+    parent_id UUID REFERENCES responses(id) ON DELETE CASCADE,
+    claps INT DEFAULT 0,
+    clapped_by TEXT[] DEFAULT ARRAY[]::TEXT[],
+    is_hidden BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS quoted_text TEXT;
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS claps INT DEFAULT 0;
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS clapped_by TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false;
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_responses_post_id ON responses (post_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_responses_parent_id ON responses (parent_id);
+
+ALTER TABLE responses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read responses" ON responses;
+DROP POLICY IF EXISTS "Allow authenticated insert responses" ON responses;
+DROP POLICY IF EXISTS "Allow author update responses" ON responses;
+DROP POLICY IF EXISTS "Allow author delete responses" ON responses;
+
+CREATE POLICY "Allow public read responses"
+    ON responses FOR SELECT USING (is_hidden = false OR is_hidden IS NULL);
+CREATE POLICY "Allow authenticated insert responses"
+    ON responses FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Allow author update responses"
+    ON responses FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow author delete responses"
+    ON responses FOR DELETE TO authenticated USING (true);
+
+-- 16. Post discussion settings (close/hide responses per story, Medium-style)
+CREATE TABLE IF NOT EXISTS post_settings (
+    post_id UUID PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
+    discussion_closed BOOLEAN DEFAULT false,
+    responses_hidden BOOLEAN DEFAULT false,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE post_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read post_settings" ON post_settings;
+DROP POLICY IF EXISTS "Allow authenticated write post_settings" ON post_settings;
+CREATE POLICY "Allow public read post_settings" ON post_settings FOR SELECT USING (true);
+CREATE POLICY "Allow authenticated write post_settings" ON post_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
