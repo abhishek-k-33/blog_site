@@ -3068,9 +3068,9 @@ const checkResponsesMigration = async () => {
         return { ok: false, reason: "no-supabase" };
     }
     const missing = [];
-    for (const t of ["responses", "post_settings"]) {
+    for (const [t, col] of [["responses", "id"], ["post_settings", "post_id"]]) {
         try {
-            const { error } = await supabase.from(t).select("id").limit(1);
+            const { error } = await supabase.from(t).select(col).limit(1);
             if (error) missing.push(t);
         } catch (e) { missing.push(t); }
     }
