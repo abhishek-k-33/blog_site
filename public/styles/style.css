@@ -5926,6 +5926,9 @@ body:not(.dark-mode) #sidebar-theme-toggle .icon-moon {
 .r-foot{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}
 .clap-btn,.reply-btn,.toggle-replies,.hide-btn{border:1px solid var(--border-color);background:var(--bg-color);color:var(--text-color);border-radius:999px;padding:.3rem .8rem;cursor:pointer;font-size:.82rem}
 .clap-btn.active{border-color:var(--accent-color);box-shadow:0 0 0 1px var(--accent-color) inset}
+/* Delete matches header icon buttons (.btn-navbar-logout): 32px glass circle, red hover */
+button.delete-btn{width:30px;height:30px;padding:0}
+.delete-btn svg{width:14px;height:14px}
 .replies{margin-left:1.2rem;border-left:1px solid var(--border-color);padding-left:.9rem}
 .reply-box{margin-top:.7rem}
 .responses-empty{text-align:center;opacity:.7;padding:1.5rem 0}

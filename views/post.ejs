@@ -126,14 +126,14 @@
                         <div class="r-head"><span class="avatar-init"><%= (r.authorName || 'U').charAt(0).toUpperCase() %></span><b><%= r.authorName %></b><% if (r.authorUsername) { %><span class="handle">@<%= r.authorUsername %></span><% } %><% if (typeof isAuthor !== 'undefined' && (r.authorName === post.author)) { %><span class="author-badge">Author</span><% } %><span class="time"><%= new Date(r.createdAt).toLocaleDateString(undefined, {month:'short', day:'numeric'}) %></span><% if (typeof isAuthor !== 'undefined' && isAuthor) { %><button type="button" class="hide-btn" data-id="<%= r.id %>" title="Hide response">⋯</button><% } %></div>
                         <% if (r.quotedText) { %><blockquote class="r-quote"><%= r.quotedText %></blockquote><% } %>
                         <div class="r-body"><%= r.content %></div>
-                        <div class="r-foot"><button type="button" class="clap-btn <%= r.userClapped ? 'active' : '' %>" data-id="<%= r.id %>">👏 <span><%= r.claps || 0 %></span></button><button type="button" class="reply-btn" data-id="<%= r.id %>" data-post="<%= post.id %>">Reply</button><% if (r.replies && r.replies.length) { %><button type="button" class="toggle-replies" data-id="<%= r.id %>"><%= r.replies.length %> <%= r.replies.length === 1 ? 'reply' : 'replies' %></button><% } %></div>
+                        <div class="r-foot"><button type="button" class="clap-btn <%= r.userClapped ? 'active' : '' %>" data-id="<%= r.id %>">👏 <span><%= r.claps || 0 %></span></button><button type="button" class="reply-btn" data-id="<%= r.id %>" data-post="<%= post.id %>">Reply</button><% if (typeof user !== 'undefined' && user && String(r.authorId) === String(user.id)) { %><button type="button" class="btn-navbar-logout delete-btn" data-id="<%= r.id %>" title="Delete your response" aria-label="Delete your response"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button><% } %><% if (r.replies && r.replies.length) { %><button type="button" class="toggle-replies" data-id="<%= r.id %>"><%= r.replies.length %> <%= r.replies.length === 1 ? 'reply' : 'replies' %></button><% } %></div>
                         <% if (r.replies && r.replies.length) { %>
                         <div class="replies" id="replies-<%= r.id %>" style="display:none">
                             <% r.replies.forEach(function(rep) { %>
                             <div class="response-card reply" id="response-<%= rep.id %>" data-id="<%= rep.id %>">
                                 <div class="r-head"><span class="avatar-init sm"><%= (rep.authorName || 'U').charAt(0).toUpperCase() %></span><b><%= rep.authorName %></b><% if (typeof isAuthor !== 'undefined' && (rep.authorName === post.author)) { %><span class="author-badge">Author</span><% } %><span class="time"><%= new Date(rep.createdAt).toLocaleDateString(undefined, {month:'short', day:'numeric'}) %></span></div>
                                 <div class="r-body"><%= rep.content %></div>
-                                <div class="r-foot"><button type="button" class="clap-btn <%= rep.userClapped ? 'active' : '' %>" data-id="<%= rep.id %>">👏 <span><%= rep.claps || 0 %></span></button></div>
+                                <div class="r-foot"><button type="button" class="clap-btn <%= rep.userClapped ? 'active' : '' %>" data-id="<%= rep.id %>">👏 <span><%= rep.claps || 0 %></span></button><% if (typeof user !== 'undefined' && user && String(rep.authorId) === String(user.id)) { %><button type="button" class="btn-navbar-logout delete-btn" data-id="<%= rep.id %>" title="Delete your response" aria-label="Delete your response"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button><% } %></div>
                             </div>
                             <% }) %>
                         </div>
@@ -149,6 +149,7 @@
                 const list = document.getElementById('responses-list');
                 if (!list) return;
                 const postId = list.getAttribute('data-post-id');
+                const currentUserId = list.getAttribute('data-user-id') || '';
                 const getCsrf = () => (document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/) || [])[1] ? decodeURIComponent(document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)[1]) : '';
                 const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
                 let sort = 'relevant';
@@ -176,6 +177,7 @@
                         + '<div class="r-body">' + esc(r.content) + '</div>'
                         + '<div class="r-foot"><button type="button" class="clap-btn' + (r.userClapped ? ' active' : '') + '" data-id="' + r.id + '">👏 <span>' + (r.claps || 0) + '</span></button>'
                         + (!isReply ? '<button type="button" class="reply-btn" data-id="' + r.id + '">Reply</button>' : '')
+                        + ((currentUserId && String(r.authorId) === String(currentUserId)) ? '<button type="button" class="btn-navbar-logout delete-btn" data-id="' + r.id + '" title="Delete your response" aria-label="Delete your response"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>' : '')
                         + (!isReply && r.replies && r.replies.length ? '<button type="button" class="toggle-replies" data-id="' + r.id + '">' + r.replies.length + ' replies</button>' : '') + '</div>'
                         + (!isReply && r.replies && r.replies.length ? '<div class="replies" id="replies-' + r.id + '" style="display:none">' + r.replies.map(x => card(x, true)).join('') + '</div>' : '')
                         + (!isReply ? '<div class="reply-box" id="replybox-' + r.id + '" style="display:none"><textarea rows="2" maxlength="2000"></textarea><div class="composer-row"><button type="button" class="btn btn-secondary cancel-reply" data-id="' + r.id + '">Cancel</button><button type="button" class="btn btn-primary send-reply" data-post="' + postId + '" data-parent="' + r.id + '">Reply</button></div></div>' : '')
@@ -246,6 +248,16 @@
                             const data = await res.json();
                             if (res.ok && data.success) reload(sort); else alert(data.error || 'Could not hide.');
                         } catch (err) {}
+                        return;
+                    }
+                    const db = e.target.closest('.delete-btn');
+                    if (db) {
+                        if (!confirm('Delete your response? This cannot be undone.')) return;
+                        try {
+                            const res = await fetch('/api/responses/' + db.getAttribute('data-id'), { method: 'DELETE', headers: { 'x-csrf-token': getCsrf() } });
+                            const data = await res.json();
+                            if (res.ok && data.success) reload(sort); else alert(data.error || 'Could not delete.');
+                        } catch (err) { alert('Network error.'); }
                     }
                 });
                 // Inline quote-to-response: select story text shows quote in composer

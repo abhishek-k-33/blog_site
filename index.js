@@ -2998,7 +2998,7 @@ const readRawResponses = async () => {
                 if (mapped.length > 0) writeJSONSafe("responses.json", mapped).catch(() => {});
                 return mapped;
             }
-            if (error) logger.warn("Supabase responses read fallback:", error.message);
+            if (error) logger.warn("Supabase responses read fallback:", error.message || error.details || error.hint || JSON.stringify(error));
         } catch (e) { logger.warn("Supabase responses read fallback:", e.message); }
     }
     const local = await readSystemState("RESPONSES", []);
@@ -3191,10 +3191,9 @@ app.delete("/api/responses/:id", requireAuth, csrfProtection, async (req, res, n
         const all = await readRawResponses();
         const r = all.find(x => String(x.id) === String(req.params.id));
         if (!r) return sendApiError(res, 404, "Response not found.", "NOT_FOUND");
-        const post = await getPostById(r.postId);
-        const profile = await getOrCreateProfile(req.user, req);
-        const own = String(r.authorId) === String(req.user.id);
-        if (!own && !isUserPostAuthor(req.user, post, profile)) return sendApiError(res, 403, "You can only delete your own responses.", "FORBIDDEN");
+        // Owner-only: only the person who wrote the response can delete it.
+        // Story authors use Hide (POST /api/responses/:id/hide) instead.
+        if (String(r.authorId) !== String(req.user.id)) return sendApiError(res, 403, "You can only delete your own responses.", "FORBIDDEN");
         const ids = new Set([String(r.id)]);
         let changed = true;
         while (changed) { changed = false; all.forEach(c => { if (c.parentId && ids.has(String(c.parentId)) && !ids.has(String(c.id))) { ids.add(String(c.id)); changed = true; } }); }
