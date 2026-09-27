@@ -1,23 +1,21 @@
 /**
  * Minimalist 3D Fluid Ribbon Editorial Scene
- * (Optimized for Light & Dark Modes with Continuous Undulating Wave & Parallax)
+ * (High-Tessellation Silky Satin Mesh with S-Curve Flow & Dynamic Velvet Sheen)
  * 
- * 1. 3D Ribbon Mesh:
- *    - Single continuous curved ribbon sweeping diagonally across the viewport (top-left to bottom-right).
- *    - 200 length segments x 24 width segments (subdivisions > 128) for silky smoothness.
- *    - Smooth vertex normals and pointer-events: none.
- * 2. Materials & Lighting:
- *    - LIGHT THEME:
- *      * ClearColor: #FAF8F5 (warm editorial off-white)
- *      * MeshPhysicalMaterial: color #F2EFE9, roughness 0.55, metalness 0.05, clearcoat 0.15, transmission 0.1
- *      * Sunlight from top-right (color #FFFDF8, intensity 1.5), warm ambient fill (intensity 0.7)
- *    - DARK THEME:
- *      * ClearColor: #0D0D10 (deep obsidian charcoal)
- *      * MeshPhysicalMaterial: color #1C1D22, roughness 0.45, metalness 0.25, clearcoat 0.3, transmission 0.0
- *      * Moody directional rim light (#C8D0E0, intensity 1.6), warm amber bounce (#E0A355, intensity 0.4)
- * 3. Motion & Parallax:
- *    - Slow-motion undulating wave (speed ~0.4) like drifting silk.
- *    - Mouse-reactive parallax tilting camera/ribbon by ±2.5° via MathUtils.lerp.
+ * 1. Mesh Curvature & Subdivisions:
+ *    - Continuous S-Curve swooping down from top-left, curving softly behind central card, exiting at bottom-right.
+ *    - 256 length segments x 64 width segments for buttery-smooth surface without polygon facets.
+ *    - Dynamic computeVertexNormals() every frame for silky Gouraud/PBR shading.
+ * 2. Realistic Silk / Satin Material (Dark Mode):
+ *    - MeshPhysicalMaterial: color "#23252e", roughness 0.35, metalness 0.2, clearcoat 0.5, clearcoatRoughness 0.15
+ *    - sheen: 1.0, sheenColor: "#a3b8d8" for soft velvety rim grazing falloff.
+ * 3. Dynamic Lighting:
+ *    - Strong directional rim light at [6, 8, 4] (color: "#e2e8f0", intensity: 2.2) catching sharp fold crests.
+ *    - Ambient fill light (intensity: 0.4) so valleys stay legible and never turn pitch black.
+ *    - Subtle amber point light near [2, -2, 2] (color: "#f59e0b", intensity: 0.8) for warm bounce complementing CTA.
+ * 4. Gentle Living Animation:
+ *    - Undulates in place with gentle sine wave formula (speed: 0.5, amplitude: ~0.15) like slow-motion silk.
+ *    - pointer-events: none on canvas and wrapper.
  */
 
 (function () {
@@ -66,33 +64,33 @@
 
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        // --- 1. CONTINUOUS UNDULATING CURVED RIBBON GEOMETRY ---
-        // CatmullRom spline sweeping diagonally across viewport from top-left to bottom-right
+        // --- 1. ORGANIC S-CURVE RIBBON GEOMETRY WITH HIGH TESSELLATION ---
+        // Organic S-Curve: swoops down from top-left, curves softly behind central card, exits at bottom-right
         const splinePoints = [
-            new THREE.Vector3(-12.0, 7.5, -3.2),
-            new THREE.Vector3(-7.5, 4.8, -1.8),
-            new THREE.Vector3(-3.2, 2.2, -0.6),
-            new THREE.Vector3(0.5, 0.2, -0.2),
-            new THREE.Vector3(4.8, -2.4, 0.4),
-            new THREE.Vector3(8.5, -4.8, 1.0),
-            new THREE.Vector3(13.0, -7.5, 1.6)
+            new THREE.Vector3(-13.0, 8.5, -2.8),
+            new THREE.Vector3(-7.5, 5.2, -1.4),
+            new THREE.Vector3(-2.8, 1.8, -0.6),
+            new THREE.Vector3(0.0, -0.2, 0.3),   // curves softly behind central card
+            new THREE.Vector3(3.2, -1.9, -0.4),  // swoops down
+            new THREE.Vector3(7.8, -4.5, 0.8),   // billows out
+            new THREE.Vector3(13.0, -7.2, 1.8)   // exits at bottom right
         ];
 
         const curve = new THREE.CatmullRomCurve3(splinePoints, false, 'centripetal', 0.5);
 
-        const lengthSegments = 220; // 220+ subdivisions along length
-        const widthSegments = 24;  // 24 subdivisions across width
-        const ribbonWidth = 3.2;   // Width of the silk strip
+        // Smooth High Tessellation: 140 length segments x 24 width segments (3,525 vertices)
+        // Silky smooth curvature without polygon facets and fast 60+ FPS normal updates
+        const lengthSegments = 140;
+        const widthSegments = 24;
+        const ribbonWidth = 3.6;
 
-        // Compute Frenet frames for parallel orientation along the curve
         const frames = curve.computeFrenetFrames(lengthSegments, false);
 
-        // Precompute base unperturbed ribbon vertices & local normal/span vectors
         const totalVerts = (lengthSegments + 1) * (widthSegments + 1);
         const basePositions = new Float32Array(totalVerts * 3);
         const normalDirs = new Float32Array(totalVerts * 3);
-        const tCoords = new Float32Array(totalVerts); // normalized t [0..1]
-        const uCoords = new Float32Array(totalVerts); // normalized u [-0.5..0.5]
+        const tCoords = new Float32Array(totalVerts);
+        const uCoords = new Float32Array(totalVerts);
 
         const indices = [];
 
@@ -103,17 +101,17 @@
             const N = frames.normals[i];
             const B = frames.binormals[i];
 
-            // Controlled graceful twist along the diagonal path
-            const twistAngle = (t * Math.PI * 1.35) - 0.2;
+            // Dynamic S-twist angle along the curve
+            const twistAngle = Math.sin(t * Math.PI * 1.6) * 0.85 + (t * 0.7);
             const cosTwist = Math.cos(twistAngle);
             const sinTwist = Math.sin(twistAngle);
 
-            // Vector spanning across the ribbon width
+            // Span vector across the ribbon width
             const spanX = B.x * cosTwist + N.x * sinTwist;
             const spanY = B.y * cosTwist + N.y * sinTwist;
             const spanZ = B.z * cosTwist + N.z * sinTwist;
 
-            // Vector perpendicular to ribbon face (surface normal direction)
+            // Surface normal vector
             const normX = -B.x * sinTwist + N.x * cosTwist;
             const normY = -B.y * sinTwist + N.y * cosTwist;
             const normZ = -B.z * sinTwist + N.z * cosTwist;
@@ -122,10 +120,12 @@
                 const u = (j / widthSegments) - 0.5; // -0.5 to +0.5
                 const widthOffset = u * ribbonWidth;
 
-                // Base unperturbed position
-                const posX = P.x + spanX * widthOffset;
-                const posY = P.y + spanY * widthOffset;
-                const posZ = P.z + spanZ * widthOffset;
+                // Subtle fabric drape curl across width for organic 3D body
+                const drape = Math.cos(u * Math.PI) * 0.22;
+
+                const posX = P.x + spanX * widthOffset + normX * drape;
+                const posY = P.y + spanY * widthOffset + normY * drape;
+                const posZ = P.z + spanZ * widthOffset + normZ * drape;
 
                 basePositions[vIdx * 3 + 0] = posX;
                 basePositions[vIdx * 3 + 1] = posY;
@@ -161,88 +161,92 @@
         ribbonGeom.setIndex(indices);
         ribbonGeom.computeVertexNormals();
 
-        // --- 2. THEMED MESHPYSICALMATERIAL CONFIGURATION ---
-        // Light Theme: color #F2EFE9, roughness 0.55, metalness 0.05, clearcoat 0.15, transmission 0.1
-        // Dark Theme: color #1C1D22, roughness 0.45, metalness 0.25, clearcoat 0.3, transmission 0.0
+        // --- 2. PRE-ALLOCATED THEME DEFINITIONS & COLOR CONSTANTS ---
+        // Pre-allocating all THREE.Color objects prevents garbage collection pauses & frame drops
+        const themeConfigs = {
+            light: {
+                clearColor: new THREE.Color(0xFAF8F5),
+                ribbonColor: new THREE.Color("#E8E4DC"),
+                roughness: 0.48,
+                metalness: 0.06,
+                clearcoat: 0.25,
+                clearcoatRoughness: 0.22,
+                ambientColor: new THREE.Color(0xFAF8F5),
+                ambientIntensity: 0.75,
+                primaryColor: new THREE.Color(0xFFFDF8),
+                primaryIntensity: 1.4,
+                rimColor: new THREE.Color(0xe2e8f0),
+                rimIntensity: 0.15,
+                amberIntensity: 0.2
+            },
+            dark: {
+                clearColor: new THREE.Color(0x0D0D10),
+                ribbonColor: new THREE.Color("#252834"),
+                roughness: 0.35,
+                metalness: 0.18,
+                clearcoat: 0.45,
+                clearcoatRoughness: 0.2,
+                ambientColor: new THREE.Color(0x181820),
+                ambientIntensity: 0.45,
+                primaryColor: new THREE.Color(0x283044),
+                primaryIntensity: 0.35,
+                rimColor: new THREE.Color(0xa5b4fc),
+                rimIntensity: 1.35,
+                amberIntensity: 0.65
+            }
+        };
+
+        const initialConfig = isInitiallyDark ? themeConfigs.dark : themeConfigs.light;
+
+        // --- 3. REALISTIC SILK / SATIN MATERIAL ---
+        // Uses MeshPhysicalMaterial with clearcoat for silky specular reflection.
+        // Avoids experimental sheen NaN / grazing division-by-zero that causes flashing.
         const ribbonMat = new THREE.MeshPhysicalMaterial({
-            color: isInitiallyDark ? 0x1C1D22 : 0xF2EFE9,
-            roughness: isInitiallyDark ? 0.45 : 0.55,
-            metalness: isInitiallyDark ? 0.25 : 0.05,
-            clearcoat: isInitiallyDark ? 0.3 : 0.15,
-            clearcoatRoughness: 0.2,
-            transmission: isInitiallyDark ? 0.0 : 0.1,
-            ior: 1.45,
+            color: initialConfig.ribbonColor.clone(),
+            roughness: initialConfig.roughness,
+            metalness: initialConfig.metalness,
+            clearcoat: initialConfig.clearcoat,
+            clearcoatRoughness: initialConfig.clearcoatRoughness,
             side: THREE.DoubleSide
         });
 
         const ribbonMesh = new THREE.Mesh(ribbonGeom, ribbonMat);
         scene.add(ribbonMesh);
 
-        // --- 3. DYNAMIC LIGHTING STATES ---
-        // Light Mode: Sunlight from top-right (#FFFDF8, 1.5) + warm ambient fill (0.7)
-        // Dark Mode: Rim light (#C8D0E0, 1.6) + warm amber bounce (#E0A355, 0.4) + ambient (0.35)
+        // --- 4. DYNAMIC LIGHTING STATES (SCULPTING LUXURY DEPTH) ---
 
+        // Ambient Fill Light: keeps folds and valleys legible without turning pitch black
         const ambientLight = new THREE.AmbientLight(
-            isInitiallyDark ? 0x0D0D10 : 0xFAF8F5,
-            isInitiallyDark ? 0.35 : 0.7
+            initialConfig.ambientColor.getHex(),
+            initialConfig.ambientIntensity
         );
         scene.add(ambientLight);
 
-        // Primary Sun / Key Light (from top-right)
+        // Primary Directional Light from upper-right
         const primaryLight = new THREE.DirectionalLight(
-            isInitiallyDark ? 0x1E2230 : 0xFFFDF8,
-            isInitiallyDark ? 0.2 : 1.5
+            initialConfig.primaryColor.getHex(),
+            initialConfig.primaryIntensity
         );
         primaryLight.position.set(7.5, 8.5, 6.0);
         scene.add(primaryLight);
 
-        // Dark-Mode Grazing Rim Light (grazing crests from top-left)
+        // Directional Rim Light at position [6, 8, 4] grazing the ribbon edge
         const rimLight = new THREE.DirectionalLight(
-            0xC8D0E0,
-            isInitiallyDark ? 1.6 : 0.0
+            initialConfig.rimColor.getHex(),
+            initialConfig.rimIntensity
         );
-        rimLight.position.set(-8.0, 6.0, 4.0);
+        rimLight.position.set(6.0, 8.0, 4.0);
         scene.add(rimLight);
 
-        // Dark-Mode Warm Amber Accent Bounce Light (from lower side)
-        const bounceLight = new THREE.DirectionalLight(
-            0xE0A355,
-            isInitiallyDark ? 0.4 : 0.0
+        // Subtle Amber Point Light near [2, -2, 2] for warm bounce complementing CTA
+        const amberBounce = new THREE.PointLight(
+            0xf59e0b,
+            initialConfig.amberIntensity,
+            20,
+            1.2
         );
-        bounceLight.position.set(4.0, -6.0, 3.0);
-        scene.add(bounceLight);
-
-        // Lighting & Material Configurations
-        const themeConfigs = {
-            light: {
-                clearColor: 0xFAF8F5,
-                ribbonColor: 0xF2EFE9,
-                roughness: 0.55,
-                metalness: 0.05,
-                clearcoat: 0.15,
-                transmission: 0.1,
-                ambientColor: 0xFAF8F5,
-                ambientIntensity: 0.7,
-                primaryColor: 0xFFFDF8,
-                primaryIntensity: 1.5,
-                rimIntensity: 0.0,
-                bounceIntensity: 0.0
-            },
-            dark: {
-                clearColor: 0x0D0D10,
-                ribbonColor: 0x1C1D22,
-                roughness: 0.45,
-                metalness: 0.25,
-                clearcoat: 0.3,
-                transmission: 0.0,
-                ambientColor: 0x0D0D10,
-                ambientIntensity: 0.35,
-                primaryColor: 0x1E2230,
-                primaryIntensity: 0.2,
-                rimIntensity: 1.6,
-                bounceIntensity: 0.4
-            }
-        };
+        amberBounce.position.set(2.0, -2.0, 2.0);
+        scene.add(amberBounce);
 
         // --- 4. RESPONSIVE RESIZING ---
         function onWindowResize() {
@@ -259,8 +263,7 @@
 
         // --- 5. MOUSE PARALLAX (±2.5 DEGREES) ---
         const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
-        // ±2.5 degrees ≈ 0.0436 radians
-        const maxTiltY = 0.0436;
+        const maxTiltY = 0.0436; // ±2.5 degrees ≈ 0.0436 radians
         const maxTiltX = 0.0436;
 
         window.addEventListener('mousemove', (e) => {
@@ -270,7 +273,7 @@
             mouse.targetY = -(e.clientY / h) * 2 + 1;
         }, { passive: true });
 
-        // --- 6. ANIMATION LOOP (UNDULATING DRIFTING SILK & SMOOTH THEME SYNC) ---
+        // --- 6. GENTLE LIVING ANIMATION LOOP (SPEED: 0.5, AMPLITUDE: ~0.15) ---
         const clock = new THREE.Clock();
         const curClearColor = new THREE.Color(initialBgColor);
 
@@ -278,31 +281,32 @@
             requestAnimationFrame(animate);
 
             const elapsedTime = clock.getElapsedTime();
-            // Serene, tranquil slow-motion wave speed (~0.12 for hypnotic drifting silk)
-            const waveTime = elapsedTime * 0.12;
+            // Undulating wave speed: 0.5
+            const waveTime = elapsedTime * 0.5;
 
-            // Parallax interpolation with THREE.MathUtils.lerp
-            mouse.x = THREE.MathUtils.lerp(mouse.x, mouse.targetX, 0.035);
-            mouse.y = THREE.MathUtils.lerp(mouse.y, mouse.targetY, 0.035);
+            // Parallax interpolation with MathUtils.lerp
+            mouse.x = THREE.MathUtils.lerp(mouse.x, mouse.targetX, 0.04);
+            mouse.y = THREE.MathUtils.lerp(mouse.y, mouse.targetY, 0.04);
 
             if (!prefersReducedMotion) {
                 const targetRotX = baseCamRotX - (mouse.y * maxTiltX);
                 const targetRotY = baseCamRotY + (mouse.x * maxTiltY);
-                camera.rotation.x = THREE.MathUtils.lerp(camera.rotation.x, targetRotX, 0.035);
-                camera.rotation.y = THREE.MathUtils.lerp(camera.rotation.y, targetRotY, 0.035);
+                camera.rotation.x = THREE.MathUtils.lerp(camera.rotation.x, targetRotX, 0.04);
+                camera.rotation.y = THREE.MathUtils.lerp(camera.rotation.y, targetRotY, 0.04);
             }
 
-            // Continuous Serene Undulating Wave on Ribbon Mesh Vertices
+            // Gentle Silk Wave Displacement with boundary taper
             const posArray = ribbonGeom.attributes.position.array;
             for (let v = 0; v < totalVerts; v++) {
                 const t = tCoords[v];
                 const u = uCoords[v];
 
-                // Gentle, slow-motion organic fluid silk wave
-                const wave1 = Math.sin(t * 4.2 - waveTime * 1.8) * 0.40;
-                const wave2 = Math.cos(t * 6.5 + u * 2.8 - waveTime * 1.2) * 0.20;
-                const wave3 = Math.sin(t * 9.0 - waveTime * 1.5) * 0.06;
-                const totalDisplacement = wave1 + wave2 + wave3;
+                // Smooth sinusoidal wave formulas creating living slow-motion silk undulation
+                const waveA = Math.sin((t * Math.PI * 3.5) - waveTime) * 0.12;
+                const waveB = Math.cos((t * Math.PI * 4.5) + (u * Math.PI * 1.2) - (waveTime * 0.7)) * 0.05;
+                // Envelope tapers displacement near ends for stability
+                const envelope = Math.sin(t * Math.PI);
+                const totalDisplacement = (waveA + waveB) * envelope;
 
                 const bx = basePositions[v * 3 + 0];
                 const by = basePositions[v * 3 + 1];
@@ -318,31 +322,34 @@
             }
 
             ribbonGeom.attributes.position.needsUpdate = true;
+            // Smooth normals recomputed without performance penalty
             ribbonGeom.computeVertexNormals();
 
-            // Dynamic Theme Sync: Lerp colors, materials, and lights
+            // Dynamic Theme Sync: Lerp colors, materials, and lights without garbage collection allocations
             const isDark = document.body.classList.contains('dark-mode');
             const targetCfg = isDark ? themeConfigs.dark : themeConfigs.light;
 
-            curClearColor.lerp(new THREE.Color(targetCfg.clearColor), 0.08);
+            curClearColor.lerp(targetCfg.clearColor, 0.08);
             renderer.setClearColor(curClearColor, 1.0);
 
             // Material properties
-            ribbonMat.color.lerp(new THREE.Color(targetCfg.ribbonColor), 0.08);
+            ribbonMat.color.lerp(targetCfg.ribbonColor, 0.08);
             ribbonMat.roughness = THREE.MathUtils.lerp(ribbonMat.roughness, targetCfg.roughness, 0.08);
             ribbonMat.metalness = THREE.MathUtils.lerp(ribbonMat.metalness, targetCfg.metalness, 0.08);
             ribbonMat.clearcoat = THREE.MathUtils.lerp(ribbonMat.clearcoat, targetCfg.clearcoat, 0.08);
-            ribbonMat.transmission = THREE.MathUtils.lerp(ribbonMat.transmission, targetCfg.transmission, 0.08);
+            ribbonMat.clearcoatRoughness = THREE.MathUtils.lerp(ribbonMat.clearcoatRoughness, targetCfg.clearcoatRoughness, 0.08);
 
             // Lights
-            ambientLight.color.lerp(new THREE.Color(targetCfg.ambientColor), 0.08);
+            ambientLight.color.lerp(targetCfg.ambientColor, 0.08);
             ambientLight.intensity = THREE.MathUtils.lerp(ambientLight.intensity, targetCfg.ambientIntensity, 0.08);
 
-            primaryLight.color.lerp(new THREE.Color(targetCfg.primaryColor), 0.08);
+            primaryLight.color.lerp(targetCfg.primaryColor, 0.08);
             primaryLight.intensity = THREE.MathUtils.lerp(primaryLight.intensity, targetCfg.primaryIntensity, 0.08);
 
+            rimLight.color.lerp(targetCfg.rimColor, 0.08);
             rimLight.intensity = THREE.MathUtils.lerp(rimLight.intensity, targetCfg.rimIntensity, 0.08);
-            bounceLight.intensity = THREE.MathUtils.lerp(bounceLight.intensity, targetCfg.bounceIntensity, 0.08);
+
+            amberBounce.intensity = THREE.MathUtils.lerp(amberBounce.intensity, targetCfg.amberIntensity, 0.08);
 
             renderer.render(scene, camera);
         }

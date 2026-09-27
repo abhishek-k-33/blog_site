@@ -49,11 +49,11 @@
 }
 
 body.dark-mode .hero {
-    background: rgba(20, 20, 24, 0.65) !important;
+    background: rgba(18, 18, 22, 0.65) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
-    border-color: rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
 }
 
 .hero-content {
@@ -102,7 +102,7 @@ body.dark-mode .hero-badge-pill {
 }
 
 body.dark-mode .hero-title {
-    color: #ffffff !important;
+    color: #F4F4F6 !important;
     text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6) !important;
 }
 
@@ -119,7 +119,7 @@ body.dark-mode .hero-title {
 }
 
 body.dark-mode .hero-description {
-    color: rgba(255, 255, 255, 0.85) !important;
+    color: #D4D4D8 !important;
     text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5) !important;
 }
 
@@ -213,12 +213,48 @@ body.dark-mode .hero-search-icon {
 }
 
 body.dark-mode .hero-primary-cta {
-    background: linear-gradient(135deg, #d4af37 0%, #b3860b 100%) !important;
-    color: #121214 !important;
-    border-color: #ecc961 !important;
-    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35) !important;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.25) !important;
 }
 
 body.dark-mode .hero-primary-cta:hover {
-    box-shadow: 0 10px 28px rgba(212, 175, 55, 0.5) !important;
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4) !important;
+    transform: translateY(-2px);
+}
+
+/* Category Filter Switcher & Topic Pills (Editorial Dark Mode Polish) */
+body.dark-mode .topic-pill-chip {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #A1A1AA !important;
+    opacity: 1 !important;
+    transition: all 0.25s ease !important;
+}
+
+body.dark-mode .topic-pill-chip:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    color: #FFFFFF !important;
+}
+
+body.dark-mode .topic-pill-chip.is-active {
+    background: #F3F3F5 !important;
+    color: #121215 !important;
+    border-color: #F3F3F5 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    font-weight: 700 !important;
+}
+
+body.dark-mode .topic-pill-chip.is-active .topic-pill-count {
+    background: rgba(18, 18, 21, 0.12) !important;
+    color: #121215 !important;
+}
+
+body.dark-mode .topic-pill-chip.is-active:hover {
+    background: #FFFFFF !important;
+    color: #121215 !important;
 }
