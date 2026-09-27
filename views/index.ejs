@@ -1,18 +1,37 @@
 <%- include("partials/header.ejs") %> <%# imports the header file%>
+<link rel="stylesheet" href="/styles/hero-3d.css?v=30">
+
+<!-- Full-Viewport Ambient 3D Literary Canvas in the Empty Side Margins -->
+<div id="literary-3d-wrapper" class="literary-3d-ambient-wrapper" aria-hidden="true">
+    <canvas id="literary-3d-canvas" class="literary-3d-canvas"></canvas>
+</div>
 
 <div class="hero">
-    <h1 class="hero-title">Welcome to miniblogs</h1>
-    <div class="hero-subtitle-container">
-        <span class="hero-pill-badge">A curated publication for thoughtful writing</span>
-    </div>
-    <div class="hero-cta-wrapper">
-        <a href="/new" class="hero-primary-cta" aria-label="Start writing a story">
-            <span class="hero-cta-label">Start Writing</span>
-            <svg class="hero-cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-                <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-        </a>
+    <div class="hero-content">
+        <div class="hero-badge-pill">
+            <span>✨</span>
+            <span>A curated space for thoughtful writing</span>
+        </div>
+        <h1 class="hero-title">Where Good Stories Live</h1>
+        <p class="hero-description">A sanctuary for curious minds, essays, literature, and deep reflections.</p>
+
+        <div class="hero-action-bar">
+            <form action="/" method="GET" class="hero-search-form" role="search">
+                <svg class="hero-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" name="search" class="hero-search-input" placeholder="Search essays, authors, topics..." aria-label="Search stories">
+            </form>
+
+            <a href="/new" class="hero-primary-cta" aria-label="Start writing a story">
+                <span class="hero-cta-label">Start Writing</span>
+                <svg class="hero-cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+        </div>
     </div>
 </div>
 
@@ -231,5 +250,9 @@
         </nav>
     <% } %>
 </div>
+
+<!-- Three.js Library & Literary 3D Hero Scene -->
+<script src="/js/three.min.js"></script>
+<script src="/js/hero-3d-scene.js?v=40"></script>
 
 <%- include("partials/footer.ejs") %><%# includes the footer.      n %>

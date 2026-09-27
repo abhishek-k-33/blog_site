@@ -1,0 +1,192 @@
+/* ========================================================
+   LITERARY 3D AMBIENT SIDE SPACES STYLING
+   ======================================================== */
+
+/* Full-viewport canvas layer behind interactive content */
+.literary-3d-ambient-wrapper {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    pointer-events: none !important; /* Never block clicks */
+    z-index: 0 !important;          /* Sits behind interactive content */
+    overflow: hidden !important;
+}
+
+.literary-3d-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    pointer-events: none !important;
+}
+
+/* Ensure all foreground page containers sit cleanly above canvas with high priority */
+.site-header,
+.container,
+.hero,
+.posts-feed-container,
+.site-footer,
+.topics-pill-bar-wrapper {
+    position: relative;
+    z-index: 10;
+}
+
+/* Clean, Spacious Editorial Hero Masthead */
+.hero {
+    text-align: center;
+    margin-bottom: 44px;
+    padding: 56px 32px;
+    background: linear-gradient(180deg, rgba(235, 230, 222, 0.45) 0%, rgba(250, 248, 244, 0.9) 100%) !important;
+    border: 1.5px solid var(--border-color);
+    border-radius: 28px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    position: relative;
+    overflow: hidden;
+}
+
+body.dark-mode .hero {
+    background: linear-gradient(180deg, rgba(26, 26, 31, 0.88) 0%, rgba(16, 16, 19, 0.96) 100%) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4) !important;
+}
+
+.hero-content {
+    position: relative;
+    max-width: 640px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.hero-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    color: #8c6d23;
+    padding: 6px 20px;
+    border-radius: 9999px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 14px rgba(212, 175, 55, 0.12);
+}
+
+body.dark-mode .hero-badge-pill {
+    background: rgba(30, 28, 35, 0.75);
+    border-color: rgba(212, 175, 55, 0.4);
+    color: #e5c365;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.hero-title {
+    font-family: var(--font-story, 'Lora', serif) !important;
+    font-size: clamp(2.3rem, 5vw, 3.5rem) !important;
+    font-weight: 700 !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.025em !important;
+    margin-bottom: 14px !important;
+    color: var(--text-color) !important;
+}
+
+.hero-description {
+    font-size: clamp(1.05rem, 2vw, 1.2rem);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 28px;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.hero-search-form {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+}
+
+.hero-search-input {
+    width: 100%;
+    padding: 12px 18px 12px 42px;
+    border-radius: 9999px;
+    border: 1.5px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    font-size: 0.95rem;
+    color: var(--text-color);
+    outline: none;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+body.dark-mode .hero-search-input {
+    background: rgba(24, 23, 28, 0.85);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.hero-search-input:focus {
+    border-color: #d4af37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
+}
+
+.hero-search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.hero-primary-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 28px;
+    border-radius: 9999px;
+    background-color: #18181B;
+    color: #ffffff !important;
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none !important;
+    border: 1px solid #18181B;
+    box-shadow: 0 6px 20px rgba(24, 24, 27, 0.18);
+    transition: 
+        transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.22s ease,
+        background-color 0.22s ease;
+}
+
+.hero-primary-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(24, 24, 27, 0.25);
+}
+
+body.dark-mode .hero-primary-cta {
+    background-color: #ffffff;
+    color: #121214 !important;
+    border-color: #ffffff;
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.22);
+}
+
+body.dark-mode .hero-primary-cta:hover {
+    box-shadow: 0 10px 26px rgba(255, 255, 255, 0.35);
+}

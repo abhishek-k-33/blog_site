@@ -216,8 +216,8 @@ const csrfProtection = (req, res, next) => {
 
     // 2. Token Matching (Header or Body _csrf against signed Cookie)
     const tokenFromReq = req.headers["x-csrf-token"] ||
-                         req.headers["x-xsrf-token"] ||
-                         req.body?._csrf;
+        req.headers["x-xsrf-token"] ||
+        req.body?._csrf;
     const cookieToken = req.cookies?.csrf_token;
 
     if (!tokenFromReq || !cookieToken || !verifyCsrfToken(tokenFromReq) || tokenFromReq !== cookieToken) {
@@ -308,7 +308,7 @@ const saveBase64Image = async (dataUrl, prefix, userId) => {
         if (!matches || matches.length < 3) return dataUrl;
         let mimeSubtype = matches[1].toLowerCase();
         if (mimeSubtype === "jpeg") mimeSubtype = "jpg";
-        
+
         // Reject SVG or disallowed types to prevent stored XSS attacks
         const ext = ALLOWED_IMAGE_MIMES[mimeSubtype];
         if (!ext) {
@@ -544,8 +544,8 @@ const decodeSupabaseJWT = (token) => {
         if (payload.exp && (payload.exp * 1000) < Date.now()) return null; // expired
 
         const isGoogle = payload.app_metadata?.provider === "google" ||
-                         (Array.isArray(payload.identities) && payload.identities.some(i => i.provider === "google")) ||
-                         Boolean(payload.user_metadata?.iss?.includes("google") || payload.user_metadata?.avatar_url?.includes("googleusercontent.com") || payload.user_metadata?.picture?.includes("googleusercontent.com"));
+            (Array.isArray(payload.identities) && payload.identities.some(i => i.provider === "google")) ||
+            Boolean(payload.user_metadata?.iss?.includes("google") || payload.user_metadata?.avatar_url?.includes("googleusercontent.com") || payload.user_metadata?.picture?.includes("googleusercontent.com"));
 
         return {
             id: payload.sub,
@@ -624,7 +624,7 @@ const readSystemState = async (key, fallback = []) => {
             if (!error && data && data.length > 0 && data[0]?.content) {
                 const parsed = JSON.parse(data[0].content);
                 memoryCache.set(key, { data: parsed, timestamp: Date.now() });
-                writeJSONSafe(filename, parsed).catch(() => {});
+                writeJSONSafe(filename, parsed).catch(() => { });
                 return parsed;
             }
         } catch (e) {
@@ -648,7 +648,7 @@ const readSystemState = async (key, fallback = []) => {
 const writeSystemState = async (key, data) => {
     const filename = `${key.toLowerCase()}.json`;
     memoryCache.set(key, { data, timestamp: Date.now() });
-    writeJSONSafe(filename, data).catch(() => {});
+    writeJSONSafe(filename, data).catch(() => { });
 
     if (supabase) {
         setImmediate(async () => {
@@ -671,7 +671,7 @@ const writeSystemState = async (key, data) => {
                         })
                         .eq("id", keep.id);
                     for (const d of deleteRows) {
-                        await supabase.from("posts").delete().eq("id", d.id).catch(() => {});
+                        await supabase.from("posts").delete().eq("id", d.id).catch(() => { });
                     }
                 } else {
                     await supabase
@@ -711,7 +711,7 @@ const readFollows = async () => {
                     createdAt: r.created_at
                 }));
                 memoryCache.set("FOLLOWS", { data: mapped, timestamp: now });
-                writeJSONSafe("follows.json", mapped).catch(() => {});
+                writeJSONSafe("follows.json", mapped).catch(() => { });
                 return mapped;
             }
         } catch (e) {
@@ -725,7 +725,7 @@ const readFollows = async () => {
 
 const writeFollows = async (follows) => {
     memoryCache.set("FOLLOWS", { data: follows, timestamp: Date.now() });
-    writeJSONSafe("follows.json", follows).catch(() => {});
+    writeJSONSafe("follows.json", follows).catch(() => { });
     await writeSystemState("FOLLOWS", follows);
 };
 
@@ -748,10 +748,10 @@ const readBookmarks = async () => {
                     createdAt: r.created_at
                 }));
                 memoryCache.set("BOOKMARKS", { data: mapped, timestamp: now });
-                writeJSONSafe("bookmarks.json", mapped).catch(() => {});
+                writeJSONSafe("bookmarks.json", mapped).catch(() => { });
                 return mapped;
             }
-        } catch (e) {}
+        } catch (e) { }
     }
 
     return readSystemState("BOOKMARKS", []);
@@ -759,7 +759,7 @@ const readBookmarks = async () => {
 
 const writeBookmarks = async (bookmarks) => {
     memoryCache.set("BOOKMARKS", { data: bookmarks, timestamp: Date.now() });
-    writeJSONSafe("bookmarks.json", bookmarks).catch(() => {});
+    writeJSONSafe("bookmarks.json", bookmarks).catch(() => { });
     await writeSystemState("BOOKMARKS", bookmarks);
 };
 
@@ -797,7 +797,7 @@ const readProfiles = async () => {
                     updated_at: r.updated_at
                 }));
                 memoryCache.set("PROFILES", { data: mapped, timestamp: now });
-                writeJSONSafe("profiles.json", mapped).catch(() => {});
+                writeJSONSafe("profiles.json", mapped).catch(() => { });
                 return mapped;
             }
         } catch (e) {
@@ -810,7 +810,7 @@ const readProfiles = async () => {
 
 const writeProfiles = async (profiles) => {
     memoryCache.set("PROFILES", { data: profiles, timestamp: Date.now() });
-    writeJSONSafe("profiles.json", profiles).catch(() => {});
+    writeJSONSafe("profiles.json", profiles).catch(() => { });
     await writeSystemState("PROFILES", profiles);
 };
 
@@ -826,7 +826,7 @@ const readProfileFromDB = async (userId) => {
             if (!error && data?.data) {
                 return { ...data.data, id: data.id, updated_at: data.updated_at };
             }
-        } catch (e) {}
+        } catch (e) { }
     }
     const profiles = await readProfiles();
     return profiles.find(p => p.id === userId || (p.email && p.email.toLowerCase() === String(userId).toLowerCase())) || null;
@@ -995,7 +995,7 @@ const getOrCreateProfile = async (user, req = null) => {
                         if (!cookieProfile.cover && diskProfile.cover) cookieProfile.cover = diskProfile.cover;
                         if (!cookieProfile.avatar && diskProfile.avatar) cookieProfile.avatar = diskProfile.avatar;
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
             if (!cookieProfile.avatar && googleAvatar) {
                 cookieProfile.avatar = googleAvatar;
@@ -1005,9 +1005,9 @@ const getOrCreateProfile = async (user, req = null) => {
                 const idx = profiles.findIndex(p => p.id === user.id || (user.email && p.email && p.email.toLowerCase() === user.email.toLowerCase()));
                 if (idx === -1) {
                     profiles.push(cookieProfile);
-                    writeProfiles(profiles).catch(() => {});
+                    writeProfiles(profiles).catch(() => { });
                 }
-            }).catch(() => {});
+            }).catch(() => { });
             return cookieProfile;
         }
     }
@@ -1077,18 +1077,18 @@ const getProfileByIdentifier = async (identifier, req = null) => {
     if (dbProfile) return dbProfile;
 
     const profiles = await readProfiles();
-    let profile = profiles.find(p => 
-        (p.id && (String(p.id).toLowerCase() === cleanId || String(p.id).toLowerCase() === strippedId)) || 
-        (p.username && (p.username.toLowerCase() === cleanId || p.username.toLowerCase() === strippedId)) || 
-        (p.name && (p.name.toLowerCase() === cleanId || p.name.toLowerCase() === strippedId)) || 
+    let profile = profiles.find(p =>
+        (p.id && (String(p.id).toLowerCase() === cleanId || String(p.id).toLowerCase() === strippedId)) ||
+        (p.username && (p.username.toLowerCase() === cleanId || p.username.toLowerCase() === strippedId)) ||
+        (p.name && (p.name.toLowerCase() === cleanId || p.name.toLowerCase() === strippedId)) ||
         (p.email && (p.email.toLowerCase() === cleanId || p.email.toLowerCase().startsWith(cleanId) || p.email.toLowerCase().startsWith(strippedId)))
     );
 
     if (!profile) {
         const users = await readLocalUsers();
-        const user = users.find(u => 
-            (u.id && (String(u.id).toLowerCase() === cleanId || String(u.id).toLowerCase() === strippedId)) || 
-            (u.name && (u.name.toLowerCase() === cleanId || u.name.toLowerCase() === strippedId)) || 
+        const user = users.find(u =>
+            (u.id && (String(u.id).toLowerCase() === cleanId || String(u.id).toLowerCase() === strippedId)) ||
+            (u.name && (u.name.toLowerCase() === cleanId || u.name.toLowerCase() === strippedId)) ||
             (u.email && (u.email.toLowerCase().startsWith(cleanId) || u.email.toLowerCase().startsWith(strippedId)))
         );
         if (user) {
@@ -1099,7 +1099,7 @@ const getProfileByIdentifier = async (identifier, req = null) => {
     // Fallback: If this is an author from existing posts, generate an author profile dynamically
     if (!profile) {
         const allPosts = await getAllPosts();
-        const authorPost = allPosts.find(p => 
+        const authorPost = allPosts.find(p =>
             (p.author && (p.author.toLowerCase() === cleanId || p.author.toLowerCase() === strippedId)) ||
             (p.author_id && (String(p.author_id).toLowerCase() === cleanId || String(p.author_id).toLowerCase() === strippedId)) ||
             (p.author_username && (p.author_username.toLowerCase() === cleanId || p.author_username.toLowerCase() === strippedId))
@@ -1166,8 +1166,8 @@ app.use(async (req, res, next) => {
                     const { data: { user }, error } = await supabase.auth.getUser(token);
                     if (user && !error) {
                         const isGoogle = user.app_metadata?.provider === "google" ||
-                                         (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
-                                         Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
+                            (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
+                            Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
 
                         req.user = {
                             id: user.id,
@@ -1188,8 +1188,8 @@ app.use(async (req, res, next) => {
                             if (refreshData?.session && !refreshErr && refreshData.user) {
                                 const refreshedUser = refreshData.user;
                                 const isGoogle = refreshedUser.app_metadata?.provider === "google" ||
-                                                 (Array.isArray(refreshedUser.identities) && refreshedUser.identities.some(i => i.provider === "google")) ||
-                                                 Boolean(refreshedUser.user_metadata?.iss?.includes("google") || refreshedUser.user_metadata?.avatar_url?.includes("googleusercontent.com") || refreshedUser.user_metadata?.picture?.includes("googleusercontent.com"));
+                                    (Array.isArray(refreshedUser.identities) && refreshedUser.identities.some(i => i.provider === "google")) ||
+                                    Boolean(refreshedUser.user_metadata?.iss?.includes("google") || refreshedUser.user_metadata?.avatar_url?.includes("googleusercontent.com") || refreshedUser.user_metadata?.picture?.includes("googleusercontent.com"));
 
                                 req.user = {
                                     id: refreshedUser.id,
@@ -1216,48 +1216,48 @@ app.use(async (req, res, next) => {
         }
     }
 
-        // Enrich authenticated user with their up-to-date saved profile information (name, avatar, username)
-        if (req.user) {
-            try {
-                // 1. Try cookie profile first (fastest, 100% persistent across all Vercel instances)
-                let profile = getProfileFromCookie(req, req.user.id, req.user.email);
+    // Enrich authenticated user with their up-to-date saved profile information (name, avatar, username)
+    if (req.user) {
+        try {
+            // 1. Try cookie profile first (fastest, 100% persistent across all Vercel instances)
+            let profile = getProfileFromCookie(req, req.user.id, req.user.email);
 
-                // 2. Try DB
-                if (!profile) {
-                    profile = await readProfileFromDB(req.user.id);
-                }
-
-                // 3. Try local JSON / seed
-                if (!profile) {
-                    const profiles = await readProfiles();
-                    profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
-                }
-
-                // 4. If still not loaded, load/create profile
-                if (!profile) {
-                    profile = await getOrCreateProfile(req.user, req);
-                }
-
-                if (profile) {
-                    const googleAvatar = req.user.avatar || req.user.user_metadata?.avatar_url || req.user.user_metadata?.picture || null;
-                    if (profile.name) req.user.name = profile.name;
-                    if (!profile.avatar && googleAvatar) {
-                        profile.avatar = googleAvatar;
-                    }
-                    req.user.avatar = profile.avatar || googleAvatar || null;
-                    if (profile.username) req.user.username = profile.username;
-                    req.user.profile = profile;
-                    res.locals.user = req.user;
-
-                    // Automatically restore profile cookie if missing so subsequent requests have it
-                    if (!req.cookies?.user_profile_data) {
-                        setUserProfileCookie(res, profile);
-                    }
-                }
-            } catch (err) {
-                console.error("Error syncing profile info into req.user:", err);
+            // 2. Try DB
+            if (!profile) {
+                profile = await readProfileFromDB(req.user.id);
             }
+
+            // 3. Try local JSON / seed
+            if (!profile) {
+                const profiles = await readProfiles();
+                profile = profiles.find(p => p.id === req.user.id || (req.user.email && p.email && p.email.toLowerCase() === req.user.email.toLowerCase()));
+            }
+
+            // 4. If still not loaded, load/create profile
+            if (!profile) {
+                profile = await getOrCreateProfile(req.user, req);
+            }
+
+            if (profile) {
+                const googleAvatar = req.user.avatar || req.user.user_metadata?.avatar_url || req.user.user_metadata?.picture || null;
+                if (profile.name) req.user.name = profile.name;
+                if (!profile.avatar && googleAvatar) {
+                    profile.avatar = googleAvatar;
+                }
+                req.user.avatar = profile.avatar || googleAvatar || null;
+                if (profile.username) req.user.username = profile.username;
+                req.user.profile = profile;
+                res.locals.user = req.user;
+
+                // Automatically restore profile cookie if missing so subsequent requests have it
+                if (!req.cookies?.user_profile_data) {
+                    setUserProfileCookie(res, profile);
+                }
+            }
+        } catch (err) {
+            console.error("Error syncing profile info into req.user:", err);
         }
+    }
 
     next();
 });
@@ -1581,7 +1581,7 @@ const getAllPosts = async () => {
                     postsCache = { data: formatted, timestamp: now };
                     return formatted;
                 }
-            } catch (err) {}
+            } catch (err) { }
         }
     }
     const localPosts = await readLocalPosts();
@@ -1609,7 +1609,7 @@ const getPostById = async (id) => {
             if (!error && data && !data.title?.startsWith("__SYSTEM_") && data.author !== "__SYSTEM__") {
                 return formatPost(data);
             }
-        } catch (e) {}
+        } catch (e) { }
     }
     const localPosts = await readLocalPosts();
     const post = localPosts.find((p) => String(p.id) === String(id));
@@ -1644,7 +1644,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
                 .single();
             invalidatePostsCache();
             if (!error && data) return formatPost(data);
-        } catch (e) {}
+        } catch (e) { }
 
         try {
             const { data, error } = await supabase
@@ -1662,7 +1662,7 @@ const createPost = async ({ title, content, excerpt, author, tags, coverImage, a
                 .single();
             invalidatePostsCache();
             if (!error && data) return formatPost(data);
-        } catch (e) {}
+        } catch (e) { }
 
         const { data, error } = await supabase
             .from("posts")
@@ -1723,7 +1723,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
                 .single();
             invalidatePostsCache();
             if (!error && data) return formatPost(data);
-        } catch (e) {}
+        } catch (e) { }
 
         try {
             const { data, error } = await supabase
@@ -1742,7 +1742,7 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
                 .single();
             invalidatePostsCache();
             if (!error && data) return formatPost(data);
-        } catch (e) {}
+        } catch (e) { }
 
         const { data, error } = await supabase
             .from("posts")
@@ -1777,12 +1777,13 @@ const updatePost = async (id, { title, content, excerpt, author, tags, coverImag
     return null;
 };
 
-const deletePost = async (id) => {    if (supabase) {
+const deletePost = async (id) => {
+    if (supabase) {
         try {
             const { error } = await supabase.from("posts").delete().eq("id", id);
             invalidatePostsCache();
             if (!error) return true;
-        } catch (e) {}
+        } catch (e) { }
     }
     const localPosts = await readLocalPosts();
     const filteredPosts = localPosts.filter((p) => String(p.id) !== String(id));
@@ -2022,8 +2023,8 @@ app.get("/auth/callback", async (req, res) => {
             if (data?.session && data.session.user) {
                 const user = data.session.user;
                 const isGoogle = user.app_metadata?.provider === "google" ||
-                                 (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
-                                 Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
+                    (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
+                    Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
                 const authUser = {
                     id: user.id,
                     email: user.email,
@@ -2069,8 +2070,8 @@ app.post("/api/auth/session", async (req, res) => {
                 const { data: { user }, error } = await supabase.auth.getUser(token);
                 if (user && !error) {
                     const isGoogle = user.app_metadata?.provider === "google" ||
-                                     (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
-                                     Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
+                        (Array.isArray(user.identities) && user.identities.some(i => i.provider === "google")) ||
+                        Boolean(user.user_metadata?.iss?.includes("google") || user.user_metadata?.avatar_url?.includes("googleusercontent.com") || user.user_metadata?.picture?.includes("googleusercontent.com"));
                     authUser = {
                         id: user.id,
                         email: user.email,
@@ -2083,7 +2084,7 @@ app.post("/api/auth/session", async (req, res) => {
                     };
                     setCachedSupabaseUser(token, authUser);
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         if (authUser) {
@@ -2132,7 +2133,7 @@ app.get("/explore", (req, res) => {
         secure: process.env.NODE_ENV === "production",
         maxAge: 7 * 24 * 60 * 60 * 1000,
         sameSite: "lax",
-                path: "/"
+        path: "/"
     });
     res.redirect("/?guest=true");
 });
@@ -2152,14 +2153,14 @@ const getUserNetwork = async (profileId, currentUserId = null) => {
         const cleanId = String(id || "").toLowerCase();
         const strippedId = cleanId.replace(/^user_/, "");
 
-        let p = profiles.find(pr => 
+        let p = profiles.find(pr =>
             (pr.id && (String(pr.id).toLowerCase() === cleanId || String(pr.id).toLowerCase() === strippedId)) ||
             (pr.username && (pr.username.toLowerCase() === cleanId || pr.username.toLowerCase() === strippedId)) ||
             (pr.name && (pr.name.toLowerCase() === cleanId || pr.name.toLowerCase() === strippedId)) ||
             (pr.email && pr.email.toLowerCase() === cleanId)
         );
         if (!p) {
-            const u = users.find(usr => 
+            const u = users.find(usr =>
                 (usr.id && (String(usr.id).toLowerCase() === cleanId || String(usr.id).toLowerCase() === strippedId)) ||
                 (usr.name && (usr.name.toLowerCase() === cleanId || usr.name.toLowerCase() === strippedId)) ||
                 (usr.email && usr.email.toLowerCase() === cleanId)
@@ -2176,7 +2177,7 @@ const getUserNetwork = async (profileId, currentUserId = null) => {
             }
         }
         if (!p) {
-            const authorPost = allPosts.find(ap => 
+            const authorPost = allPosts.find(ap =>
                 (ap.author && (ap.author.toLowerCase() === cleanId || ap.author.toLowerCase() === strippedId)) ||
                 (ap.author_id && (String(ap.author_id).toLowerCase() === cleanId || String(ap.author_id).toLowerCase() === strippedId)) ||
                 (ap.author_username && (ap.author_username.toLowerCase() === cleanId || ap.author_username.toLowerCase() === strippedId))
@@ -2273,10 +2274,10 @@ app.get("/profile", requireAuth, async (req, res, next) => {
             const pUsername = String(p.author_username || p.authorUsername || "").toLowerCase();
 
             return (profId && pAuthorId && profId === pAuthorId) ||
-                   (profName && pAuthor && profName === pAuthor) ||
-                   (profUsername && pAuthor && profUsername === pAuthor) ||
-                   (profUsername && pUsername && profUsername === pUsername) ||
-                   (profId === "133dac01-058e-4d65-a347-78246846d359" && (pAuthor === "mini" || pAuthor.includes("abhishek")));
+                (profName && pAuthor && profName === pAuthor) ||
+                (profUsername && pAuthor && profUsername === pAuthor) ||
+                (profUsername && pUsername && profUsername === pUsername) ||
+                (profId === "133dac01-058e-4d65-a347-78246846d359" && (pAuthor === "mini" || pAuthor.includes("abhishek")));
         });
 
         const drafts = [];
@@ -2286,13 +2287,13 @@ app.get("/profile", requireAuth, async (req, res, next) => {
             return post ? { ...post, snippet: post.excerpt || post.content.substring(0, 120) + "..." } : null;
         }).filter(Boolean);
 
-        const followersCount = follows.filter(f => 
-            f.followingId === profile.id || 
+        const followersCount = follows.filter(f =>
+            f.followingId === profile.id ||
             (profile.username && f.followingId === profile.username) ||
             (profile.name && f.followingId.toLowerCase() === profile.name.toLowerCase())
         ).length;
-        const followingCount = follows.filter(f => 
-            f.followerId === profile.id || 
+        const followingCount = follows.filter(f =>
+            f.followerId === profile.id ||
             (profile.username && f.followerId === profile.username)
         ).length;
         const { followers: followersList, following: followingList } = network;
@@ -2374,10 +2375,10 @@ app.get("/profile/:identifier", async (req, res, next) => {
             const pUsername = String(p.author_username || p.authorUsername || "").toLowerCase();
 
             return (profId && pAuthorId && profId === pAuthorId) ||
-                   (profName && pAuthor && profName === pAuthor) ||
-                   (profUsername && pAuthor && profUsername === pAuthor) ||
-                   (profUsername && pUsername && profUsername === pUsername) ||
-                   (profId === "133dac01-058e-4d65-a347-78246846d359" && (pAuthor === "mini" || pAuthor.includes("abhishek")));
+                (profName && pAuthor && profName === pAuthor) ||
+                (profUsername && pAuthor && profUsername === pAuthor) ||
+                (profUsername && pUsername && profUsername === pUsername) ||
+                (profId === "133dac01-058e-4d65-a347-78246846d359" && (pAuthor === "mini" || pAuthor.includes("abhishek")));
         });
 
         const drafts = [];
@@ -2387,13 +2388,13 @@ app.get("/profile/:identifier", async (req, res, next) => {
             return post ? { ...post, snippet: post.excerpt || post.content.substring(0, 120) + "..." } : null;
         }).filter(Boolean);
 
-        const followersCount = follows.filter(f => 
-            f.followingId === profile.id || 
+        const followersCount = follows.filter(f =>
+            f.followingId === profile.id ||
             (profile.username && f.followingId === profile.username) ||
             (profile.name && f.followingId.toLowerCase() === profile.name.toLowerCase())
         ).length;
-        const followingCount = follows.filter(f => 
-            f.followerId === profile.id || 
+        const followingCount = follows.filter(f =>
+            f.followerId === profile.id ||
             (profile.username && f.followerId === profile.username)
         ).length;
         const isFollowing = req.user ? follows.some(f => f.followerId === req.user.id && f.followingId === profile.id) : false;
@@ -2448,9 +2449,9 @@ app.get("/settings", requireAuth, async (req, res, next) => {
     try {
         const profile = await getOrCreateProfile(req.user, req);
         const isGoogleUser = Boolean(
-            req.user?.isGoogleUser || 
-            req.user?.provider === "google" || 
-            req.user?.avatar?.includes("googleusercontent.com") || 
+            req.user?.isGoogleUser ||
+            req.user?.provider === "google" ||
+            req.user?.avatar?.includes("googleusercontent.com") ||
             profile.avatar?.includes("googleusercontent.com")
         );
         const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || req.ip;
@@ -2460,8 +2461,8 @@ app.get("/settings", requireAuth, async (req, res, next) => {
         const allPosts = await getAllPosts();
         const publishedPosts = allPosts.filter(p => {
             return (p.author && profile.name && p.author.toLowerCase() === profile.name.toLowerCase()) ||
-                   (p.author && profile.username && p.author.toLowerCase() === profile.username.toLowerCase()) ||
-                   (p.author_id && p.author_id === profile.id);
+                (p.author && profile.username && p.author.toLowerCase() === profile.username.toLowerCase()) ||
+                (p.author_id && p.author_id === profile.id);
         });
         const analytics = await readAnalytics();
         let totalReads = 0;
@@ -2509,6 +2510,7 @@ app.post("/api/profile/sessions/revoke-others", requireAuth, csrfProtection, asy
             sessionId: crypto.randomBytes(8).toString("hex")
         };
         const newToken = generateLocalToken(refreshedUser);
+
         setSessionCookies(res, newToken);
 
         return res.json({
@@ -3004,7 +3006,7 @@ const readRawResponses = async () => {
                     createdAt: r.created_at, updatedAt: r.updated_at
                 }));
                 memoryCache.set("RESPONSES", { data: mapped, timestamp: now });
-                if (mapped.length > 0) writeJSONSafe("responses.json", mapped).catch(() => {});
+                if (mapped.length > 0) writeJSONSafe("responses.json", mapped).catch(() => { });
                 return mapped;
             }
             if (error) warnOnce("responses-table", "Supabase responses table missing — running on local fallback. Run supabase-schema.sql sections 15-16 in Supabase Dashboard → SQL Editor.", { code: error.code });
@@ -3052,7 +3054,7 @@ const getPostDiscussionSetting = async (postId) => {
         try {
             const { data } = await supabase.from("post_settings").select("discussion_closed, responses_hidden").eq("post_id", postId).single();
             if (data) return { closed: !!data.discussion_closed, hidden: !!data.responses_hidden };
-        } catch (e) {}
+        } catch (e) { }
     }
     const all = await readSystemState("POST_SETTINGS", {});
     const s = all?.[String(postId)];
@@ -3136,10 +3138,12 @@ app.post("/api/posts/:id/responses", requireAuth, csrfProtection, async (req, re
         const profile = await getOrCreateProfile(req.user, req);
         const nowIso = new Date().toISOString();
         const id = crypto.randomUUID ? crypto.randomUUID() : ("r_" + crypto.randomBytes(8).toString("hex"));
-        const row = { id, postId: String(req.params.id), authorId: String(req.user.id),
+        const row = {
+            id, postId: String(req.params.id), authorId: String(req.user.id),
             authorName: profile?.name || req.user.name || "User", authorUsername: profile?.username || req.user.username || null,
             authorAvatar: profile?.avatar || null, content: text, quotedText: quote,
-            parentId: parent ? String(parent.id) : null, claps: 0, clappedBy: [], createdAt: nowIso, updatedAt: nowIso };
+            parentId: parent ? String(parent.id) : null, claps: 0, clappedBy: [], createdAt: nowIso, updatedAt: nowIso
+        };
         if (supabase) {
             try {
                 const { error } = await supabase.from("responses").insert({ id: row.id, post_id: row.postId, author_id: row.authorId, author_name: row.authorName, author_username: row.authorUsername, author_avatar: row.authorAvatar, content: row.content, quoted_text: row.quotedText, parent_id: row.parentId, claps: 0, clapped_by: [], created_at: nowIso, updated_at: nowIso });
@@ -3247,7 +3251,7 @@ app.get("/posts/:id", async (req, res, next) => {
         const post = await getPostById(req.params.id);
         if (post) {
             // Record real unique reader view (non-blocking in background)
-            recordPostView(post.id, req, res).catch(() => {});
+            recordPostView(post.id, req, res).catch(() => { });
 
             const [analytics, allPosts, responsesData, discussionSetting] = await Promise.all([
                 readAnalytics(),
@@ -3275,9 +3279,11 @@ app.get("/posts/:id", async (req, res, next) => {
                 isAuthor = isUserPostAuthor(req.user, post, profile);
             }
 
-            res.render("post.ejs", { post, relatedPosts, user: req.user, isAuthor,
+            res.render("post.ejs", {
+                post, relatedPosts, user: req.user, isAuthor,
                 responses: responsesData.responses, responsesCount: responsesData.count,
-                discussionClosed: discussionSetting.closed, responsesHidden: discussionSetting.hidden });
+                discussionClosed: discussionSetting.closed, responsesHidden: discussionSetting.hidden
+            });
         } else {
             res.status(404).render("404.ejs", { message: "The requested post could not be found.", user: req.user });
         }
