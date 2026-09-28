@@ -177,7 +177,8 @@
                 primaryIntensity: 1.4,
                 rimColor: new THREE.Color(0xe2e8f0),
                 rimIntensity: 0.15,
-                amberIntensity: 0.2
+                bounceColor: new THREE.Color(0xC59B27),
+                bounceIntensity: 0.25
             },
             dark: {
                 clearColor: new THREE.Color(0x0D0D10),
@@ -192,7 +193,8 @@
                 primaryIntensity: 0.35,
                 rimColor: new THREE.Color(0xa5b4fc),
                 rimIntensity: 1.35,
-                amberIntensity: 0.65
+                bounceColor: new THREE.Color(0x6366F1),
+                bounceIntensity: 0.55
             }
         };
 
@@ -238,10 +240,10 @@
         rimLight.position.set(6.0, 8.0, 4.0);
         scene.add(rimLight);
 
-        // Subtle Amber Point Light near [2, -2, 2] for warm bounce complementing CTA
+        // Subtle Ambient Bounce Point Light near [2, -2, 2] complementing CTA
         const amberBounce = new THREE.PointLight(
-            0xf59e0b,
-            initialConfig.amberIntensity,
+            initialConfig.bounceColor.getHex(),
+            initialConfig.bounceIntensity,
             20,
             1.2
         );
@@ -349,7 +351,8 @@
             rimLight.color.lerp(targetCfg.rimColor, 0.08);
             rimLight.intensity = THREE.MathUtils.lerp(rimLight.intensity, targetCfg.rimIntensity, 0.08);
 
-            amberBounce.intensity = THREE.MathUtils.lerp(amberBounce.intensity, targetCfg.amberIntensity, 0.08);
+            amberBounce.color.lerp(targetCfg.bounceColor, 0.08);
+            amberBounce.intensity = THREE.MathUtils.lerp(amberBounce.intensity, targetCfg.bounceIntensity, 0.08);
 
             renderer.render(scene, camera);
         }

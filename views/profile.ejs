@@ -1,5 +1,5 @@
 <%- include("partials/header.ejs") %>
-<link rel="stylesheet" href="/styles/profile.css">
+<link rel="stylesheet" href="/styles/profile.css?v=133">
 
 <div class="profile-page-wrapper">
     <!-- ==================== HERO & IDENTITY CARD ==================== -->
@@ -416,7 +416,7 @@
     transform: translateY(-2px);
     border-color: var(--accent-color);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-    background: rgba(255, 138, 0, 0.05);
+    background: var(--pill-glow);
 }
 .profile-stat-box.is-network-clickable:active {
     transform: scale(0.97);
@@ -601,7 +601,7 @@ body:not(.dark-mode) .network-user-card:hover {
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #FF8A00 0%, #F59E0B 100%);
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--btn-hover) 100%);
     color: #ffffff;
     display: flex;
     align-items: center;

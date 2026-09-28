@@ -112,8 +112,8 @@ body.dark-mode .response-composer {
     background: rgba(0, 0, 0, 0.05) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(161, 98, 7, 0.2) !important;
-    color: #713F12 !important;
+    border: 1px solid rgba(197, 155, 39, 0.3) !important;
+    color: #8C650D !important;
     padding: 6px 20px;
     border-radius: 9999px;
     font-size: 0.88rem;
@@ -126,8 +126,8 @@ body.dark-mode .response-composer {
 
 body.dark-mode .hero-badge-pill {
     background: rgba(26, 25, 32, 0.72) !important;
-    border-color: rgba(212, 175, 55, 0.4) !important;
-    color: #f3d179 !important;
+    border-color: rgba(165, 180, 252, 0.35) !important;
+    color: #A5B4FC !important;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
 }
 
@@ -234,14 +234,14 @@ body.dark-mode .hero-search-icon {
     gap: 10px;
     padding: 12px 28px;
     border-radius: 9999px;
-    background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
+    background: linear-gradient(135deg, #CCA43B 0%, #C59B27 50%, #A87D15 100%) !important;
     color: #FFFFFF !important;
     font-family: var(--font-ui);
     font-size: 1rem;
     font-weight: 700;
     text-decoration: none !important;
-    border: 1px solid #B45309 !important;
-    box-shadow: 0 6px 20px rgba(217, 119, 6, 0.28) !important;
+    border: 1px solid #A87D15 !important;
+    box-shadow: 0 6px 20px rgba(197, 155, 39, 0.28) !important;
     transition: 
         transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
         box-shadow 0.22s ease,
@@ -250,21 +250,21 @@ body.dark-mode .hero-search-icon {
 
 .hero-primary-cta:hover {
     transform: translateY(-2px);
-    background: linear-gradient(135deg, #B45309 0%, #92400E 100%) !important;
-    box-shadow: 0 10px 26px rgba(217, 119, 6, 0.4) !important;
+    background: linear-gradient(135deg, #A87D15 0%, #8C650D 100%) !important;
+    box-shadow: 0 10px 26px rgba(197, 155, 39, 0.42) !important;
 }
 
 body.dark-mode .hero-primary-cta {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    background: linear-gradient(135deg, #818CF8 0%, #6366F1 50%, #4F46E5 100%) !important;
     color: #ffffff !important;
     font-weight: 600 !important;
-    border: 1px solid rgba(245, 158, 11, 0.4) !important;
-    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.25) !important;
+    border: 1px solid rgba(165, 180, 252, 0.4) !important;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.32) !important;
 }
 
 body.dark-mode .hero-primary-cta:hover {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
-    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4) !important;
+    background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%) !important;
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.48) !important;
     transform: translateY(-2px);
 }
 

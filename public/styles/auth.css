@@ -90,7 +90,7 @@
     max-height: 480px;
     object-fit: contain;
     border-radius: 16px;
-    filter: drop-shadow(0 14px 40px rgba(255, 138, 0, 0.2));
+    filter: drop-shadow(0 14px 40px var(--pill-glow));
     transition: transform 0.2s ease-out;
     will-change: transform;
 }
@@ -270,9 +270,9 @@
 }
 
 .auth-input-exact:focus {
-    border-color: #FF8A00;
+    border-color: var(--accent-color);
     background: rgba(16, 17, 22, 0.95);
-    box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.18);
+    box-shadow: 0 0 0 3px var(--pill-glow);
 }
 
 .auth-eye-btn {
@@ -331,7 +331,7 @@
 .auth-cta-btn {
     width: 100%;
     padding: 14px;
-    background: #FF8A00;
+    background: linear-gradient(135deg, #CCA43B 0%, #C59B27 50%, #A87D15 100%);
     border: none;
     border-radius: 12px;
     font-family: var(--font-ui);
@@ -340,17 +340,27 @@
     color: #ffffff;
     cursor: pointer;
     margin-top: 4px;
-    box-shadow: 0 4px 20px rgba(255, 138, 0, 0.35);
-    transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 20px rgba(197, 155, 39, 0.3);
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .auth-cta-btn:hover {
-    background: #E87700;
+    background: linear-gradient(135deg, #A87D15 0%, #8C650D 100%);
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(255, 138, 0, 0.5);
+    box-shadow: 0 8px 28px rgba(197, 155, 39, 0.45);
+}
+
+body.dark-mode .auth-cta-btn {
+    background: linear-gradient(135deg, #818CF8 0%, #6366F1 50%, #4F46E5 100%);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+}
+
+body.dark-mode .auth-cta-btn:hover {
+    background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%);
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.5);
 }
 
 .auth-cta-btn:active {

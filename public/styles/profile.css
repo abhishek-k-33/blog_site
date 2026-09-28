@@ -139,16 +139,16 @@ body.dark-mode .btn-profile-primary {
 
 .btn-profile-primary:hover {
     transform: translateY(-2px) scale(1.02);
-    background: var(--accent-color, #FF8A00);
-    border-color: var(--accent-color, #FF8A00);
+    background: var(--accent-color);
+    border-color: var(--accent-color);
     color: #ffffff !important;
-    box-shadow: 0 8px 24px var(--pill-glow, rgba(255, 138, 0, 0.35));
+    box-shadow: 0 8px 24px var(--pill-glow);
 }
 
 body.dark-mode .btn-profile-primary:hover {
-    background: var(--accent-color, #FF8A00);
-    border-color: var(--accent-color, #FF8A00);
-    color: #121214 !important;
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #ffffff !important;
 }
 
 .btn-profile-primary:active {
@@ -237,10 +237,21 @@ body:not(.dark-mode) .btn-profile-secondary:hover {
     letter-spacing: 0.06em;
 }
 
-.badge-top-writer {
-    background: linear-gradient(135deg, rgba(255, 138, 0, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%);
-    border: 1px solid rgba(255, 138, 0, 0.4);
-    color: #FF8A00;
+.badge-top-writer,
+body:not(.dark-mode) .badge-top-writer {
+    background: linear-gradient(135deg, rgba(197, 155, 39, 0.18) 0%, rgba(204, 164, 59, 0.12) 100%) !important;
+    border: 1px solid rgba(197, 155, 39, 0.5) !important;
+    color: #9A7212 !important;
+    box-shadow: 0 2px 8px rgba(197, 155, 39, 0.18) !important;
+    text-shadow: 0 0 8px rgba(197, 155, 39, 0.25);
+}
+
+body.dark-mode .badge-top-writer {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.24) 0%, rgba(129, 140, 248, 0.16) 100%) !important;
+    border: 1px solid rgba(165, 180, 252, 0.45) !important;
+    color: #A5B4FC !important;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3) !important;
+    text-shadow: 0 0 10px rgba(129, 140, 248, 0.4);
 }
 
 .badge-pro {
@@ -383,8 +394,8 @@ body:not(.dark-mode) .profile-tab-btn {
 }
 
 .profile-tab-btn.is-active {
-    color: var(--accent-color, #FF8A00);
-    border-bottom-color: var(--accent-color, #FF8A00);
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
 }
 
 .tab-count-badge {
@@ -396,8 +407,8 @@ body:not(.dark-mode) .profile-tab-btn {
 }
 
 .profile-tab-btn.is-active .tab-count-badge {
-    background: rgba(255, 138, 0, 0.2);
-    color: #FF8A00;
+    background: var(--pill-glow);
+    color: var(--accent-color);
 }
 
 /* Tab Panels */
@@ -467,7 +478,11 @@ body:not(.dark-mode) .profile-tab-btn {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #FF8A00, #F59E0B);
+    background: linear-gradient(90deg, #CCA43B, #E5C365);
+}
+
+body.dark-mode .analytics-card::before {
+    background: linear-gradient(90deg, #6366F1, #A5B4FC);
 }
 
 .analytics-title {
@@ -807,10 +822,10 @@ body:not(.dark-mode) .media-picker-hint {
 }
 
 .media-cover-card.is-dragover {
-    border-color: #FF8A00;
+    border-color: var(--accent-color);
     border-style: solid;
-    background: rgba(255, 138, 0, 0.1);
-    box-shadow: 0 0 24px rgba(255, 138, 0, 0.25);
+    background: var(--pill-glow);
+    box-shadow: 0 0 24px var(--pill-glow);
 }
 
 body:not(.dark-mode) .media-cover-card {
@@ -912,8 +927,8 @@ body:not(.dark-mode) .settings-select {
 }
 
 .settings-input:focus, .settings-textarea:focus, .settings-select:focus {
-    border-color: #FF8A00;
-    box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.25);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--pill-glow);
     background: rgba(255, 255, 255, 0.07);
 }
 
