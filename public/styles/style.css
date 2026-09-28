@@ -6032,3 +6032,125 @@ body.dark-mode .badge-top-writer {
     box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3) !important;
     text-shadow: 0 0 10px rgba(129, 140, 248, 0.4);
 }
+
+/* ==========================================================================
+   AUTHENTIC LIQUID GLASS DESIGN SYSTEM
+   Direct physical glass optics: refractive bevels, multi-layer light transmission,
+   specular edge highlights, and theme-synchronized ambient glow.
+   ========================================================================== */
+
+/* 1. Dynamic Island Floating Header (Liquid Glass Capsule) */
+.pill-navbar {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(20, 21, 28, 0.74) 35%, rgba(13, 14, 18, 0.88) 100%) !important;
+    backdrop-filter: blur(28px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 
+        0 24px 60px rgba(0, 0, 0, 0.52),
+        0 4px 16px rgba(0, 0, 0, 0.32),
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.42),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.35),
+        0 0 32px var(--pill-glow) !important;
+    transition: box-shadow 0.35s ease, border-color 0.3s ease, transform 0.25s ease !important;
+}
+
+body:not(.dark-mode) .pill-navbar {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.92) 0%, rgba(252, 252, 254, 0.75) 45%, rgba(245, 245, 250, 0.88) 100%) !important;
+    border: 1px solid rgba(24, 24, 27, 0.08) !important;
+    box-shadow: 
+        0 20px 48px rgba(24, 24, 27, 0.08),
+        0 4px 14px rgba(24, 24, 27, 0.04),
+        inset 0 1.5px 1.5px rgba(255, 255, 255, 0.98),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.04),
+        0 0 24px var(--pill-glow) !important;
+}
+
+.pill-navbar:hover {
+    box-shadow: 
+        0 28px 70px rgba(0, 0, 0, 0.58),
+        0 6px 20px rgba(0, 0, 0, 0.36),
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.55),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 0 42px var(--pill-glow) !important;
+}
+
+body:not(.dark-mode) .pill-navbar:hover {
+    box-shadow: 
+        0 24px 54px rgba(24, 24, 27, 0.11),
+        0 6px 16px rgba(24, 24, 27, 0.05),
+        inset 0 1.5px 1.5px rgba(255, 255, 255, 1),
+        0 0 32px var(--pill-glow) !important;
+}
+
+/* 2. Story Feed Cards (Liquid Frosted Glass Depth) */
+.post-card {
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    box-shadow: 
+        var(--card-shadow),
+        inset 0 1px 1px rgba(255, 255, 255, 0.12),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+body.dark-mode .post-card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(22, 24, 29, 0.88) 35%, rgba(16, 17, 22, 0.94) 100%);
+    border-color: rgba(255, 255, 255, 0.09);
+}
+
+body:not(.dark-mode) .post-card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.94) 0%, rgba(252, 252, 254, 0.82) 45%, rgba(246, 246, 250, 0.92) 100%);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 
+        0 16px 36px -4px rgba(24, 24, 27, 0.06),
+        inset 0 1.5px 1.5px rgba(255, 255, 255, 0.9);
+}
+
+.post-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+        0 24px 60px -8px rgba(0, 0, 0, 0.72),
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.3),
+        0 0 26px var(--pill-glow);
+}
+
+body:not(.dark-mode) .post-card:hover {
+    box-shadow: 
+        0 20px 48px -6px rgba(24, 24, 27, 0.12),
+        inset 0 1.5px 1.5px rgba(255, 255, 255, 1),
+        0 0 22px var(--pill-glow);
+}
+
+/* 3. Featured Story Card (Curved Glass Refraction Showcase) */
+.featured-story-card {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 
+        0 24px 60px -6px rgba(0, 0, 0, 0.65),
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.28),
+        0 0 32px var(--pill-glow);
+}
+
+body:not(.dark-mode) .featured-story-card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 250, 253, 0.88) 100%);
+    box-shadow: 
+        0 22px 50px -6px rgba(24, 24, 27, 0.09),
+        inset 0 1.5px 1.5px rgba(255, 255, 255, 1),
+        0 0 28px var(--pill-glow);
+}
+
+/* 4. Glass CTA Buttons & Pills */
+.btn-pill-cta {
+    box-shadow: 
+        0 10px 24px var(--pill-glow),
+        inset 0 1px 1px rgba(255, 255, 255, 0.42),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+.btn-pill-cta:hover {
+    box-shadow: 
+        0 14px 34px var(--pill-glow),
+        inset 0 1.5px 1.2px rgba(255, 255, 255, 0.6) !important;
+}
+
+
