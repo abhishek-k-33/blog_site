@@ -1,14 +1,47 @@
 <%- include("partials/header.ejs") %>
+<link rel="stylesheet" href="/styles/error-404.css?v=5">
 
-<div class="hero error-hero">
-    <h1 class="hero-title error-title">404 - Post Not Found</h1>
-    <div class="hero-subtitle-container">
-        <p class="error-description"><%= typeof message !== 'undefined' ? message : "The post you are looking for doesn't exist or may have been deleted." %></p>
+<!-- Full-Viewport Fixed 3D Endless Möbius Ribbon Canvas -->
+<div class="error-3d-wrapper" id="error-3d-wrapper" aria-hidden="true">
+    <canvas class="error-3d-canvas" id="error-3d-canvas"></canvas>
+</div>
+
+<!-- Centered Editorial Glassmorphic Error Card -->
+<div class="error-404-container">
+    <div class="error-card">
+        <span class="error-badge">✦ &nbsp; 404 · ENDLESS LABYRINTH &nbsp; ✦</span>
+        <div class="error-code">404</div>
+        <h1 class="error-headline">The Endless Loop</h1>
+        <p class="error-desc">
+            <% if (typeof message !== 'undefined' && message && message !== 'Page not found.') { %>
+                <%= message %>
+            <% } else { %>
+                You have wandered into an unbroken loop. The page you seek has unraveled from the collection, or perhaps it exists in another chapter.
+            <% } %>
+        </p>
+        <div class="error-actions">
+            <a href="/" class="error-btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                <span>Follow Thread Home</span>
+            </a>
+            <a href="/#posts" class="error-btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span>Browse Collection</span>
+            </a>
+        </div>
+        <div class="error-quick-links">
+            <span>Quick Links:</span>
+            <a href="/">Home</a>
+            <span>·</span>
+            <a href="/profile">My Library</a>
+            <span>·</span>
+            <a href="/login">Account</a>
+        </div>
     </div>
 </div>
 
-<div class="back-link error-back-link">
-    <a href="/" class="btn btn-primary error-cta">← Return to Home</a>
-</div>
+<!-- Three.js & Endless Möbius Ribbon Scene -->
+<script src="/js/three.min.js"></script>
+<script src="/js/404-3d-scene.js?v=5"></script>
 
 <%- include("partials/footer.ejs") %>
