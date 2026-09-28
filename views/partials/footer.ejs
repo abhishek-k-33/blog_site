@@ -426,5 +426,11 @@
             });
         }
     </script>
+
+    <% if (typeof is404Page === 'undefined' || !is404Page) { %>
+    <!-- Three.js Library & Literary 3D Ambient Scene -->
+    <script src="/js/three.min.js"></script>
+    <script src="/js/hero-3d-scene.js?v=130"></script>
+    <% } %>
 </body>
 </html>

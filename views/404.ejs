@@ -1,4 +1,4 @@
-<%- include("partials/header.ejs") %>
+<%- include("partials/header.ejs", { is404Page: true }) %>
 <link rel="stylesheet" href="/styles/error-404.css?v=5">
 
 <!-- Full-Viewport Fixed 3D Endless Möbius Ribbon Canvas -->
@@ -44,4 +44,4 @@
 <script src="/js/three.min.js"></script>
 <script src="/js/404-3d-scene.js?v=5"></script>
 
-<%- include("partials/footer.ejs") %>
+<%- include("partials/footer.ejs", { is404Page: true }) %>

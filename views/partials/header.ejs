@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
     <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <link rel="stylesheet" href="/styles/style.css">
+    <link rel="stylesheet" href="/styles/hero-3d.css?v=130">
     <script>
         // Automatic CSRF token injection for client-side fetch requests
         (function() {
@@ -232,4 +233,12 @@
             </div>
         </div>
     </header>
+
+    <% if (typeof is404Page === 'undefined' || !is404Page) { %>
+    <!-- Full-Viewport Ambient 3D Literary Canvas in the Empty Side Margins -->
+    <div id="literary-3d-wrapper" class="literary-3d-ambient-wrapper" aria-hidden="true">
+        <canvas id="literary-3d-canvas" class="literary-3d-canvas"></canvas>
+    </div>
+    <% } %>
+
     <main class="container">
