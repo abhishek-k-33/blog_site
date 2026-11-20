@@ -323,7 +323,21 @@
         // Live Search Filtering & Quick Search
         // =========================================
         const searchInput = document.getElementById('navbar-search-input');
+        const searchBox = document.querySelector('.navbar-search-box');
         if (searchInput) {
+            if (searchBox) {
+                searchBox.addEventListener('click', (e) => {
+                    if (e.target !== searchInput) {
+                        searchInput.focus();
+                    }
+                });
+            }
+
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    searchInput.blur();
+                }
+            });
             const isHomePage = window.location.pathname === '/' || window.location.pathname === '';
             const postCards = Array.from(document.querySelectorAll('.post-card'));
             const postsGrid = document.querySelector('.posts-grid');
